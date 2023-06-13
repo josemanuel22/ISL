@@ -32,11 +32,11 @@ end
 
 function ψₘ(y, m)
     stddev = 0.1
-    return exp(-0.5 * ((y - m) / stddev)^2)
+    return exp.(power.(-0.5 .* ((y .- m) ./ stddev), 2))
 end
 
 function ϕ(yₖ, yₙ)
-    return sum(sigmoid.(yₙ, yₖ))
+    return sum.(sigmoid.(yₙ, yₖ))
 end
 
 function γ(yₖ, yₙ, m, K)
