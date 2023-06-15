@@ -1,5 +1,7 @@
-using AdaptativeBlockLearning
+using AdaptativeBlockLearning:sigmoid,ψₘ,ϕ, γ, CustomLoss, generate_aₖ
 using Test
+
+tol = 1e-5
 
 @testset "sigmoid" begin
     @test sigmoid(1.4, 2) < 0.5
@@ -20,5 +22,10 @@ end
 end
 
 @testset "γ" begin
-    @test γ([1.0, 2.0, 3.1, 3.9], 3.6, 3, 5) ≈ [0., 0. , 0.9203893456369119, 0., 0.]
+    @test isapprox(γ([1.0, 2.0, 3.1, 3.9], 3.6, 3, 5), [0., 0. , 0.92038, 0., 0.], atol=tol)
+end
+
+@testset "generate aₖ" begin
+    loss = CustomLoss(4)
+    @test  isapprox(generate_aₖ(loss, [1.0, 2.0, 3.1, 3.9], 3.6), [0., 0., 0.92038, 0., 0.], atol=tol)
 end
