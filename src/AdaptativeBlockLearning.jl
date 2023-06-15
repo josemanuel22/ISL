@@ -9,7 +9,10 @@ export
     ϕ,
     γ,
     CustomLoss,
-    generate_aₖ
+    generate_aₖ,
+    scalar_diff,
+    kl_divergence,
+    jensen_shannon_divergence
 
 include("CustomLossFunction.jl")
 

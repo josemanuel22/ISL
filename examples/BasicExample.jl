@@ -8,7 +8,6 @@ model = Chain(
     Dense(10, 1)
 )|> gpu
 
-
 #Generating Traning Set
 mean = 0
 std = 1
