@@ -15,7 +15,7 @@ function generate_aₖ(loss::CustomLoss, ŷ, y)
 end
 
 scalar_diff = (loss::CustomLoss, a_k) -> sum.((a_k .- (1 ./ (loss.K + 1))) .^2)
-jensen_shannon_div = (loss::CustomLoss, a_k) -> jensen_shannon_divergence(a_k, fill(1 / (loss.K + 1), 1, loss.K + 1))
+jensen_shannon_∇ = (loss::CustomLoss, a_k) -> jensen_shannon_divergence(a_k, fill(1 / (loss.K + 1), 1, loss.K + 1))
 
 function jensen_shannon_divergence(p,q)
     ϵ = 1e-3
