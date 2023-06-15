@@ -1,5 +1,3 @@
-using Flux, ProgressMeter, Random, Distributions
-
 #model to learn
 line(x; m, b) = m * x + b
 m = 3; b = 5

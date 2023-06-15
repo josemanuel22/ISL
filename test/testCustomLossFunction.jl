@@ -1,4 +1,5 @@
-using Test, AdaptativeBlockLearning
+using AdaptativeBlockLearning
+using Test
 
 @testset "sigmoid" begin
     @test sigmoid(1.4, 2) < 0.5
