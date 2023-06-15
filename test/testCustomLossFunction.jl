@@ -1,4 +1,4 @@
-using AdaptativeBlockLearning:sigmoid,ψₘ,ϕ, γ, CustomLoss, generate_aₖ
+using AdaptativeBlockLearning
 using Test
 
 tol = 1e-5
