@@ -11,7 +11,7 @@ export
     CustomLoss,
     generate_aₖ,
     scalar_diff,
-    kl_divergence,
+    jensen_shannon_∇,
     jensen_shannon_divergence
 
 include("CustomLossFunction.jl")

@@ -27,18 +27,18 @@ end
 
 @testset "generate aₖ" begin
     loss = CustomLoss(4)
-    @test  isapprox(generate_aₖ(loss, [1.0, 2.0, 3.1, 3.9], 3.6), [0., 0., 0., 0.92038, 0.], atol=tol)
+    @test isapprox(generate_aₖ(loss, [1.0, 2.0, 3.1, 3.9], 3.6), [0., 0., 0., 0.92038, 0.], atol=tol)
 end
 
 @testset "scalar diff" begin
     loss = CustomLoss(4)
     yₖ = [1, 2, 3, 4]
-    data = 0:0.5:5
+    data = 0.5:0.5:4.5
     aₖ = zeros(5)
     for y in data
         aₖ += generate_aₖ(loss, yₖ, y)
     end
-    @test isapprox(scalar_diff(loss, aₖ), [3.23196, 0.64001, 0.64001, 0.64001, 3.23196], atol=tol)
+    @test isapprox(scalar_diff(loss, aₖ), 3.19289, atol=tol)
 end
 
 @testset "jensen shannon divergence" begin
@@ -47,4 +47,15 @@ end
     @test jensen_shannon_divergence([1.,2.],[1.,3.]) < jensen_shannon_divergence([1.,2.],[1.,4.])
     @test jensen_shannon_divergence([1.,3.],[1.,2.]) == jensen_shannon_divergence([1.,2.],[1.,3.])
     @test jensen_shannon_divergence([0.,3.],[1.,3.]) > 0.
+end
+
+@testset "jensen shannon ∇" begin
+    loss = CustomLoss(4)
+    yₖ = [1, 2, 3, 4]
+    data = 0.5:0.5:4.5
+    aₖ = zeros(5)
+    for y in data
+        aₖ += generate_aₖ(loss, yₖ, y)
+    end
+    @test isapprox(jensen_shannon_∇(loss, aₖ./sum(aₖ)), 0., atol=tol)
 end
