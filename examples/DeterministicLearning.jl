@@ -17,8 +17,8 @@ optim = Flux.setup(Flux.Adam(η), model)
 losses = []
 l = CustomLoss(2)
 @time for epoch in 1:num_epochs
-        aₖ = zeros(l.K+1)
-        loss, grads = Flux.jacobian(model) do m  
+        loss, grads = Flux.withgradient(model) do m  
+            aₖ = zeros(l.K+1)
             for x in 1:n_samples
                 x = rand(Normal(μ, stddev), l.K)
                 yₖ = m(x')
