@@ -20,7 +20,7 @@ mse_loss(ŷ, y) = Flux.mse(ŷ, y)
 η = 0.1; num_epochs = 1
 optim = Flux.setup(Flux.Adam(η), model)
 loader = Flux.DataLoader(train_set, batchsize=-1);
-@showprogress for epoch in 1:num_epochs
+for epoch in 1:num_epochs
     for (x,y) in loader
         loss, grads = Flux.withgradient(model) do m
             ŷ = m(x)

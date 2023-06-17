@@ -16,19 +16,19 @@ stddev = 1
 optim = Flux.setup(Flux.Adam(η), model)
 losses = []
 l = CustomLoss(2)
-@time for epoch in 1:num_epochs
-        loss, grads = Flux.withgradient(model) do m  
-            aₖ = zeros(l.K+1)
-            for x in 1:n_samples
-                x = rand(Normal(μ, stddev), l.K)
-                yₖ = m(x')
-                y = truthh(rand(Normal(μ, stddev)))
-                aₖ += generate_aₖ(l, yₖ, y)
-            end
-            print(scalar_diff(l, aₖ ./ sum(aₖ)))
-            scalar_diff(l, aₖ ./ sum(aₖ))
-        end
-        Flux.update!(optim, model, grads[1])
-        push!(losses, loss)
+for epoch in 1:num_epochs
+    aₖ = zeros(l.K+1)
+    for _ in 1:n_samples
+        x = rand(Normal(μ, stddev), l.K)
+        yₖ = model(x')
+        y = truthh(rand(Normal(μ, stddev)))
+        aₖ += generate_aₖ(l, yₖ, y)
     end
+    #println(gradient((x) -> scalar_diff(l, x ./ sum(x)), x))
+    loss, grads = Flux.withgradient(model) do m
+        scalar_diff(l, aₖ ./ sum(aₖ))
+    end
+    println(grads)
+    Flux.update!(optim, model, grads[1])
+    push!(losses, loss)
 end
