@@ -9,8 +9,8 @@ model = Chain(
 )|> gpu
 
 #Generating Traning Set
-mean = 0
-std = 1
+mean = 0.
+std = 1.
 n_samples = 1000
 train_set = [([x], truthh(x)) for x in rand(Normal(mean, std), n_samples)]
 

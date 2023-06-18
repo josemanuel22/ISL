@@ -17,16 +17,16 @@ optim = Flux.setup(Flux.Adam(η), model)
 losses = []
 l = CustomLoss(2)
 for epoch in 1:num_epochs
-    aₖ = zeros(l.K+1)
-    for _ in 1:n_samples
-        x = rand(Normal(μ, stddev), l.K)
-        yₖ = model(x')
-        y = truthh(rand(Normal(μ, stddev)))
-        aₖ += generate_aₖ(l, yₖ, y)
-    end
-    #println(gradient((x) -> scalar_diff(l, x ./ sum(x)), x))
     loss, grads = Flux.withgradient(model) do m
-        scalar_diff(l, aₖ ./ sum(aₖ))
+        aₖ = Zygote.Buffer(x)
+        aₖ = zeros(l.K+1)
+        for _ in 1:n_samples
+            x = rand(Normal(μ, stddev), l.K)
+            yₖ = m(x')
+            y = truthh(rand(Normal(μ, stddev)))
+            aₖ = copy(aₖ + generate_aₖ(l, yₖ, y))
+        end
+        scalar_diff(l, yₖ)
     end
     println(grads)
     Flux.update!(optim, model, grads[1])

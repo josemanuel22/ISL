@@ -8,7 +8,7 @@ end
 
 function generate_aₖ(loss::CustomLoss, ŷ, y)
     aₖ = zeros(loss.K+1)
-    for k in 0:loss.K
+    @inbounds for k in 0:loss.K
         aₖ .+= γ(ŷ, y, k, loss.K+1)
     end
     return aₖ
