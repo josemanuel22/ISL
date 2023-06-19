@@ -18,17 +18,15 @@ losses = []
 l = CustomLoss(2)
 for epoch in 1:num_epochs
     loss, grads = Flux.withgradient(model) do m
-        aₖ = Zygote.Buffer(x)
         aₖ = zeros(l.K+1)
         for _ in 1:n_samples
             x = rand(Normal(μ, stddev), l.K)
             yₖ = m(x')
             y = truthh(rand(Normal(μ, stddev)))
-            aₖ = copy(aₖ + generate_aₖ(l, yₖ, y))
+            aₖ += generate_aₖ(l, yₖ, y)
         end
-        scalar_diff(l, yₖ)
+        scalar_diff(l, aₖ ./ sum(aₖ))
     end
-    println(grads)
     Flux.update!(optim, model, grads[1])
     push!(losses, loss)
 end
