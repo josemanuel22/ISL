@@ -5,24 +5,22 @@ model = Chain(
 
 #model to learn
 line(x; m, b) = m * x + b
-m = 3; b = 5
-truthh(x) =  line(x; m=m, b=b)
+model1(x) =  line(x; m=3, b=5)
+model2(x) =  line(x; m=-2, b=2)
 
-#Generating Traning Set
-μ = 0
-stddev = 1
+realModel(x, ϵ) =  ϵ < 0.5 ? model1(x) : model2(x)
 
-η = 0.01; num_epochs = 50; n_samples = 10000
+η = 0.1; num_epochs = 100; n_samples = 1000
 optim = Flux.setup(Flux.Adam(η), model)
 losses = []
-l = CustomLoss(5)
+l = CustomLoss(2)
 @showprogress for epoch in 1:num_epochs
     loss, grads = Flux.withgradient(model) do m
         aₖ = zeros(l.K+1)
         for _ in 1:n_samples
             x = rand(Normal(μ, stddev), l.K)
             yₖ = m(x')
-            y = truthh(rand(Normal(μ, stddev)))
+            y = realModel(rand(Normal(μ, stddev)), rand(Float64))
             aₖ += generate_aₖ(l, yₖ, y)
         end
         scalar_diff(l, aₖ ./ sum(aₖ))
@@ -31,8 +29,3 @@ l = CustomLoss(5)
     push!(losses, loss)
 end
 
-x = rand(Normal(μ, stddev), 1000)
-y = truthh.(x)
-ŷ = model(x')
-Plots.plot(x, y, seriestype = :scatter)
-Plots.plot!(x, ŷ', seriestype = :scatter)

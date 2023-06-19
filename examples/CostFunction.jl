@@ -1,5 +1,5 @@
 
-function proxi_cost_function(mesh::Tuple{Vector{Float64}, Vector{Float64}}, model::Function, target::Function, K::Int, n_samples::Int)
+function proxi_cost_function(mesh, model::Function, target::Function, K::Int, n_samples::Int)
     μ::Float64 = 0.; stddev::Float64 = 1.
 
     l::CustomLoss = CustomLoss(K); 
@@ -10,7 +10,7 @@ function proxi_cost_function(mesh::Tuple{Vector{Float64}, Vector{Float64}}, mode
             loss = 0.
             aₖ = zeros(l.K+1)
             for _ in 1:n_samples
-                rand!(Normal(μ, stddev), x)
+                x = rand(Normal(μ, stddev), l.K)
                 yₖ = model.(x', m=mᵢ, b=bᵢ)
                 y = target(rand(Normal(μ, stddev)))
                 aₖ += generate_aₖ(l, yₖ, y)
@@ -22,7 +22,7 @@ function proxi_cost_function(mesh::Tuple{Vector{Float64}, Vector{Float64}}, mode
     return losses
 end
 
-function real_cost_function(mesh::Tuple{Vector{T}, Vector{T}}, model::Function, target::Function, K::Int, n_samples::Int)
+function real_cost_function(mesh, model::Function, target::Function, K::Int, n_samples::Int)
     l::CustomLoss = CustomLoss(K); losses::Vector{Float64} = []
     ms, bs = mesh
     Threads.@threads for mᵢ in ms
