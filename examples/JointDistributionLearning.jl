@@ -8,7 +8,7 @@ line(x; m, b) = m * x + b
 model1(x) =  line(x; m=3, b=5)
 model2(x) =  line(x; m=-2, b=2)
 
-realModel(x, ϵ) =  ϵ < 0.5 ? model1(x) : model2(x)
+realModel(x, ϵ) =  ϵ < 0.1 ? model1(x) : model2(x)
 
 η = 0.1; num_epochs = 100; n_samples = 1000
 optim = Flux.setup(Flux.Adam(η), model)
