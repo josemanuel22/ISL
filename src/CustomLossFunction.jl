@@ -8,24 +8,12 @@ end
 
 generate_aₖ(loss, ŷ, y) = sum([γ(ŷ, y, k, loss.K+1) for k in 0:loss.K])
 
-#=
-function generate_aₖ(loss::CustomLoss, ŷ, y)
-    aₖ = zeros(loss.K+1)
-    @inbounds for k in 0:loss.K
-        aₖ .+= γ(ŷ, y, k, loss.K+1)
-    end
-    return aₖ
-end
-=#
-
-
 scalar_diff = (loss::CustomLoss, a_k) -> sum((a_k .- (1 ./ (loss.K + 1))) .^2)
 jensen_shannon_∇ = (loss::CustomLoss, a_k) -> jensen_shannon_divergence(a_k, fill(1 / (loss.K + 1), 1, loss.K + 1))
 
 function jensen_shannon_divergence(p,q)
     ϵ = 1e-3
-    p.+=ϵ; q.+=ϵ;
-    return 0.5 * (kldivergence(p,q) + kldivergence(q,p))
+    return 0.5 * (kldivergence(p.+ϵ,q.+ϵ) + kldivergence(q.+ϵ,p.+ϵ))
 end
 
 function sigmoid(ŷ, y)

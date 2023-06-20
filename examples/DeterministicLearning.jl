@@ -12,7 +12,7 @@ truthh(x) =  line(x; m=m, b=b)
 μ = 0
 stddev = 1
 
-η = 0.01; num_epochs = 50; n_samples = 10000
+η = 0.01; num_epochs = 50; n_samples = 1000
 optim = Flux.setup(Flux.Adam(η), model)
 losses = []
 l = CustomLoss(5)
@@ -25,6 +25,7 @@ l = CustomLoss(5)
             y = truthh(rand(Normal(μ, stddev)))
             aₖ += generate_aₖ(l, yₖ, y)
         end
+        #jensen_shannon_∇(l, aₖ ./ sum(aₖ))
         scalar_diff(l, aₖ ./ sum(aₖ))
     end
     Flux.update!(optim, model, grads[1])

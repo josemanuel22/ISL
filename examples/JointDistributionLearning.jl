@@ -23,6 +23,7 @@ l = CustomLoss(2)
             y = realModel(rand(Normal(μ, stddev)), rand(Float64))
             aₖ += generate_aₖ(l, yₖ, y)
         end
+        #Flux.mse(yₖ, y)
         scalar_diff(l, aₖ ./ sum(aₖ))
     end
     Flux.update!(optim, model, grads[1])

@@ -44,15 +44,15 @@ m = 3; b = 5
 truthh(x) =  model1(x; m=m, b=b)
 
 #Generating Traning Set
-μ = 0
+μ = 5
 stddev = 1
 
-res=100; n_samples = 100
+res=100; n_samples = 1000
 losses = []
 l = CustomLoss(2)
-ms = LinRange(m-20, m+20, res)
-bs = LinRange(b-20, b+20, res)
-for mᵢ in ms
+ms = LinRange(m-10, m+10, res)
+bs = LinRange(b-10, b+10, res)
+@time Threads.@threads for mᵢ in ms
     for bᵢ in bs
         loss = 0.
         aₖ = zeros(l.K+1)
