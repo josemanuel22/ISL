@@ -1,6 +1,6 @@
 module AdaptativeBlockLearning
 
-using Flux, ProgressMeter, Random, Distributions
+using Flux, ProgressMeter, Random, Distributions, StaticArrays
 using StatsBase
 
 export 

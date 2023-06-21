@@ -30,6 +30,6 @@ function ϕ(yₖ, yₙ)
 end
 
 function γ(yₖ, yₙ, m, K)
-    eₘ = (n, m) -> [j == m ? 1.0 : 0.0 for j in 0:n-1]
-    return eₘ(K, m) * ψₘ(ϕ(yₖ, yₙ), m)
+    eₘ(m) = SVector{K, Float64}(j == m ? 1.0 : 0.0 for j in 0:K-1)
+    return eₘ(m) * ψₘ(ϕ(yₖ, yₙ), m)
 end
