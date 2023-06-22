@@ -5,7 +5,7 @@ function proxi_cost_function(mesh, model::Function, target::Function, K::Int, n_
     l::CustomLoss = CustomLoss(K); 
     losses::Vector{Float64} = []
     ms, bs = mesh
-    Threads.@threads for mᵢ in ms
+    for mᵢ in ms
         for bᵢ in bs
             loss = 0.
             aₖ = zeros(l.K+1)
@@ -52,7 +52,7 @@ losses = []
 l = CustomLoss(2)
 ms = LinRange(m-10, m+10, res)
 bs = LinRange(b-10, b+10, res)
-@time Threads.@threads for mᵢ in ms
+for mᵢ in ms
     for bᵢ in bs
         loss = 0.
         aₖ = zeros(l.K+1)
@@ -67,7 +67,7 @@ bs = LinRange(b-10, b+10, res)
     end
 end
 
-@showprogress for mᵢ in ms
+for mᵢ in ms
     for bᵢ in bs
         model2(x) =  model1(x; m=mᵢ, b=bᵢ)
         windows = get_window_of_Aₖ(model2, truthh, l.K, n_samples)
