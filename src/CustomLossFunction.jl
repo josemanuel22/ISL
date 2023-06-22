@@ -3,8 +3,8 @@ struct CustomLoss
 
     function CustomLoss(K::Int)
         new(K)
-    end
-end
+    end;
+end;
 
 generate_aₖ(loss, ŷ, y) = sum([γ(ŷ, y, k, loss.K+1) for k in 0:loss.K])
 
@@ -14,11 +14,11 @@ jensen_shannon_∇ = (loss::CustomLoss, a_k) -> jensen_shannon_divergence(a_k, f
 function jensen_shannon_divergence(p,q)
     ϵ = 1e-3
     return 0.5 * (kldivergence(p.+ϵ,q.+ϵ) + kldivergence(q.+ϵ,p.+ϵ))
-end
+end;
 
 function sigmoid(ŷ, y)
     return σ.((ŷ-y)*10)
-end
+end;
 
 function ψₘ(y, m)
     stddev = 0.1
@@ -27,9 +27,9 @@ end
 
 function ϕ(yₖ, yₙ)
     return sum(sigmoid.(yₙ, yₖ))
-end
+end;
 
 function γ(yₖ, yₙ, m, K)
     eₘ(m) = SVector{K, Float64}(j == m ? 1.0 : 0.0 for j in 0:K-1)
     return eₘ(m) * ψₘ(ϕ(yₖ, yₙ), m)
-end
+end;

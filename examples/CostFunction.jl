@@ -20,7 +20,7 @@ function proxi_cost_function(mesh, model::Function, target::Function, K::Int, n_
         end
     end
     return losses
-end
+end;
 
 function real_cost_function(mesh, model::Function, target::Function, K::Int, n_samples::Int)
     l::CustomLoss = CustomLoss(K); losses::Vector{Float64} = []
@@ -35,7 +35,7 @@ function real_cost_function(mesh, model::Function, target::Function, K::Int, n_s
         end
     end
     return losses
-end
+end;
 
 
 #model to learn
