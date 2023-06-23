@@ -1,5 +1,4 @@
-using AdaptativeBlockLearning
-using Test
+using AdaptativeBlockLearning, Test
 
 tol = 1e-5
 

@@ -67,7 +67,7 @@ for mᵢ in ms
     end
 end
 
-for mᵢ in ms
+@showprogress for mᵢ in ms
     for bᵢ in bs
         model2(x) =  model1(x; m=mᵢ, b=bᵢ)
         windows = get_window_of_Aₖ(model2, truthh, l.K, n_samples)

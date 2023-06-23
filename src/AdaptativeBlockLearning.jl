@@ -1,7 +1,13 @@
 module AdaptativeBlockLearning
 
-using Flux, ProgressMeter, Random, Distributions, StaticArrays, StatsBase
-using 
+using Flux
+using StatsBase
+using Distributions: Normal, rand
+using HypothesisTests: pvalue, ChisqTest
+
+using StaticArrays
+
+include("CustomLossFunction.jl")
 
 export 
     sigmoid,
@@ -13,7 +19,5 @@ export
     scalar_diff,
     jensen_shannon_∇,
     jensen_shannon_divergence
-
-include("CustomLossFunction.jl")
 
 end

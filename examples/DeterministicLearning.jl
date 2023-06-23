@@ -16,7 +16,7 @@ stddev = 1
 optim = Flux.setup(Flux.Adam(η), model)
 losses = []
 l = CustomLoss(5)
-@showprogress for epoch in 1:num_epochs
+for epoch in 1:num_epochs
     loss, grads = Flux.withgradient(model) do m
         aₖ = zeros(l.K+1)
         for _ in 1:n_samples
