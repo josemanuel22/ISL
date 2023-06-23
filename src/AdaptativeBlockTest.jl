@@ -14,5 +14,5 @@ end;
     It is implemented using a Chi-Square test.
 """
 function convergence_to_uniform(aₖ)
-    return pvalue(ChisqTest(aₖ, fill(1/(K+1), K+1)))
+    return pvalue(ChisqTest(aₖ, fill(1/length(aₖ), length(aₖ))))
 end;

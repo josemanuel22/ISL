@@ -10,21 +10,20 @@ model2(x) =  line(x; m=-2, b=2)
 realModel(x, ϵ) =  ϵ < 0.1 ? model1(x) : model2(x)
 
 #Learning with custom loss
-η = 0.1; num_epochs = 100; n_samples = 1000
+η = 0.1; num_epochs = 100; n_samples = 1000; K = 2
 optim = Flux.setup(Flux.Adam(η), model)
 losses = []
-l = CustomLoss(2)
 @showprogress for epoch in 1:num_epochs
     loss, grads = Flux.withgradient(model) do m
-        aₖ = zeros(l.K+1)
+        aₖ = zeros(K+1)
         for _ in 1:n_samples
-            x = rand(Normal(μ, stddev), l.K)
+            x = rand(Normal(μ, stddev), K)
             yₖ = m(x')
             y = realModel(rand(Normal(μ, stddev)), rand(Float64))
-            aₖ += generate_aₖ(l, yₖ, y)
+            aₖ += generate_aₖ(yₖ, y)
         end
         #Flux.mse(yₖ, y)
-        scalar_diff(l, aₖ ./ sum(aₖ))
+        scalar_diff(aₖ ./ sum(aₖ))
     end
     Flux.update!(optim, model, grads[1])
     push!(losses, loss)
