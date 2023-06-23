@@ -36,7 +36,7 @@ end;
 
 Apply the γ function to the given parameters. 
 This function is faster than the original γ function because it uses StaticArrays.
-However because Zigote does not support StaticArrays, this function is not used in the training process.
+However because Zigote does not support StaticArrays, this function can not be used in the training process.
 """
 function γ_fast(yₖ, yₙ, m, K)
     eₘ(m) = SVector{K, Float64}(j == m ? 1.0 : 0.0 for j in 0:K-1)
