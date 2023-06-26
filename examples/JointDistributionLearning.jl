@@ -1,16 +1,17 @@
 model = Chain(
-    Dense(1, 10),
-    Dense(10, 1)
+    Dense(1 => 10),
+    Dense(10 => 1),
 )|> gpu
 
 #model to learn
 line(x; m, b) = m * x + b
 model1(x) =  line(x; m=3, b=5)
-model2(x) =  line(x; m=-2, b=2)
-realModel(x, ϵ) =  ϵ < 0.1 ? model1(x) : model2(x)
+model2(x) =  line(x; m=-2, b=3)
+realModel(x, ϵ) =  ϵ < 0.4 ? model1(x) : model2(x)
 
 #Learning with custom loss
-η = 0.1; num_epochs = 100; n_samples = 1000; K = 2
+μ = 0; stddev = 1
+η = 0.1; num_epochs = 400; n_samples = 500; K = 2
 optim = Flux.setup(Flux.Adam(η), model)
 losses = []
 @showprogress for epoch in 1:num_epochs
@@ -35,10 +36,10 @@ optim = Flux.setup(Flux.Adam(η), model)
 losses_mse = []
 for epoch in 1:num_epochs
     loss, grads = Flux.withgradient(model) do m
-        x = rand(Normal(μ, stddev), l.K)
-        yₖ = m(x')
+        x = rand(Normal(μ, stddev), 1)
+        ŷ = m(x')
         y = realModel(rand(Normal(μ, stddev)), rand(Float64))
-        Flux.mse(yₖ, y)
+        Flux.mse(ŷ, y)
     end
     Flux.update!(optim, model, grads[1])
     push!(losses_mse, loss)
