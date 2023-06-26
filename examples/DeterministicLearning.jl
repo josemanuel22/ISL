@@ -12,21 +12,21 @@ truthh(x) =  line(x; m=m, b=b)
 μ = 0
 stddev = 1
 
-η = 0.01; num_epochs = 50; n_samples = 1000
+η = 0.01; num_epochs = 50; n_samples = 1000; K = 2;
 optim = Flux.setup(Flux.Adam(η), model)
 losses = []
 l = CustomLoss(5)
 for epoch in 1:num_epochs
     loss, grads = Flux.withgradient(model) do m
-        aₖ = zeros(l.K+1)
+        aₖ = zeros(K+1)
         for _ in 1:n_samples
-            x = rand(Normal(μ, stddev), l.K)
+            x = rand(Normal(μ, stddev), K)
             yₖ = m(x')
             y = truthh(rand(Normal(μ, stddev)))
-            aₖ += generate_aₖ(l, yₖ, y)
+            aₖ += generate_aₖ(yₖ, y)
         end
-        #jensen_shannon_∇(l, aₖ ./ sum(aₖ))
-        scalar_diff(l, aₖ ./ sum(aₖ))
+        #jensen_shannon_∇(aₖ ./ sum(aₖ))
+        scalar_diff(aₖ ./ sum(aₖ))
     end
     Flux.update!(optim, model, grads[1])
     push!(losses, loss)
