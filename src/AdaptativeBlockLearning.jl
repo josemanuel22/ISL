@@ -1,3 +1,4 @@
+__precompile__()
 module AdaptativeBlockLearning
 
 using Flux
@@ -8,6 +9,7 @@ using HypothesisTests: pvalue, ChisqTest
 using StaticArrays
 
 include("CustomLossFunction.jl")
+include("AdaptativeBlockTest.jl")
 
 export 
     sigmoid,
@@ -18,6 +20,7 @@ export
     generate_aₖ,
     scalar_diff,
     jensen_shannon_∇,
-    jensen_shannon_divergence
+    jensen_shannon_divergence,
+    get_window_of_Aₖ
 
 end
