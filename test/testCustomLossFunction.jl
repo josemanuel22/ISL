@@ -29,7 +29,7 @@ end;
 end;
 
 @testset "scalar diff" begin
-    yₖ = [1, 2, 3, 4]
+    yₖ = [1., 2., 3., 4.]
     data = 0.5:0.5:4.5
     aₖ = zeros(5)
     for y in data
@@ -47,7 +47,7 @@ end;
 end;
 
 @testset "jensen shannon ∇" begin
-    yₖ = [1, 2, 3, 4]
+    yₖ = [1., 2., 3., 4.]
     data = 0.5:0.5:4.5
     aₖ = zeros(5)
     for y in data

@@ -40,7 +40,7 @@ end;
     
     Calculate the contribution of ψₘ ∘ ϕ(yₖ, yₙ) to the m bin of the histogram (Vector{Float}).
 """
-function γ(yₖ, yₙ, m)
+function γ(yₖ, yₙ::Float64, m::Int64)
     eₘ(m) = [j == m ? 1.0 : 0.0 for j in 0:length(yₖ)]
     return eₘ(m) * ψₘ(ϕ(yₖ, yₙ), m)
 end;
@@ -52,8 +52,8 @@ Apply the γ function to the given parameters.
 This function is faster than the original γ function because it uses StaticArrays.
 However because Zygote does not support StaticArrays, this function can not be used in the training process.
 """
-function γ_fast(yₖ, yₙ, m, K)
-    eₘ(m) = SVector{K, Float64}(j == m ? 1.0 : 0.0 for j in 0:length(yₖ))
+function γ_fast(yₖ, yₙ::Float64, m::Int64)
+    eₘ(m) = SVector{length(yₖ)+1, Float64}(j == m ? 1.0 : 0.0 for j in 0:length(yₖ))
     return eₘ(m) * ψₘ(ϕ(yₖ, yₙ), m)
 end;
 
@@ -63,4 +63,4 @@ end;
     Generate a one step histogram (Vector{Float}) of the given vector ŷ of K simulted observations and the real data y.
     generate_aₖ(ŷ, y) = ∑ₖ γ(ŷ, y, k)
 """
-generate_aₖ(ŷ, y) = sum([γ(ŷ, y, k) for k in 0:length(ŷ)])
+generate_aₖ(ŷ, y::Float64) = sum([γ(ŷ, y, k) for k in 0:length(ŷ)])
