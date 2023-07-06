@@ -8,7 +8,7 @@ using Statistics
 using Parameters: @with_kw
 using Random
 using Printf
-using CUDAapi
+using CUDA
 using Zygote
 
 if has_cuda()		# Check if CUDA is available
@@ -23,7 +23,7 @@ end
     latent_dim::Int = 1
     epochs::Int = 10000
     verbose_freq::Int = 1000
-    output_x::Int = 6        # No. of sample images to concatenate along x-axis 
+    output_x::Int = 6        # No. of sample images to concatenate along x-axis
     output_y::Int = 6        # No. of sample images to concatenate along y-axis
     lr_dscr::Float64 = 0.00002
     lr_gen::Float64 = 0.00002
@@ -38,12 +38,17 @@ function discriminator(args)
 end
 
 function load_data(hparams)
-    μ₁=-20; σ₁ = 2; 
-    μ₂=0; σ₂ = 1;
-    μ₃=40; σ₃ = 2; 
-    realModel(ϵ) =  ϵ < 0.3 ? rand(Normal(μ₁, σ₁)) :
-                    ϵ < 0.7 ? rand(Normal(μ₂, σ₂)) :
-                    rand(Normal(μ₃, σ₃))
+    function realModel(ϵ)
+        μ₁=-20; σ₁ = 2;
+        μ₂=0; σ₂ = 1;
+        μ₃=40; σ₃ = 2;
+        if ϵ < 0.3
+            return rand(Normal(μ₁, σ₁))
+        elseif ϵ < 0.7
+            return rand(Normal(μ₂, σ₂))
+        else
+            return rand(Normal(μ₃, σ₃))
+    end
 
     data = collect(partition(realModel.(rand(Float64, hparams.data_size)), hparams.batch_size))
     return data
@@ -84,25 +89,13 @@ function train_gan(gen, discr, original_data, opt_gen, opt_discr, hparams)
     return loss
 end
 
-function create_output_image(gen, fixed_noise, hparams)
-    @eval Flux.istraining() = false
-    fake_images = @. cpu(gen(fixed_noise))
-    fake_images = @. reshape(fake_images, 28,28,1,size(fake_images,2))
-    @eval Flux.istraining() = true
-    image_array = dropdims(reduce(vcat, reduce.(hcat, partition(fake_images, hparams.output_y))); dims=(3, 4))
-    image_array = @. Gray(image_array + 1f0) / 2f0
-    return image_array
-end
-
 function train()
     hparams = HyperParams()
 
     data = load_data(hparams)
 
-    #fixed_noise = [randn(hparams.latent_dim, 1) |> gpu for _=1:hparams.output_x*hparams.output_y]
-
     # Discriminator
-    dscr = discriminator(hparams) 
+    dscr = discriminator(hparams)
 
     # Generator
     gen =  generator(hparams) |> gpu
@@ -121,22 +114,24 @@ function train()
             # Update discriminator and generator
             loss = train_gan(gen, dscr, x, opt_gen, opt_dscr, hparams)
 
-            if train_steps % hparams.verbose_freq == 0
-                #@info("Train step $(train_steps), Discriminator loss = $(loss["discr"]), Generator loss = $(loss["gen"])")
+            #if train_steps % hparams.verbose_freq == 0
+            #    @info("Train step $(train_steps), Discriminator loss = $(loss["discr"]), Generator loss = $(loss["gen"])")
                 # Save generated fake image
-                #output_image = create_output_image(gen, fixed_noise, hparams)
-                #save(@sprintf("output/gan_steps_%06d.png", train_steps), output_image)
-            end
+            #    x = rand(Normal(μ, stddev), 100000)
+            #    ϵ = rand(Float64, 100000)
+            #    y = realModel.(ϵ)
+            #    histogram(y, bins=-50:1:70, label = "distrubución real", title = "proxy error cuadrático")
+            #    ŷ = gen(x')
+            #    histogram!(ŷ', bins=-50:1:70, label = "distrubución aproximada")
+            #    #output_image = create_output_image(gen, fixed_noise, hparams)
+            #    #save(@sprintf("output/gan_steps_%06d.png", train_steps), output_image)
+            #end
             push!(losses_gen, loss["gen"])
             push!(losses_dscr, loss["discr"])
             train_steps += 1
         end
     end
-
-    output_image = create_output_image(gen, fixed_noise, hparams)
-    save(@sprintf("output/gan_steps_%06d.png", train_steps), output_image)
 end
-
 
 x = rand(Normal(μ, stddev), 100000)
 ϵ = rand(Float64, 100000)
@@ -144,6 +139,3 @@ y = realModel.(ϵ)
 histogram(y, bins=-50:1:70, label = "distrubución real", title = "proxy error cuadrático")
 ŷ = gen(x')
 histogram!(ŷ', bins=-50:1:70, label = "distrubución aproximada")
-
-cd(@__DIR__)
-train()
