@@ -11,7 +11,7 @@ using StaticArrays
 include("CustomLossFunction.jl")
 include("AdaptativeBlockTest.jl")
 
-export 
+export
     sigmoid,
     ψₘ,
     ϕ,

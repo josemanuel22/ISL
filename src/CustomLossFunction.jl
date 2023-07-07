@@ -1,4 +1,3 @@
-
 """
     scalar_diff(aₖ)
 
@@ -48,7 +47,7 @@ end;
 
 """
     γ(yₖ, yₙ, m)
-    
+
     Calculate the contribution of ψₘ ∘ ϕ(yₖ, yₙ) to the m bin of the histogram (Vector{Float}).
 """
 function γ(yₖ, yₙ::Float64, m::Int64)
@@ -59,7 +58,7 @@ end;
 """
     γ_fast(yₖ, yₙ, m)
 
-Apply the γ function to the given parameters. 
+Apply the γ function to the given parameters.
 This function is faster than the original γ function because it uses StaticArrays.
 However because Zygote does not support StaticArrays, this function can not be used in the training process.
 """
