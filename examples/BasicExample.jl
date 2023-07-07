@@ -1,3 +1,10 @@
+using AdaptativeBlockLearning
+
+using Flux
+using StatsBase
+using Distributions: Normal, rand
+using HypothesisTests: pvalue, ChisqTest
+
 #model to learn
 line(x; m, b) = m * x + b
 m = 3; b = 5

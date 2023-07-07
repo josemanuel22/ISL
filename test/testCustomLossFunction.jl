@@ -55,3 +55,4 @@ end;
     end
     @test isapprox(jensen_shannon_∇(aₖ./sum(aₖ)), 0., atol=tol)
 end;
+
