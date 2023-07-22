@@ -1,4 +1,3 @@
-__precompile__()
 module AdaptativeBlockLearning
 
 using Flux
@@ -11,8 +10,7 @@ using StaticArrays
 include("CustomLossFunction.jl")
 include("AdaptativeBlockTest.jl")
 
-export
-    sigmoid,
+export sigmoid,
     ψₘ,
     ϕ,
     γ,

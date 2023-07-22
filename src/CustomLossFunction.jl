@@ -3,7 +3,7 @@
 
     scalar difference between aₖ vector and uniform distribution vector
 """
-scalar_diff(aₖ) = sum((aₖ .- (1 ./ length(aₖ))) .^2)
+scalar_diff(aₖ) = sum((aₖ .- (1 ./ length(aₖ))) .^ 2)
 
 """
     jensen_shannon_∇(aₖ)
@@ -14,7 +14,7 @@ jensen_shannon_∇(aₖ) = jensen_shannon_divergence(aₖ, fill(1 / length(aₖ)
 
 function jensen_shannon_divergence(p, q)
     ϵ = 1e-3 # to avoid log(0)
-    return 0.5 * (kldivergence(p.+ϵ, q.+ϵ) + kldivergence(q.+ϵ, p.+ϵ))
+    return 0.5 * (kldivergence(p .+ ϵ, q .+ ϵ) + kldivergence(q .+ ϵ, p .+ ϵ))
 end;
 
 """
@@ -23,7 +23,7 @@ end;
     Sigmoid function centered at y.
 """
 function sigmoid(ŷ, y)
-    return sigmoid_fast.((ŷ-y)*20)
+    return sigmoid_fast.((ŷ - y) * 20)
 end;
 
 """
@@ -63,7 +63,7 @@ This function is faster than the original γ function because it uses StaticArra
 However because Zygote does not support StaticArrays, this function can not be used in the training process.
 """
 function γ_fast(yₖ, yₙ::Float64, m::Int64)
-    eₘ(m) = SVector{length(yₖ)+1, Float64}(j == m ? 1.0 : 0.0 for j in 0:length(yₖ))
+    eₘ(m) = SVector{length(yₖ) + 1,Float64}(j == m ? 1.0 : 0.0 for j in 0:length(yₖ))
     return eₘ(m) * ψₘ(ϕ(yₖ, yₙ), m)
 end;
 
