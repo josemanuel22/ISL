@@ -11,12 +11,6 @@ using Printf
 using CUDA
 using Zygote
 
-if has_cuda()		# Check if CUDA is available
-    @info "CUDA is on"
-    import CuArrays		# If CUDA is available, import CuArrays
-    CuArrays.allowscalar(false)
-end
-
 @with_kw struct HyperParams
     data_size::Int = 10000
     batch_size::Int = 100

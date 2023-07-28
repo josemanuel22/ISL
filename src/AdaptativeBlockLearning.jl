@@ -10,8 +10,9 @@ using StaticArrays
 include("CustomLossFunction.jl")
 include("AdaptativeBlockTest.jl")
 
-export sigmoid,
+export
     ψₘ,
+    sigmoid,
     ϕ,
     γ,
     CustomLoss,

@@ -11,12 +11,6 @@ using Printf
 using CUDA
 using Zygote
 
-if has_cuda()# Check if CUDA is available
-    @info "CUDA is on"
-    using CuArrays: CuArrays# If CUDA is available, import CuArrays
-    CuArrays.allowscalar(false)
-end
-
 @with_kw struct HyperParams
     data_size::Int = 10000
     batch_size::Int = 100
@@ -103,7 +97,6 @@ function train()
     ))
 
     dscr = discriminator(hparams)
-
     gen = gpu(generator(hparams))
 
     opt_dscr = ADAM(hparams.lr_dscr)
@@ -113,12 +106,8 @@ function train()
     losses_gen = []
     losses_dscr = []
     train_steps = 0
-    for ep in 1:(hparams.epochs)
-        if train_steps % hparams.verbose_freq == 0
-            @info "Epoch $ep"
-        end
+    @showprogress for ep in 1:(hparams.epochs)
         for x in loader
-            # Update discriminator and generator
             loss = train_gan(gen, dscr, x, opt_gen, opt_dscr, hparams)
             push!(losses_gen, loss["gen"])
             push!(losses_dscr, loss["discr"])

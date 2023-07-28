@@ -1,4 +1,9 @@
 
+"""
+    proxi_cost_function
+
+Calculate the proxi-loss function associated with a model, across a grid of its parameters.
+"""
 function proxi_cost_function(mesh, model::Function, target::Function, K::Int, n_samples::Int)
     μ::Float64 = 0.; stddev::Float64 = 1.
 
@@ -21,12 +26,15 @@ function proxi_cost_function(mesh, model::Function, target::Function, K::Int, n_
     return losses
 end;
 
+
+"""
+"""
 function real_cost_function(mesh, model::Function, target::Function, K::Int, n_samples::Int)
     losses::Vector{Float64} = []
     ms, bs = mesh
     for mᵢ in ms
         for bᵢ in bs
-            m(x) = model(x; m=mᵢ, b=bᵢ) 
+            m(x) = model(x; m=mᵢ, b=bᵢ)
             windows = get_window_of_Aₖ(m, target, K, n_samples)
             aₖ = [count(x -> x == i, windows) for i in 0:K]
             loss = scalar_diff(aₖ ./ sum(aₖ))

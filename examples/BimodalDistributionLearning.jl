@@ -77,7 +77,7 @@ for epoch in 1:num_epochs
     push!(losses_mse, loss)
 end;
 
-function plot(real_model, model, range)
+function plot_model(real_model, model, range)
     x = rand(Normal(μ, stddev), 100000)
     ϵ = rand(Float64, 100000)
     y = real_model.(ϵ)
@@ -90,5 +90,4 @@ function get_statistic_model(real_model, model)
     windows = get_window_of_Aₖ(model, real_model, hparams.K, hparams.samples)
     aₖ = [count(x -> x == i, windows) for i in 0:hparams.K]
     histogram(windows; bins=0:1:(hparams.K + 1))
-
 end
