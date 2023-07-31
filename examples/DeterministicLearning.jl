@@ -11,8 +11,8 @@ m = 3; b = 5
 truthh(x) =  line(x; m=m, b=b)
 
 #Generating Traning Set
-μ = 0
-stddev = 1
+μ = 0.f0
+stddev = 1.f0
 
 η = 0.1; num_epochs = 2000; n_samples = 1000; K = 2;
 optim = Flux.setup(Flux.Adam(η), model)
@@ -23,7 +23,7 @@ losses = []
         for _ in 1:n_samples
             x = rand(Normal(μ, stddev), K)
             yₖ = m(x')
-            y = Float32(truthh(rand(Normal(μ, stddev))))
+            y = truthh(rand(Normal(μ, stddev)))
             aₖ += generate_aₖ(yₖ, y)
         end
         #jensen_shannon_∇(aₖ ./ sum(aₖ))

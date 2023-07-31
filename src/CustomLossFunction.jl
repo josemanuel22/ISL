@@ -19,36 +19,24 @@ function jensen_shannon_divergence(
     return 0.5f0 * (kldivergence(p .+ ϵ, q .+ ϵ) + kldivergence(q .+ ϵ, p .+ ϵ))
 end;
 
-function _sigmoid(ŷ::T, y::T) where {T<:AbstractFloat}
-    return sigmoid_fast((y - ŷ) * 20)
-end;
-
-function sigmoid(ŷ::AbstractVecOrMat{T}, y::T) where {T<:AbstractFloat}
-    return sigmoid_fast.((y .- ŷ) .* 20)
-end;
 
 """
-    sigmoid(ŷ, y)
+    _sigmoid(ŷ, y)
 
     Sigmoid function centered at y.
 """
-function sigmoid(ŷ::AbstractVecOrMat{T}, y::AbstractVecOrMat{T}) where {T<:AbstractFloat}
-    return sigmoid_fast((y - ŷ) * 20)
+function _sigmoid(ŷ::AbstractVecOrMat{T}, y::T) where {T<:AbstractFloat}
+    return sigmoid_fast.((y .- ŷ) .* 20)
 end;
-
-function ψₘ(y::T, m::Int64) where {T<:AbstractFloat}
-    stddev = .1f0
-    return exp((-.5f0 * ((y - m) / stddev)^2))
-end
 
 """
     ψₘ(y, m)
 
     Bump function centered at m. Implemented as a gaussian function.
 """
-function ψₘ(y::AbstractVecOrMat{T}, m::Int64) where {T<:AbstractFloat}
+function ψₘ(y::T, m::Int64) where {T<:AbstractFloat}
     stddev = .1f0
-    return exp.((-.5f0 .* ((y .- m) ./ stddev) .^ 2))
+    return exp((-.5f0 * ((y - m) / stddev)^2))
 end
 
 """
@@ -57,7 +45,7 @@ end
     Sum of the sigmoid function centered at yₙ applied to the vector yₖ.
 """
 function ϕ(yₖ::AbstractVecOrMat{T}, yₙ::T) where {T<:AbstractFloat}
-    return sum(sigmoid(yₖ, yₙ))
+    return sum(_sigmoid(yₖ, yₙ))
 end;
 
 """
@@ -91,3 +79,26 @@ end;
 function generate_aₖ(ŷ::AbstractVecOrMat{T}, y::T) where {T<:AbstractFloat}
     return sum([γ(ŷ, y, k) for k in 0:length(ŷ)])
 end
+
+"""
+    get_window_of_Aₖ(model, target , K, n_samples)
+
+    Generate a window of the rv's Aₖ for a given model and target function.
+"""
+function get_window_of_Aₖ(model, target, K::Int64, n_samples::Int64)
+    μ = 0.f0
+    stddev = 1.f0
+    return count.([
+        model(rand(Normal(μ, stddev), K)') .< target(rand()) for _ in 1:n_samples
+    ])
+end;
+
+"""
+    convergence_to_uniform(aₖ)
+
+    Test the convergence of the distributino of the window of the rv's Aₖ to a uniform distribution.
+    It is implemented using a Chi-Square test.
+"""
+function convergence_to_uniform(aₖ)
+    return pvalue(ChisqTest(aₖ, fill(1/length(aₖ), length(aₖ))))
+end;

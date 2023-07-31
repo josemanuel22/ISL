@@ -12,7 +12,7 @@ include("CustomLossFunction.jl")
 include("AdaptativeBlockTest.jl")
 
 export
-    sigmoid,
+    _sigmoid,
     ψₘ,
     ϕ,
     γ,
