@@ -1,14 +1,15 @@
-using AdaptativeBlockLearning, Test
+using AdaptativeBlockLearning
+using Test
 
 tol = 1e-5
 
 @testset "sigmoid" begin
-    @test all(_sigmoid([2.6 2.3], 2.) .< [.5 .5])
-    @test !all(_sigmoid([2.6 2.3], 2.4) .< [.5 .5])
-    @test all(_sigmoid([2.6 2.3], 2.7) .> [.5, .5])
-    @test all(_sigmoid([2.6f0 2.3f0], 2.0f0) .< [.5f0, .5f0])
-    @test !all(_sigmoid([2.6 2.3], 2.4) .< [.5f0 .5f0])
-    @test all(_sigmoid([2.6f0 2.3f0], 2.7f0) .> [.5f0, .5f0])
+    @test all(_sigmoid([2.6 2.3], 2.0) .< [0.5 0.5])
+    @test !all(_sigmoid([2.6 2.3], 2.4) .< [0.5 0.5])
+    @test all(_sigmoid([2.6 2.3], 2.7) .> [0.5, 0.5])
+    @test all(_sigmoid([2.6f0 2.3f0], 2.0f0) .< [0.5f0, 0.5f0])
+    @test !all(_sigmoid([2.6 2.3], 2.4) .< [0.5f0 0.5f0])
+    @test all(_sigmoid([2.6f0 2.3f0], 2.7f0) .> [0.5f0, 0.5f0])
 end;
 
 @testset "ψₘ" begin
@@ -51,7 +52,7 @@ end;
 end;
 
 @testset "scalar diff" begin
-    yₖ = [1. 2. 3. 4.]
+    yₖ = [1.0 2.0 3.0 4.0]
     data = 0.5:0.5:4.5
     aₖ = zeros(5)
     for y in data
@@ -61,19 +62,21 @@ end;
 end;
 
 @testset "jensen shannon divergence" begin
-    @test jensen_shannon_divergence([1., 2.],[1., 2.]) == 0.
-    @test jensen_shannon_divergence([1., 2.],[1., 3.]) > 0.
-    @test jensen_shannon_divergence([1., 2.],[1., 3.]) < jensen_shannon_divergence([1., 2.],[1., 4.])
-    @test jensen_shannon_divergence([1., 3.],[1., 2.]) == jensen_shannon_divergence([1., 2.],[1., 3.])
-    @test jensen_shannon_divergence([0., 3.],[1., 3.]) > 0.
+    @test jensen_shannon_divergence([1.0, 2.0], [1.0, 2.0]) == 0.0
+    @test jensen_shannon_divergence([1.0, 2.0], [1.0, 3.0]) > 0.0
+    @test jensen_shannon_divergence([1.0, 2.0], [1.0, 3.0]) <
+        jensen_shannon_divergence([1.0, 2.0], [1.0, 4.0])
+    @test jensen_shannon_divergence([1.0, 3.0], [1.0, 2.0]) ==
+        jensen_shannon_divergence([1.0, 2.0], [1.0, 3.0])
+    @test jensen_shannon_divergence([0.0, 3.0], [1.0, 3.0]) > 0.0
 end;
 
 @testset "jensen shannon ∇" begin
-    yₖ = [1. 2. 3. 4.]
+    yₖ = [1.0 2.0 3.0 4.0]
     data = 0.5:0.5:4.5
     aₖ = zeros(5)
     for y in data
         aₖ += generate_aₖ(yₖ, y)
     end
-    @test isapprox(jensen_shannon_∇(aₖ./sum(aₖ)), 0., atol=tol)
+    @test isapprox(jensen_shannon_∇(aₖ ./ sum(aₖ)), 0.0, atol=tol)
 end;
