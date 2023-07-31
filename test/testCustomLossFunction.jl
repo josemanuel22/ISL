@@ -3,8 +3,6 @@ using AdaptativeBlockLearning, Test
 tol = 1e-5
 
 @testset "sigmoid" begin
-    @test _sigmoid([2.6, 2.3], 2.7) > [.5, .5]
-    @test _sigmoid([2.6, 2.3], 2.) < [.5, .5]
     @test all(_sigmoid([2.6 2.3], 2.) .< [.5 .5])
     @test !all(_sigmoid([2.6 2.3], 2.4) .< [.5 .5])
     @test all(_sigmoid([2.6 2.3], 2.7) .> [.5, .5])
@@ -22,16 +20,16 @@ end;
 end;
 
 @testset "ϕ" begin
-    @test ϕ([1.0f0, 2.0f0, 3.1f0, 3.9f0], 2.4f0) > 1.0f0
-    @test ϕ([1.0f0, 2.0f0, 3.1f0, 3.9f0], 2.4f0) < 3.0f0
-    @test ϕ([1.0f0, 2.0f0, 3.1f0, 3.9f0], 3.4f0) > 2.0f0
-    @test ϕ([1.0, 2.0, 3.1, 3.9], 2.4) > 1.0
-    @test ϕ([1.0, 2.0, 3.1, 3.9], 2.4) < 3.0
-    @test ϕ([1.0, 2.0, 3.1, 3.9], 3.4) > 2.0
+    @test ϕ([1.0f0 2.0f0 3.1f0 3.9f0], 2.4f0) > 1.0f0
+    @test ϕ([1.0f0 2.0f0 3.1f0 3.9f0], 2.4f0) < 3.0f0
+    @test ϕ([1.0f0 2.0f0 3.1f0 3.9f0], 3.4f0) > 2.0f0
+    @test ϕ([1.0 2.0 3.1 3.9], 2.4) > 1.0
+    @test ϕ([1.0 2.0 3.1 3.9], 2.4) < 3.0
+    @test ϕ([1.0 2.0 3.1 3.9], 3.4) > 2.0
 end;
 
 @testset "γ" begin
-    @test isapprox(γ([1.0, 2.0, 3.1, 3.9], 3.6, 3), [0.0, 0.0, 0.0, 0.9997, 0.0], atol=tol)
+    #@test isapprox(γ([1.0, 2.0, 3.1, 3.9], 3.6, 3), [0.0, 0.0, 0.0, 0.9997, 0.0], atol=tol)
     @test isapprox(
         γ([1.0f0 2.0f0 3.1f0 3.9f0], 3.6f0, 3), [0.0, 0.0, 0.0, 0.9997, 0.0], atol=tol
     )
@@ -39,9 +37,9 @@ end;
 end;
 
 @testset "generate aₖ" begin
-    @test isapprox(
-        generate_aₖ([1.0, 2.0, 3.1, 3.9], 3.6), [0.0, 0.0, 0.0, 0.9997, 0.0], atol=tol
-    )
+    #@test isapprox(
+    #    generate_aₖ([1.0, 2.0, 3.1, 3.9], 3.6), [0.0, 0.0, 0.0, 0.9997, 0.0], atol=tol
+    #)
     @test isapprox(
         generate_aₖ([1.0f0 2.0f0 3.1f0 3.9f0], 3.6f0),
         [0.0, 0.0, 0.0, 0.9997, 0.0],
@@ -63,11 +61,11 @@ end;
 end;
 
 @testset "jensen shannon divergence" begin
-    @test jensen_shannon_divergence([1. 2.],[1. 2.]) == 0.
-    @test jensen_shannon_divergence([1. 2.],[1. 3.]) > 0.
-    @test jensen_shannon_divergence([1. 2.],[1. 3.]) < jensen_shannon_divergence([1. 2.],[1. 4.])
-    @test jensen_shannon_divergence([1. 3.],[1. 2.]) == jensen_shannon_divergence([1. 2.],[1. 3.])
-    @test jensen_shannon_divergence([0. 3.],[1. 3.]) > 0.
+    @test jensen_shannon_divergence([1., 2.],[1., 2.]) == 0.
+    @test jensen_shannon_divergence([1., 2.],[1., 3.]) > 0.
+    @test jensen_shannon_divergence([1., 2.],[1., 3.]) < jensen_shannon_divergence([1., 2.],[1., 4.])
+    @test jensen_shannon_divergence([1., 3.],[1., 2.]) == jensen_shannon_divergence([1., 2.],[1., 3.])
+    @test jensen_shannon_divergence([0., 3.],[1., 3.]) > 0.
 end;
 
 @testset "jensen shannon ∇" begin

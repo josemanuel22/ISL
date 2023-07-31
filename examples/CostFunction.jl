@@ -76,7 +76,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     losses_real = real_cost_function([ms, bs], model1, truthh, K, n_samples)
 
     plot(bs, losses)
-    Plots.plot(ms, bs, reshape(losses, (res,res)),st=:surface, title=string("N=",n_samples," K=", K," res=",res))
+    Plots.plot(ms, bs, reshape(losses_proxi, (res,res)),st=:surface, title=string("N=",n_samples," K=", K," res=",res))
     xlabel!("m")
     ylabel!("b")
 end;

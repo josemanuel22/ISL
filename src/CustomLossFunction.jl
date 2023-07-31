@@ -3,17 +3,17 @@
 
     scalar difference between aₖ vector and uniform distribution vector
 """
-scalar_diff(aₖ::AbstractVecOrMat{T}) where {T<:AbstractFloat} = sum((aₖ .- (1 ./ length(aₖ))) .^ 2)
+scalar_diff(aₖ::Vector{T}) where {T<:AbstractFloat} = sum((aₖ .- (1 ./ length(aₖ))) .^ 2)
 
 """
     jensen_shannon_∇(aₖ)
 
     jensen shannon difference between aₖ vector and uniform distribution vector
 """
-jensen_shannon_∇(aₖ) = jensen_shannon_divergence(aₖ, fill(1 / length(aₖ), 1, length(aₖ)))
+jensen_shannon_∇(aₖ::Vector{T}) where {T<:AbstractFloat} = jensen_shannon_divergence(aₖ, fill(1 / length(aₖ), length(aₖ)))
 
 function jensen_shannon_divergence(
-    p::AbstractVecOrMat{T}, q::AbstractVecOrMat{T}
+    p::Vector{T}, q::Vector{T}
 ) where {T<:AbstractFloat}
     ϵ = Float32(1e-3) # to avoid log(0)
     return 0.5f0 * (kldivergence(p .+ ϵ, q .+ ϵ) + kldivergence(q .+ ϵ, p .+ ϵ))
@@ -25,7 +25,7 @@ end;
 
     Sigmoid function centered at y.
 """
-function _sigmoid(ŷ::AbstractVecOrMat{T}, y::T) where {T<:AbstractFloat}
+function _sigmoid(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
     return sigmoid_fast.((y .- ŷ) .* 20)
 end;
 
@@ -44,7 +44,7 @@ end
 
     Sum of the sigmoid function centered at yₙ applied to the vector yₖ.
 """
-function ϕ(yₖ::AbstractVecOrMat{T}, yₙ::T) where {T<:AbstractFloat}
+function ϕ(yₖ::Matrix{T}, yₙ::T) where {T<:AbstractFloat}
     return sum(_sigmoid(yₖ, yₙ))
 end;
 
@@ -53,7 +53,7 @@ end;
 
     Calculate the contribution of ψₘ ∘ ϕ(yₖ, yₙ) to the m bin of the histogram (Vector{Float}).
 """
-function γ(yₖ::AbstractVecOrMat{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}
+function γ(yₖ::Matrix{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}
     eₘ(m) = [j == m ? 1. : .0 for j in 0:length(yₖ)]
     return eₘ(m) * ψₘ(ϕ(yₖ, yₙ), m)
 end;
@@ -65,7 +65,7 @@ Apply the γ function to the given parameters.
 This function is faster than the original γ function because it uses StaticArrays.
 However because Zygote does not support StaticArrays, this function can not be used in the training process.
 """
-function γ_fast(yₖ::AbstractVecOrMat{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}
+function γ_fast(yₖ::Matrix{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}
     eₘ(m) = SVector{length(yₖ) + 1, T}(j == m ? .0 : .0 for j in 0:length(yₖ))
     return eₘ(m) * ψₘ(ϕ(yₖ, yₙ), m)
 end;
@@ -76,7 +76,7 @@ end;
     Generate a one step histogram (Vector{Float}) of the given vector ŷ of K simulted observations and the real data y.
     generate_aₖ(ŷ, y) = ∑ₖ γ(ŷ, y, k)
 """
-function generate_aₖ(ŷ::AbstractVecOrMat{T}, y::T) where {T<:AbstractFloat}
+function generate_aₖ(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
     return sum([γ(ŷ, y, k) for k in 0:length(ŷ)])
 end
 
@@ -99,6 +99,6 @@ end;
     Test the convergence of the distributino of the window of the rv's Aₖ to a uniform distribution.
     It is implemented using a Chi-Square test.
 """
-function convergence_to_uniform(aₖ)
+function convergence_to_uniform(aₖ::Vector{T}) where {T<:AbstractFloat}
     return pvalue(ChisqTest(aₖ, fill(1/length(aₖ), length(aₖ))))
 end;

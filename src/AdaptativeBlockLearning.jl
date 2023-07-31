@@ -9,7 +9,6 @@ using HypothesisTests: pvalue, ChisqTest
 using StaticArrays
 
 include("CustomLossFunction.jl")
-include("AdaptativeBlockTest.jl")
 
 export
     _sigmoid,
