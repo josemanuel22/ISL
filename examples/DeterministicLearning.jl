@@ -1,3 +1,5 @@
+using ProgressMeter
+
 model = Chain(
     Dense(1, 10, tanh),
     Dense(10, 1)
@@ -21,7 +23,7 @@ losses = []
         for _ in 1:n_samples
             x = rand(Normal(μ, stddev), K)
             yₖ = m(x')
-            y = truthh(rand(Normal(μ, stddev)))
+            y = Float32(truthh(rand(Normal(μ, stddev))))
             aₖ += generate_aₖ(yₖ, y)
         end
         #jensen_shannon_∇(aₖ ./ sum(aₖ))

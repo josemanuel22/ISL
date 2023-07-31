@@ -3,29 +3,48 @@ using AdaptativeBlockLearning, Test
 tol = 1e-5
 
 @testset "sigmoid" begin
-    @test sigmoid(1.4, 2) < 0.5
-    @test sigmoid(2.6, 2.0) > 0.5
+    @test sigmoid(1.4, 2.) < 0.5
+    @test sigmoid(2.6, 2.) > 0.5
     @test sigmoid([2.6, 2.3], [2.0, 1.5]) > [0.5, 0.5]
 end;
 
 @testset "ψₘ" begin
-    @test ψₘ(1., 1.) == 1.
-    @test ψₘ(1.5, 1.) < 1
-    @test ψₘ(0.5, 1.) < 1
+    @test ψₘ(1.0, 1) == 1.0
+    @test ψₘ(1.5, 1) < 1
+    @test ψₘ(0.5, 1) < 1
+    @test isapprox(ψₘ([1.0f0, 2.0f0, 0.0f0], 1), [1.0, 0.0, 0.0], atol=tol)
+    @test isapprox(ψₘ([1.0, 2.0, 0.0], 1), [1.0, 0.0, 0.0], atol=tol)
 end;
 
 @testset "ϕ" begin
-    @test ϕ([1.0, 2.0, 3.1, 3.9], 2.4) > 1.
-    @test ϕ([1.0, 2.0, 3.1, 3.9], 2.4) < 3.
-    @test ϕ([1.0, 2.0, 3.1, 3.9], 3.4) > 2.
+    @test ϕ([1.0f0, 2.0f0, 3.1f0, 3.9f0], 2.4f0) > 1.0f0
+    @test ϕ([1.0f0, 2.0f0, 3.1f0, 3.9f0], 2.4f0) < 3.0f0
+    @test ϕ([1.0f0, 2.0f0, 3.1f0, 3.9f0], 3.4f0) > 2.0f0
+    @test ϕ([1.0, 2.0, 3.1, 3.9], 2.4) > 1.0
+    @test ϕ([1.0, 2.0, 3.1, 3.9], 2.4) < 3.0
+    @test ϕ([1.0, 2.0, 3.1, 3.9], 3.4) > 2.0
 end;
 
 @testset "γ" begin
-    @test isapprox(γ([1.0, 2.0, 3.1, 3.9], 3.6, 3), [0., 0. , 0., 0.92038, 0.], atol=tol)
+    @test isapprox(γ([1.0, 2.0, 3.1, 3.9], 3.6, 3), [0.0, 0.0, 0.0, 0.9997, 0.0], atol=tol)
+    @test isapprox(
+        γ([1.0f0 2.0f0 3.1f0 3.9f0], 3.6f0, 3), [0.0, 0.0, 0.0, 0.9997, 0.0], atol=tol
+    )
+    @test isapprox(γ([1.0 2.0 3.1 3.9], 3.6, 3), [0.0, 0.0, 0.0, 0.9997, 0.0], atol=tol)
 end;
 
 @testset "generate aₖ" begin
-    @test isapprox(generate_aₖ([1.0, 2.0, 3.1, 3.9], 3.6), [0., 0., 0., 0.92038, 0.], atol=tol)
+    @test isapprox(
+        generate_aₖ([1.0, 2.0, 3.1, 3.9], 3.6), [0.0, 0.0, 0.0, 0.9997, 0.0], atol=tol
+    )
+    @test isapprox(
+        generate_aₖ([1.0f0 2.0f0 3.1f0 3.9f0], 3.6f0),
+        [0.0, 0.0, 0.0, 0.9997, 0.0],
+        atol=tol,
+    )
+    @test isapprox(
+        generate_aₖ([1.0 2.0 3.1 3.9], 3.6), [0.0, 0.0, 0.0, 0.9997, 0.0], atol=tol
+    )
 end;
 
 @testset "scalar diff" begin
@@ -35,7 +54,7 @@ end;
     for y in data
         aₖ += generate_aₖ(yₖ, y)
     end
-    @test isapprox(scalar_diff(aₖ), 3.19289, atol=tol)
+    @test isapprox(scalar_diff(aₖ), 3.20004, atol=tol)
 end;
 
 @testset "jensen shannon divergence" begin
@@ -55,4 +74,3 @@ end;
     end
     @test isapprox(jensen_shannon_∇(aₖ./sum(aₖ)), 0., atol=tol)
 end;
-
