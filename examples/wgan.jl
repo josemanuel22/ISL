@@ -2,8 +2,6 @@ using Base.Iterators: partition
 using Flux
 using Flux.Optimise: update!
 using Flux: logitbinarycrossentropy
-using Images
-using MLDatasets
 using Statistics
 using Parameters: @with_kw
 using Random
@@ -78,7 +76,7 @@ end
 function train()
     hparams = HyperParams()
 
-    train_set = realModel.(rand(Float64, hparams.data_size))
+    train_set = real_model.(rand(Float64, hparams.data_size))
     loader = Flux.DataLoader(train_set, batchsize = hparams.batch_size, shuffle = true, partial=false) |> gpu
 
     dscr = discriminator(hparams)
