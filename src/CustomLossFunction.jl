@@ -115,18 +115,17 @@ end;
 
     Custom loss function for the model.
 """
-function adaptative_block_learning(nn_model::Chain, data::DataLoader, hparams::HyperParams)
-    @assert length(data) == hparams.samples,
-    "data and hparams.samples must have the same length"
+function adaptative_block_learning(nn_model, data, hparams)
+    @assert length(data) == hparams.samples
     losses = []
     optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
     for epoch in 1:(hparams.epochs)
         loss, grads = Flux.withgradient(nn_model) do nn
             aₖ = zeros(hparams.K + 1)
-            for y in data
+            for i in 1:hparams.samples
                 x = rand(hparams.transform, hparams.K)
                 yₖ = nn(x')
-                aₖ += generate_aₖ(yₖ, y)
+                aₖ += generate_aₖ(yₖ, data.data[i])
             end
             scalar_diff(aₖ ./ sum(aₖ))
         end

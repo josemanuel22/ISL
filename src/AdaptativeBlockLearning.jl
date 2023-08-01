@@ -22,6 +22,7 @@ export _sigmoid,
     jensen_shannon_divergence,
     get_window_of_Aₖ,
     convergence_to_uniform,
+    HyperParams,
     adaptative_block_learning
 
 end

@@ -1,7 +1,7 @@
 using AdaptativeBlockLearning
 using Test
 
-tol = 1e-5
+tol::Float64 = 1e-5
 
 @testset "sigmoid" begin
     @test all(_sigmoid([2.6 2.3], 2.0) .< [0.5 0.5])
@@ -79,4 +79,18 @@ end;
         aₖ += generate_aₖ(yₖ, y)
     end
     @test isapprox(jensen_shannon_∇(aₖ ./ sum(aₖ)), 0.0, atol=tol)
+end;
+
+@testset "adaptative_block_learning" begin
+    nn = Chain(Dense(1, 10, tanh), Dense(10, 1))
+    hparams = HyperParams(1000, 5, 1000, 1e-2, Normal(0.0f0, 1.0f0))
+
+    function real_model(ϵ)
+        return rand(Normal(1.0f0, 2.0f0))
+    end
+
+    train_set = real_model.(rand(Float32, hparams.samples))
+    loader = Flux.DataLoader(train_set, batchsize = -1, shuffle = true, partial = false)
+
+    adaptative_block_learning(nn, loader, hparams)
 end;
