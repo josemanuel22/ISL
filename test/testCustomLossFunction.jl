@@ -83,15 +83,7 @@ end;
 
 @testset "adaptative_block_learning" begin
     @testset "learning Normal(4.0f0, 2.0f0)" begin
-        nn = Chain(
-            Dense(1, 7),
-            elu,
-            Dense(7, 13),
-            elu,
-            Dense(13, 7),
-            elu,
-            Dense(7, 1)
-        )
+        nn = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
         hparams = HyperParams(1000, 10, 400, 1e-2, Normal(0.0f0, 1.0f0))
 
         function real_model(ϵ)
@@ -99,58 +91,43 @@ end;
         end
 
         train_set = real_model.(rand(Float32, hparams.samples))
-        loader = Flux.DataLoader(train_set, batchsize = -1, shuffle = true, partial = false)
+        loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
         adaptative_block_learning(nn, loader, hparams)
 
         validation_set = real_model.(rand(Float32, hparams.samples))
         data = vec(nn(rand(hparams.transform, hparams.samples)'))
 
-        @test pvalue(HypothesisTests.ApproximateTwoSampleKSTest(validation_set, data)) > 0.05
+        @test pvalue(HypothesisTests.ApproximateTwoSampleKSTest(validation_set, data)) >
+            0.05
         #@test Pingouin.anderson(data, Normal(4.0f0, 2.0f0))[1] == true
         #hist1 = fit(Histogram, train_set, (-2:0.1:8))
         #hist2 = fit(Histogram, data, (-2:0.1:8))
         #@test js_divergence(hist1.weights, hist2.weights)/hparams.samples < 0.03
-    end;
+    end
 
     @testset "learning uniform distribution (1,3)" begin
-        nn = Chain(
-            Dense(1, 7),
-            elu,
-            Dense(7, 13),
-            elu,
-            Dense(13, 7),
-            elu,
-            Dense(7, 1)
-        )
-        hparams = HyperParams(1000, 50, 200, 1e-2, Normal(0.0f0, 1.0f0))
+        nn = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
+        hparams = HyperParams(100, 10, 1000, 1e-2, Normal(0.0f0, 1.0f0))
 
         function real_model(ϵ)
             return rand(Float32) * 2 + 1
         end
 
         train_set = real_model.(rand(Float32, hparams.samples))
-        loader = Flux.DataLoader(train_set, batchsize = -1, shuffle = true, partial = false)
+        loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
         adaptative_block_learning(nn, loader, hparams)
 
         validation_set = real_model.(rand(Float32, hparams.samples))
         data = vec(nn(rand(hparams.transform, hparams.samples)'))
 
-        @test pvalue(HypothesisTests.ApproximateTwoSampleKSTest(validation_set, data)) > 0.05
-
-    end;
+        @test pvalue(HypothesisTests.ApproximateTwoSampleKSTest(validation_set, data)) >
+            0.05
+    end
 
     @testset "learning Cauchy distribution" begin
-        nn = Chain(
-            Dense(1, 7),
-            elu,
-            Dense(7, 13),
-            elu,
-            Dense(13, 7),
-            elu,
-            Dense(7, 1)
-        )
+        nn = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
         hparams = HyperParams(100, 10, 1000, 1e-3, Normal(0.0f0, 1.0f0))
 
         function real_model(ϵ)
@@ -158,36 +135,38 @@ end;
         end
 
         train_set = Float32.(real_model.(rand(Float32, hparams.samples)))
-        loader = Flux.DataLoader(train_set, batchsize = -1, shuffle = true, partial = false)
+        loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
         adaptative_block_learning(nn, loader, hparams)
 
         validation_set = real_model.(rand(Float32, hparams.samples))
         data = vec(nn(rand(hparams.transform, hparams.samples)'))
 
-        @test pvalue(HypothesisTests.ApproximateTwoSampleKSTest(validation_set, data)) > 0.05
-    end;
+        @test pvalue(HypothesisTests.ApproximateTwoSampleKSTest(validation_set, data)) >
+            0.05
+    end
 
     @testset "learning Bimodal Normal Distribution" begin
-        nn = Chain(Dense(1, 100, tanh), Dense(100, 1))
-        hparams = HyperParams(1000, 10, 400, 1e-2, Normal(0.0f0, 1.0f0))
+        nn = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
+        hparams = HyperParams(100, 10, 1000, 1e-2, Normal(0.0f0, 1.0f0))
 
         function real_model(ϵ)
-            return rand(Normal(4.0f0, 2.0f0))
+            if ϵ < 0.5
+                return rand(Normal(5.0f0, 2.0f0))
+            else
+                return rand(Normal(-1.0f0, 1.0f0))
+            end
         end
 
         train_set = real_model.(rand(Float32, hparams.samples))
-        loader = Flux.DataLoader(train_set, batchsize = -1, shuffle = true, partial = false)
+        loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
         adaptative_block_learning(nn, loader, hparams)
 
         validation_set = real_model.(rand(Float32, hparams.samples))
         data = vec(nn(rand(hparams.transform, hparams.samples)'))
 
-        @test pvalue(HypothesisTests.ApproximateTwoSampleKSTest(validation_set, data)) > 0.05
-        #@test Pingouin.anderson(data, Normal(4.0f0, 2.0f0))[1] == true
-        #hist1 = fit(Histogram, train_set, (-2:0.1:8))
-        #hist2 = fit(Histogram, data, (-2:0.1:8))
-        #@test js_divergence(hist1.weights, hist2.weights)/hparams.samples < 0.03
-    end;
+        @test pvalue(HypothesisTests.ApproximateTwoSampleKSTest(validation_set, data)) >
+            0.05
+    end
 end;
