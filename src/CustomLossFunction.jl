@@ -7,6 +7,11 @@ function _sigmoid(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
     return sigmoid_fast.((y .- ŷ) .* 20)
 end;
 
+function _leaky_relu(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
+    return min.(0.001 .* (y .- ŷ) .+ 1., leakyrelu.((y .- ŷ) .* 10, 0.001))
+end;
+
+
 """
     ψₘ(y, m)
 
@@ -23,6 +28,7 @@ end
     Sum of the sigmoid function centered at yₙ applied to the vector yₖ.
 """
 function ϕ(yₖ::Matrix{T}, yₙ::T) where {T<:AbstractFloat}
+    #return sum(_leaky_relu(yₖ, yₙ))
     return sum(_sigmoid(yₖ, yₙ))
 end;
 

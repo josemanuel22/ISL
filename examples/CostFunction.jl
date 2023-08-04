@@ -1,4 +1,5 @@
 using ThreadsX
+using Plots
 
 """
     proxi_cost_function(mesh, model, target, K, n_samples)
@@ -47,7 +48,7 @@ function real_cost_function(
     ms, bs = mesh
     for mᵢ in ms
         for bᵢ in bs
-            m(x) = model(x; m=mᵢ, b=bᵢ)
+            m(x) = model.(x; m=mᵢ, b=bᵢ)
             windows = get_window_of_Aₖ(m, target, K, n_samples)
             aₖ = [count(x -> x == i, windows) for i in 0:K]
             loss = scalar_diff(aₖ ./ sum(aₖ))
@@ -69,18 +70,14 @@ if abspath(PROGRAM_FILE) == @__FILE__
 
     res = 100; n_samples = 1000; K = 2;
     losses = []
-    ms = LinRange(m-5, m+5, res)
-    bs = LinRange(b-5, b+5, res)
+    ms = LinRange(m-0, m+0, 1)
+    bs = LinRange(b-50, b+50, res)
 
     losses_proxi = proxi_cost_function([ms, bs], model1, truthh, K, n_samples)
     losses_real = real_cost_function([ms, bs], model1, truthh, K, n_samples)
 
-    plot(bs, losses)
-<<<<<<< HEAD
+    plot(bs, losses_proxi)
     Plots.plot(ms, bs, reshape(losses_proxi, (res,res)),st=:surface, title=string("N=",n_samples," K=", K," res=",res))
-=======
-    Plots.plot(ms, bs, reshape(losses, (res,res)),st=:surface, title=string("N=",n_samples," K=", K," res=",res))
->>>>>>> main
     xlabel!("m")
     ylabel!("b")
 end;
