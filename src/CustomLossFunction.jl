@@ -125,7 +125,7 @@ function adaptative_block_learning(nn_model, data, hparams)
     @assert length(data) == hparams.samples
     losses = []
     optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
-    for epoch in 1:(hparams.epochs)
+    @showprogress for epoch in 1:(hparams.epochs)
         loss, grads = Flux.withgradient(nn_model) do nn
             aₖ = zeros(hparams.K + 1)
             for i in 1:hparams.samples

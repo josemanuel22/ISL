@@ -1,5 +1,6 @@
 using AdaptativeBlockLearning
 using Test
+using HypothesisTests
 
 tol::Float64 = 1e-5
 
@@ -148,7 +149,7 @@ end;
 
     @testset "learning Bimodal Normal Distribution" begin
         nn = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
-        hparams = HyperParams(100, 10, 1000, 1e-2, Normal(0.0f0, 1.0f0))
+        hparams = HyperParams(100, 10, 2000, 1e-2, Normal(0.0f0, 1.0f0))
 
         function real_model(ϵ)
             if ϵ < 0.5

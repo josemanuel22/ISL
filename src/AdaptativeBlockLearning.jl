@@ -6,6 +6,7 @@ using Distributions: Normal, rand
 using HypothesisTests: pvalue, ChisqTest
 using MLUtils
 using Parameters: @with_kw
+using ProgressMeter
 
 using StaticArrays
 
