@@ -6,12 +6,13 @@ using Parameters: @with_kw
 using Random
 using CUDA
 using Zygote
+using ProgressMeter
 
 @with_kw struct HyperParams
     data_size::Int = 10000
     batch_size::Int = 100
     latent_dim::Int = 1
-    epochs::Int = 100
+    epochs::Int = 20
     n_critic::Int = 5
     clip_value::Float32 = 0.01
     lr_dscr::Float64 = 0.00005
@@ -19,7 +20,7 @@ using Zygote
 end
 
 function real_model(ϵ)
-    return rand(Normal(1.0f, 2.0f0))
+    return rand(Normal(1.0f0, 2.0f0))
 end
 
 ## Generator and Discriminator
@@ -63,13 +64,12 @@ Zygote.@nograd train_discr
 function train_gan(gen, discr, original_data, opt_gen, opt_discr, hparams)
     noise = gpu(randn!(similar(original_data, (hparams.latent_dim, hparams.batch_size))))
     loss = Dict()
-    ps = Flux.params(gen)
     loss["gen"], grads = Flux.withgradient(gen) do gen
         fake_ = gen(noise)
         loss["discr"] = train_discr(discr, original_data, fake_, opt_discr, hparams)
         wasserstein_loss_gen(discr(fake_'))
     end
-    update!(opt_gen, ps, grads[1])
+    update!(opt_gen, gen, grads[1])
     return loss
 end
 
