@@ -4,15 +4,16 @@ using Flux
 using StatsBase
 using Distributions: Normal, rand
 using HypothesisTests: pvalue, ChisqTest
+using MLUtils
+using Parameters: @with_kw
+using ProgressMeter
 
 using StaticArrays
 
 include("CustomLossFunction.jl")
-include("AdaptativeBlockTest.jl")
 
-export
+export _sigmoid,
     ψₘ,
-    sigmoid,
     ϕ,
     γ,
     CustomLoss,
@@ -20,6 +21,9 @@ export
     scalar_diff,
     jensen_shannon_∇,
     jensen_shannon_divergence,
-    get_window_of_Aₖ
+    get_window_of_Aₖ,
+    convergence_to_uniform,
+    HyperParams,
+    adaptative_block_learning
 
 end

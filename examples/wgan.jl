@@ -2,8 +2,6 @@ using Base.Iterators: partition
 using Flux
 using Flux.Optimise: update!
 using Flux: logitbinarycrossentropy
-using Images
-using MLDatasets
 using Statistics
 using Parameters: @with_kw
 using Random
@@ -15,7 +13,7 @@ using Zygote
     data_size::Int = 10000
     batch_size::Int = 100
     latent_dim::Int = 1
-    epochs::Int = 100
+    epochs::Int = 20
     n_critic::Int = 5
     clip_value::Float32 = 0.01
     lr_dscr::Float64 =  0.00005
@@ -23,7 +21,7 @@ using Zygote
 end
 
 function real_model(ϵ)
-    rand(Pareto(1, 2))
+    rand(Normal(1.0f0, 2.0f0))
 end
 
 ## Generator and Discriminator
@@ -78,7 +76,7 @@ end
 function train()
     hparams = HyperParams()
 
-    train_set = realModel.(rand(Float64, hparams.data_size))
+    train_set = real_model.(rand(Float64, hparams.data_size))
     loader = Flux.DataLoader(train_set, batchsize = hparams.batch_size, shuffle = true, partial=false) |> gpu
 
     dscr = discriminator(hparams)
@@ -91,10 +89,7 @@ function train()
 
     # Training
     train_steps = 0
-    for ep in 1:hparams.epochs
-        if train_steps % hparams.verbose_freq == 0
-            @info "Epoch $ep"
-        end
+    @showprogress for ep in 1:hparams.epochs
         for x in loader
             # Update discriminator and generator
             loss = train_gan(gen, dscr, x, opt_gen, opt_dscr, hparams)

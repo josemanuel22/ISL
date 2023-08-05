@@ -1,3 +1,5 @@
+using ProgressMeter
+
 model = Chain(
     Dense(1, 10, tanh),
     Dense(10, 1)
@@ -9,8 +11,8 @@ m = 3; b = 5
 truthh(x) =  line(x; m=m, b=b)
 
 #Generating Traning Set
-μ = 0
-stddev = 1
+μ = 0.f0
+stddev = 1.f0
 
 η = 0.1; num_epochs = 2000; n_samples = 1000; K = 2;
 optim = Flux.setup(Flux.Adam(η), model)
