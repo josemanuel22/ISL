@@ -1,11 +1,9 @@
-using Base.Iterators: partition
 using Flux
 using Flux.Optimise: update!
 using Flux: logitbinarycrossentropy
 using Statistics
 using Parameters: @with_kw
 using Random
-using Printf
 using CUDA
 using Zygote
 
@@ -16,21 +14,26 @@ using Zygote
     epochs::Int = 100
     n_critic::Int = 5
     clip_value::Float32 = 0.01
-    lr_dscr::Float64 =  0.00005
-    lr_gen::Float64 =   0.00005
+    lr_dscr::Float64 = 0.00005
+    lr_gen::Float64 = 0.00005
 end
 
 function real_model(ϵ)
-    rand(Pareto(1, 2))
+    return rand(Normal(1.0f, 2.0f0))
 end
 
 ## Generator and Discriminator
 function generator(args)
-    return Chain(Dense(1, 5, tanh), Dense(5, 5, tanh), Dense(5, 1)) |> gpu
+    return gpu(Chain(Dense(1, 5, tanh), Dense(5, 5, tanh), Dense(5, 1)))
 end
 
 function discriminator(args)
-    return Chain(Dense(100, 200, tanh), Dense(200, 500, tanh), Dense(500, 500, relu), Dense(500, 1, σ))  |> gpu
+    return gpu(Chain(
+        Dense(100, 200, tanh),
+        Dense(200, 500, tanh),
+        Dense(500, 500, relu),
+        Dense(500, 1, σ),
+    ))
 end
 
 function wasserstein_loss_discr(real, fake)
@@ -42,15 +45,13 @@ function wasserstein_loss_gen(out)
 end
 
 function train_discr(discr, original_data, fake_data, opt_discr, hparams)
-    ps = Flux.params(discr)
     loss = 0.0
-    for i in 1:hparams.n_critic
-        loss, back = Zygote.pullback(ps) do
-                        wasserstein_loss_discr(discr(original_data), discr(fake_data'))
+    for i in 1:(hparams.n_critic)
+        loss, grads = Flux.withgradient(discr) do discr
+            wasserstein_loss_discr(discr(original_data), discr(fake_data'))
         end
-        grads = back(1f0)
-        update!(opt_discr, ps, grads)
-        for i in ps
+        update!(opt_discr, discr, grads[1])
+        for i in Flux.params(discr)
             i = clamp.(i, -hparams.clip_value, hparams.clip_value)
         end
     end
@@ -60,41 +61,37 @@ end
 Zygote.@nograd train_discr
 
 function train_gan(gen, discr, original_data, opt_gen, opt_discr, hparams)
-    noise = randn!(similar(original_data, (hparams.latent_dim, hparams.batch_size))) |> gpu
+    noise = gpu(randn!(similar(original_data, (hparams.latent_dim, hparams.batch_size))))
     loss = Dict()
     ps = Flux.params(gen)
-    loss["gen"], back = Zygote.pullback(ps) do
-                          fake_ = gen(noise)
-                          loss["discr"] = train_discr(discr, original_data, fake_, opt_discr, hparams)
-                          wasserstein_loss_gen(discr(fake_'))
+    loss["gen"], grads = Flux.withgradient(gen) do gen
+        fake_ = gen(noise)
+        loss["discr"] = train_discr(discr, original_data, fake_, opt_discr, hparams)
+        wasserstein_loss_gen(discr(fake_'))
     end
-    grads = back(1f0)
-    update!(opt_gen, ps, grads)
+    update!(opt_gen, ps, grads[1])
     return loss
 end
 
-function train()
+function train_wgan()
     hparams = HyperParams()
 
-    train_set = real_model.(rand(Float64, hparams.data_size))
-    loader = Flux.DataLoader(train_set, batchsize = hparams.batch_size, shuffle = true, partial=false) |> gpu
+    train_set = real_model.(rand(Float32, hparams.data_size))
+    loader = gpu(Flux.DataLoader(
+        train_set; batchsize=hparams.batch_size, shuffle=true, partial=false
+    ))
 
     dscr = discriminator(hparams)
-    gen =  generator(hparams) |> gpu
+    gen = gpu(generator(hparams))
 
-    opt_dscr = RMSProp(hparams.lr_dscr)
-    opt_gen = RMSProp(hparams.lr_gen)
+    opt_dscr = Flux.setup(Flux.RMSProp(hparams.lr_dscr), dscr)
+    opt_gen = Flux.setup(Flux.RMSProp(hparams.lr_gen), gen)
     losses_gen = []
     losses_dscr = []
 
-    # Training
     train_steps = 0
-    for ep in 1:hparams.epochs
-        if train_steps % hparams.verbose_freq == 0
-            @info "Epoch $ep"
-        end
+    @showprogress for epoch in 1:(hparams.epochs)
         for x in loader
-            # Update discriminator and generator
             loss = train_gan(gen, dscr, x, opt_gen, opt_dscr, hparams)
             train_steps += 1
             push!(losses_gen, loss["gen"])
@@ -104,11 +101,12 @@ function train()
 end
 
 function plot_model(real_model, model, range)
-    μ = 0; stddev = 1
+    μ = 0.0f0
+    stddev = 1.0f0
     x = rand(Normal(μ, stddev), 1000000)
-    ϵ = rand(Float64, 1000000)
+    ϵ = rand(Float32, 1000000)
     y = real_model.(ϵ)
     histogram(y; bins=range)
     ŷ = model(x')
-    histogram!(ŷ'; bins=range)
+    return histogram!(ŷ'; bins=range)
 end

@@ -82,7 +82,7 @@ function train_gan(gen, discr, original_data, opt_gen, opt_discr, hparams)
     return loss
 end
 
-function train()
+function train_vanilla_gan()
     hparams = HyperParams()
 
     train_set = real_model.(rand(Float32, hparams.data_size))
