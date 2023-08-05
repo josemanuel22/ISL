@@ -1,23 +1,21 @@
-using Base.Iterators: partition
 using Flux
 using Flux.Optimise: update!
 using Flux: logitbinarycrossentropy, binarycrossentropy
 using Statistics
 using Parameters: @with_kw
 using Random
-using Printf
 using CUDA
 using Zygote
 using Distributions
+using ProgressMeter
 
 include("./mmd.jl")
 
 @with_kw struct HyperParams
     data_size::Int = 10000
-    batch_size::Int = 128
+    batch_size::Int = 1
     latent_dim::Int = 1
     epochs::Int = 1000
-    verbose_freq::Int = 1000
     num_gen::Int = 1
     num_enc_dec::Int = 5
     lr_enc::Float64 = 1.0e-4
@@ -56,33 +54,24 @@ function data_sampler(hparams, target)
 end
 
 # Initialize models and optimizers
-function train()
+function train_mmd_gan()
     hparams = HyperParams()
-    mse = Flux.mse
 
     gen = generator()
     enc = encoder()
     dec = decoder()
 
     # Optimizers
-    gen_opt = ADAM(hparams.lr_gen)
-    enc_opt = ADAM(hparams.lr_enc)
-    dec_opt = ADAM(hparams.lr_dec)
-
-    cum_dis_loss = 0.0
-    cum_gen_loss = 0.0
+    gen_opt = Flux.setup(Flux.Adam(hparams.lr_gen), gen)
+    enc_opt = Flux.setup(Flux.Adam(hparams.lr_enc), enc)
+    dec_opt = Flux.setup(Flux.Adam(hparams.lr_dec), dec)
 
     # Training
     losses_gen = []
     losses_dscr = []
-    train_steps = 0
-    # Training loop
-    gen_ps = Flux.params(gen)
-    enc_ps = Flux.params(enc)
-    dec_ps = Flux.params(dec)
     @showprogress for ep in 1:hparams.epochs
         for _ in 1:hparams.num_enc_dec
-            loss, back = Zygote.pullback(Flux.params(enc, dec)) do
+            loss, grads = Flux.withgradient(enc, dec) do enc, dec
                 target = data_sampler(hparams, hparams.target_param)
                 noise = data_sampler(hparams, hparams.noise_param)
                 encoded_target = enc(target')
@@ -96,21 +85,20 @@ function train()
                 MMD = relu(MMD)
                 L_MMD_AE = -1.0 * (sqrt(MMD) - hparams.lambda_AE * (L2_AE_noise + L2_AE_target))
             end
-            grads = back(1.0f0)
-            update!(enc_opt, enc_ps, grads)
-            update!(dec_opt, dec_ps, grads)
+            update!(enc_opt, enc, grads[1])
+            update!(dec_opt, dec, grads[2])
             push!(losses_dscr, loss)
         end
         for _ in 1:hparams.num_gen
-            loss, back = Zygote.pullback(gen_ps) do
+
+            loss, grads = Flux.withgradient(gen) do gen
                 target = data_sampler(hparams, hparams.target_param)
                 noise = data_sampler(hparams, hparams.noise_param)
                 encoded_target = enc(target')
                 encoded_noise = enc(gen(noise'))
                 MMD = sqrt(relu(mix_rbf_mmd2(encoded_target, encoded_noise, hparams.sigma_list)))
             end
-            grads = back(1.0f0)
-            update!(gen_opt, gen_ps, grads)
+            update!(gen_opt, gen, grads[1])
             push!(losses_gen, loss)
         end
     end
