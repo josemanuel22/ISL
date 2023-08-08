@@ -1,17 +1,7 @@
-using Flux
-using Flux.Optimise: update!
-using Flux: logitbinarycrossentropy, binarycrossentropy
-using Statistics
-using Parameters: @with_kw
-using Random
-using CUDA
-using Zygote
-using Distributions
-using ProgressMeter
 
 include("./mmd.jl")
 
-@with_kw struct HyperParams
+@with_kw struct HyperParamsMMD1D
     data_size::Int = 1000
     batch_size::Int = 100
     latent_dim::Int = 1
@@ -50,8 +40,8 @@ function noise_model()
 end
 
 # Initialize models and optimizers
-function train_mmd_gan()
-    hparams = HyperParams()
+function train_mmd_gan_1d(hparams::HyperParamsMMD1D)
+    #hparams = HyperParams()
 
     gen = generator()
     enc = encoder()
@@ -80,8 +70,7 @@ function train_mmd_gan()
                 MMD = mix_rbf_mmd2(encoded_target, encoded_noise, hparams.sigma_list)
                 MMD = relu(MMD)
                 L_MMD_AE =
-                    -1.0 *
-                    (sqrt(MMD) - hparams.lambda_AE * (L2_AE_noise + L2_AE_target))
+                    -1.0 * (sqrt(MMD) - hparams.lambda_AE * (L2_AE_noise + L2_AE_target))
             end
             update!(enc_opt, enc, grads[1])
             update!(dec_opt, dec, grads[2])

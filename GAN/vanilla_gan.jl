@@ -1,38 +1,18 @@
-using Flux
-using Flux.Optimise: update!
-using Flux: logitbinarycrossentropy, binarycrossentropy
-using Statistics
-using Parameters: @with_kw
-using Random
-using CUDA
-using Zygote
-
-@with_kw struct HyperParams
+@with_kw struct HyperParamsVanillaGan
+    noise_model = Normal(0.0f0, 1.0f0)
+    target_model = Normal(23.0f0, 1.0f0)
     data_size::Int = 10000
     batch_size::Int = 100
     latent_dim::Int = 1
     epochs::Int = 1000
     lr_dscr::Float64 = 0.000001
     lr_gen::Float64 = 0.000002
-
     dscr_steps::Int = 5
     gen_steps::Int = 1
 end
 
-function real_model(ϵ)
-    return rand(Normal(3.0f0,1.0f0))
-end
-
 function generator(args)
-    return gpu(Chain(
-        Dense(1, 7),
-        elu,
-        Dense(7, 13),
-        elu,
-        Dense(13, 7),
-        elu,
-        Dense(7, 1)
-    ))
+    return gpu(Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1)))
 end
 
 function discriminator(args)
@@ -57,10 +37,15 @@ end
 
 Zygote.@nograd train_discr
 
-function train_gan(gen, discr, original_data, opt_gen, opt_discr, hparams)
-    noise = gpu(randn!(similar(original_data, (hparams.batch_size, hparams.latent_dim))))
+function train_gan(gen, discr, original_data, opt_gen, opt_discr, hparams::HyperParamsVanillaGan)
+    noise = gpu(
+        rand!(
+            hparams.noise_model,
+            similar(original_data, (hparams.batch_size, hparams.latent_dim)),
+        ),
+    )
     loss = Dict()
-    for _ in 1:hparams.gen_steps
+    for _ in 1:(hparams.gen_steps)
         loss["gen"], grads = Flux.withgradient(gen) do gen
             fake_ = gen(noise')
             generator_loss(discr(fake_'))
@@ -68,7 +53,7 @@ function train_gan(gen, discr, original_data, opt_gen, opt_discr, hparams)
         update!(opt_gen, gen, grads[1])
     end
 
-    for _ in 1:hparams.dscr_steps
+    for _ in 1:(hparams.dscr_steps)
         fake_ = gen(noise')
         loss["discr"] = train_discr(discr, original_data, fake_, opt_discr)
     end
@@ -82,16 +67,18 @@ function train_gan(gen, discr, original_data, opt_gen, opt_discr, hparams)
     return loss
 end
 
-function train_vanilla_gan()
-    hparams = HyperParams()
+function train_vanilla_gan(dscr, gen, hparams::HyperParamsVanillaGan)
+    #hparams = HyperParamsVanillaGan()
 
-    train_set = real_model.(rand(Float32, hparams.data_size))
-    loader = gpu(Flux.DataLoader(
-        train_set; batchsize=hparams.batch_size, shuffle=true, partial=false
-    ))
+    train_set = Float32.(rand(hparams.target_model, hparams.data_size))
+    loader = gpu(
+        Flux.DataLoader(
+            train_set; batchsize=hparams.batch_size, shuffle=true, partial=false
+        ),
+    )
 
-    dscr = discriminator(hparams)
-    gen = gpu(generator(hparams))
+    #dscr = discriminator(hparams)
+    #gen = gpu(generator(hparams))
 
     opt_dscr = Flux.setup(Flux.Adam(hparams.lr_dscr), dscr)
     opt_gen = Flux.setup(Flux.Adam(hparams.lr_gen), gen)
@@ -111,11 +98,12 @@ function train_vanilla_gan()
 end
 
 function plot_model(real_model, model, range)
-    μ = 0.0f0; stddev = 1.0f0
+    μ = 0.0f0
+    stddev = 1.0f0
     x = rand(Normal(μ, stddev), 1000000)
     ϵ = rand(Float32, 1000000)
     y = real_model.(ϵ)
     histogram(y; bins=range)
     ŷ = model(x')
-    histogram!(ŷ'; bins=range)
+    return histogram!(ŷ'; bins=range)
 end

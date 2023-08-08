@@ -1,14 +1,6 @@
-using Flux
-using Flux.Optimise: update!
-using Flux: logitbinarycrossentropy
-using Statistics
-using Parameters: @with_kw
-using Random
-using CUDA
-using Zygote
-using ProgressMeter
-
-@with_kw struct HyperParams
+@with_kw struct HyperParamsWGAN
+    noise_model = Normal(0.0f0, 1.0f0)
+    target_model = Normal(23.0f0, 1.0f0)
     data_size::Int = 10000
     batch_size::Int = 100
     latent_dim::Int = 1
@@ -29,12 +21,14 @@ function generator(args)
 end
 
 function discriminator(args)
-    return gpu(Chain(
-        Dense(100, 200, tanh),
-        Dense(200, 500, tanh),
-        Dense(500, 500, relu),
-        Dense(500, 1, σ),
-    ))
+    return gpu(
+        Chain(
+            Dense(100, 200, tanh),
+            Dense(200, 500, tanh),
+            Dense(500, 500, relu),
+            Dense(500, 1, σ),
+        ),
+    )
 end
 
 function wasserstein_loss_discr(real, fake)
@@ -45,7 +39,7 @@ function wasserstein_loss_gen(out)
     return -mean(out)
 end
 
-function train_discr(discr, original_data, fake_data, opt_discr, hparams)
+function train_discr(discr, original_data, fake_data, opt_discr, hparams::HyperParamsWGAN)
     loss = 0.0
     for i in 1:(hparams.n_critic)
         loss, grads = Flux.withgradient(discr) do discr
@@ -61,8 +55,13 @@ end
 
 Zygote.@nograd train_discr
 
-function train_gan(gen, discr, original_data, opt_gen, opt_discr, hparams)
-    noise = gpu(randn!(similar(original_data, (hparams.latent_dim, hparams.batch_size))))
+function train_gan(gen, discr, original_data, opt_gen, opt_discr, hparams::HyperParamsWGAN)
+    noise = gpu(
+        rand!(
+            hparams.noise_model,
+            similar(original_data, (hparams.batch_size, hparams.latent_dim)),
+        ),
+    )
     loss = Dict()
     loss["gen"], grads = Flux.withgradient(gen) do gen
         fake_ = gen(noise)
@@ -73,16 +72,18 @@ function train_gan(gen, discr, original_data, opt_gen, opt_discr, hparams)
     return loss
 end
 
-function train_wgan()
-    hparams = HyperParams()
+function train_wgan(dscr, gen, hparams::HyperParamsWGAN)
+    #hparams = HyperParams()
 
-    train_set = real_model.(rand(Float32, hparams.data_size))
-    loader = gpu(Flux.DataLoader(
-        train_set; batchsize=hparams.batch_size, shuffle=true, partial=false
-    ))
+    train_set = Float32.(rand(hparams.target_model, hparams.data_size))
+    loader = gpu(
+        Flux.DataLoader(
+            train_set; batchsize=hparams.batch_size, shuffle=true, partial=false
+        ),
+    )
 
-    dscr = discriminator(hparams)
-    gen = gpu(generator(hparams))
+    #dscr = discriminator(hparams)
+    #gen = gpu(generator(hparams))
 
     opt_dscr = Flux.setup(Flux.RMSProp(hparams.lr_dscr), dscr)
     opt_gen = Flux.setup(Flux.RMSProp(hparams.lr_gen), gen)
