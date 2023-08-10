@@ -17,17 +17,12 @@ end
 
 ## Generator and Discriminator
 function generator(args)
-    return gpu(Chain(Dense(1, 5, tanh), Dense(5, 5, tanh), Dense(5, 1)))
+    return gpu(Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1)))
 end
 
 function discriminator(args)
     return gpu(
-        Chain(
-            Dense(100, 200, tanh),
-            Dense(200, 500, tanh),
-            Dense(500, 500, relu),
-            Dense(500, 1, σ),
-        ),
+        Chain(Dense(1, 29), elu, Dense(29, 11), elu, Dense(11, 1, σ))
     )
 end
 
@@ -85,8 +80,8 @@ function train_wgan(dscr, gen, hparams::HyperParamsWGAN)
     #dscr = discriminator(hparams)
     #gen = gpu(generator(hparams))
 
-    opt_dscr = Flux.setup(Flux.RMSProp(hparams.lr_dscr), dscr)
-    opt_gen = Flux.setup(Flux.RMSProp(hparams.lr_gen), gen)
+    opt_dscr = Flux.setup(Flux.Adam(hparams.lr_dscr), dscr)
+    opt_gen = Flux.setup(Flux.Adam(hparams.lr_gen), gen)
     losses_gen = []
     losses_dscr = []
 
