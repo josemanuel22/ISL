@@ -26,6 +26,13 @@ function MSE(noise_model, f̂ᵢ, n_sample)
     return mean((fᵢ .- f̂ᵢ(xᵢ)) .^ 2)
 end
 
+macro test_experiments(ex...)
+    println("executing ", ex[1])
+    quote
+        $(esc(ex[2]))
+    end
+end
+
 @testset "vanilla_gan" begin
 
     @testset "Origin N(0,1)" begin
@@ -40,9 +47,9 @@ end
             )
             target_model = Normal(23.0f0, 1.0f0)
             hparams = HyperParamsVanillaGan(;
-                data_size=100,
+                data_size=1,
                 batch_size=1,
-                epochs=1000,
+                epochs=1e6,
                 lr_dscr=1e-4,
                 lr_gen=1e-4,
                 dscr_steps=5,
@@ -53,7 +60,7 @@ end
 
             train_vanilla_gan(dscr, gen, hparams)
 
-            hparams = HyperParams(; samples=100, K=10, epochs=2000, η=1e-3, noise_model)
+            hparams = HyperParams(; samples=100, K=10, epochs=2000, η=1e-3, transform=noise_model)
             train_set = rand(target_model, hparams.samples)
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
