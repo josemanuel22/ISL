@@ -85,29 +85,6 @@ function jensen_shannon_divergence(p::Vector{T}, q::Vector{T}) where {T<:Abstrac
     return 0.5f0 * (kldivergence(p .+ ϵ, q .+ ϵ) + kldivergence(q .+ ϵ, p .+ ϵ))
 end;
 
-"""
-    get_window_of_Aₖ(model, target , K, n_samples)
-
-    Generate a window of the rv's Aₖ for a given model and target function.
-"""
-function get_window_of_Aₖ(model, target, K::Int64, n_samples::Int64)
-    μ = 0.0f0
-    stddev = 1.0f0
-    return count.([
-        model(rand(Normal(μ, stddev), K)') .< target(rand()) for _ in 1:n_samples
-    ])
-end;
-
-"""
-    convergence_to_uniform(aₖ)
-
-    Test the convergence of the distributino of the window of the rv's Aₖ to a uniform distribution.
-    It is implemented using a Chi-Square test.
-"""
-function convergence_to_uniform(aₖ::Vector{T}) where {T<:AbstractFloat}
-    return pvalue(ChisqTest(aₖ, fill(1 / length(aₖ), length(aₖ))))
-end;
-
 @with_kw struct HyperParams
     samples::Int64 = 1000
     K::Int64 = 2
@@ -130,6 +107,79 @@ function adaptative_block_learning(nn_model, data, hparams)
             aₖ = zeros(hparams.K + 1)
             for i in 1:hparams.samples
                 x = rand(hparams.transform, hparams.K)
+                yₖ = nn(x')
+                aₖ += generate_aₖ(yₖ, data.data[i])
+            end
+            scalar_diff(aₖ ./ sum(aₖ))
+        end
+        Flux.update!(optim, nn_model, grads[1])
+        push!(losses, loss)
+    end
+    return losses
+end;
+
+@with_kw struct AutoAdaptativeHyperParams
+    samples::Int64 = 1000
+    epochs::Int64 = 100
+    η::Float64 = 1e-3
+    max_k::Int64 = 10
+    transform = Normal(0.0f0, 1.0f0)
+end;
+
+"""
+    get_window_of_Aₖ(model, target , K, n_samples)
+
+    Generate a window of the rv's Aₖ for a given model and target function.
+"""
+function get_window_of_Aₖ(transform, model, data, K::Int64)
+    window = count.([
+        model(rand(transform, K)') .< d for d in data
+    ])
+    return [count(x -> x == i, window) for i in 0:K]
+end;
+
+"""
+    convergence_to_uniform(aₖ)
+
+    Test the convergence of the distributino of the window of the rv's Aₖ to a uniform distribution.
+    It is implemented using a Chi-Square test.
+"""
+function convergence_to_uniform(aₖ::Vector{T}) where {T<:Int}
+    return pvalue(ChisqTest(aₖ, fill(1 / length(aₖ), length(aₖ)))) > 0.05
+end;
+
+function get_better_K(nn_model, data, hparams)
+    K = hparams.max_k
+    for k in 2:hparams.max_k
+        if !convergence_to_uniform(get_window_of_Aₖ(hparams.transform, nn_model, data, k))
+            K = k
+            break
+        end
+    end
+    return K
+end;
+
+"""
+    auto_adaptative_block_learning(model, data, hparams)
+
+    Custom loss function for the model.
+"""
+function auto_adaptative_block_learning(nn_model, data, hparams)
+    @assert length(data) == hparams.samples
+
+    K = 0
+    losses = []
+    optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
+    @showprogress for epoch in 1:(hparams.epochs)
+        K̂ = get_better_K(nn_model, data, hparams)
+        if K < K̂
+            K = K̂
+            @info "K value set to $K.\n"
+        end
+        loss, grads = Flux.withgradient(nn_model) do nn
+            aₖ = zeros(K + 1)
+            for i in 1:hparams.samples
+                x = rand(hparams.transform, K)
                 yₖ = nn(x')
                 aₖ += generate_aₖ(yₖ, data.data[i])
             end

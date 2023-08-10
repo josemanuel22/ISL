@@ -24,6 +24,7 @@ export _sigmoid,
     get_window_of_Aₖ,
     convergence_to_uniform,
     HyperParams,
-    adaptative_block_learning
-
+    adaptative_block_learning,
+    AutoAdaptativeHyperParams,
+    auto_adaptative_block_learning
 end
