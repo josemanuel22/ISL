@@ -8,9 +8,8 @@ function _sigmoid(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
 end;
 
 function _leaky_relu(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
-    return min.(0.001 .* (y .- ŷ) .+ 1., leakyrelu.((y .- ŷ) .* 10, 0.001))
+    return min.(0.001 .* (y .- ŷ) .+ 1.0, leakyrelu.((y .- ŷ) .* 10, 0.001))
 end;
-
 
 """
     ψₘ(y, m)
@@ -105,7 +104,7 @@ function adaptative_block_learning(nn_model, data, hparams)
     @showprogress for epoch in 1:(hparams.epochs)
         loss, grads = Flux.withgradient(nn_model) do nn
             aₖ = zeros(hparams.K + 1)
-            for i in 1:hparams.samples
+            for i in 1:(hparams.samples)
                 x = rand(hparams.transform, hparams.K)
                 yₖ = nn(x')
                 aₖ += generate_aₖ(yₖ, data.data[i])
@@ -149,14 +148,15 @@ function convergence_to_uniform(aₖ::Vector{T}) where {T<:Int}
 end;
 
 function get_better_K(nn_model, data, min_K, hparams)
-    K = hparams.max_k
-    for k in min_K:hparams.max_k
-        if !convergence_to_uniform(get_window_of_Aₖ(hparams.transform, nn_model, data, k))
-            K = k
-            break
-        end
+    range = min_K:1:(hparams.max_k)
+    index = findfirst(
+        k -> !convergence_to_uniform(get_window_of_Aₖ(hparams.transform, nn_model, data, k)),
+        range
+    )
+    if index === nothing
+        return hparams.max_k
     end
-    return K
+    return range[index]
 end;
 
 """
@@ -164,7 +164,7 @@ end;
 
     Custom loss function for the model.
 """
-function auto_adaptative_block_learning(nn_model, data, hparams)
+function auto_adaptative_block_learning(nn_model, data, hparams::AutoAdaptativeHyperParams)
     @assert length(data) == hparams.samples
 
     K = 2
@@ -179,7 +179,7 @@ function auto_adaptative_block_learning(nn_model, data, hparams)
         end
         loss, grads = Flux.withgradient(nn_model) do nn
             aₖ = zeros(K + 1)
-            for i in 1:hparams.samples
+            for i in 1:(hparams.samples)
                 x = rand(hparams.transform, K)
                 yₖ = nn(x')
                 aₖ += generate_aₖ(yₖ, data.data[i])
