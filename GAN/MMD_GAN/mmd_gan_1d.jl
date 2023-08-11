@@ -21,25 +21,6 @@ include("./mmd.jl")
     sigma_list::Array{Float64,1} = [1.0, 2.0, 4.0, 8.0, 16.0] ./ base
 end
 
-function generator()
-    return Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
-end
-
-function encoder()
-    return Chain(Dense(1, 11), elu, Dense(11, 29), elu)
-end
-
-function decoder()
-    return Chain(Dense(29, 11), elu, Dense(11, 1))
-end
-
-function target_model()
-    return rand(Normal(23.0f0, 1.0f0), (hparams.batch_size, 1))
-end
-
-function noise_model()
-    return rand(Normal(0.0f0, 1.0f0), (hparams.batch_size, 1))
-end
 
 # Initialize models and optimizers
 function train_mmd_gan_1d(enc, dec, gen, hparams::HyperParamsMMD1D)
@@ -92,4 +73,5 @@ function train_mmd_gan_1d(enc, dec, gen, hparams::HyperParamsMMD1D)
             push!(losses_gen, loss)
         end
     end
+    return (losses_gen, losses_dscr)
 end

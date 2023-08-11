@@ -11,14 +11,6 @@
     gen_steps::Int = 1
 end
 
-function generator(args)
-    return gpu(Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1)))
-end
-
-function discriminator(args)
-    return gpu(Chain(Dense(100, 29), elu, Dense(29, 11), elu, Dense(11, 1, σ)))
-end
-
 function discr_loss(real_output, fake_output)
     real_loss = mean(binarycrossentropy.(real_output, 1.0f0))
     fake_loss = mean(binarycrossentropy.(fake_output, 0.0f0))
@@ -95,6 +87,7 @@ function train_vanilla_gan(dscr, gen, hparams::HyperParamsVanillaGan)
             train_steps += 1
         end
     end
+    return (losses_gen, losses_dscr)
 end
 
 function plot_model(real_model, model, range)

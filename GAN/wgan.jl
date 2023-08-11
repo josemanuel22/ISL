@@ -11,20 +11,6 @@
     lr_gen::Float64 = 0.00005
 end
 
-function real_model(ϵ)
-    return rand(Normal(1.0f0, 2.0f0))
-end
-
-## Generator and Discriminator
-function generator(args)
-    return gpu(Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1)))
-end
-
-function discriminator(args)
-    return gpu(
-        Chain(Dense(1, 29), elu, Dense(29, 11), elu, Dense(11, 1, σ))
-    )
-end
 
 function wasserstein_loss_discr(real, fake)
     return -mean(real) + mean(fake)
@@ -94,6 +80,7 @@ function train_wgan(dscr, gen, hparams::HyperParamsWGAN)
             push!(losses_dscr, loss["discr"])
         end
     end
+    return (losses_gen, losses_dscr)
 end
 
 function plot_model(real_model, model, range)
