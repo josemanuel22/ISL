@@ -148,9 +148,9 @@ function convergence_to_uniform(aₖ::Vector{T}) where {T<:Int}
     return pvalue(ChisqTest(aₖ, fill(1 / length(aₖ), length(aₖ)))) > 0.05
 end;
 
-function get_better_K(nn_model, data, hparams)
+function get_better_K(nn_model, data, min_K, hparams)
     K = hparams.max_k
-    for k in 2:hparams.max_k
+    for k in min_K:hparams.max_k
         if !convergence_to_uniform(get_window_of_Aₖ(hparams.transform, nn_model, data, k))
             K = k
             break
@@ -167,14 +167,15 @@ end;
 function auto_adaptative_block_learning(nn_model, data, hparams)
     @assert length(data) == hparams.samples
 
-    K = 0
+    K = 2
+    @info "\n\nK value set to $K.\n\n"
     losses = []
     optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
     @showprogress for epoch in 1:(hparams.epochs)
-        K̂ = get_better_K(nn_model, data, hparams)
+        K̂ = get_better_K(nn_model, data, K, hparams)
         if K < K̂
             K = K̂
-            @info "K value set to $K.\n"
+            @info "\n\nK value set to $K.\n\n"
         end
         loss, grads = Flux.withgradient(nn_model) do nn
             aₖ = zeros(K + 1)
