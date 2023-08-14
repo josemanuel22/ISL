@@ -50,6 +50,8 @@ end
 
             train_vanilla_gan(dscr, gen, hparams)
 
+            save_gan_model(gen, dscr, hparams)
+
             hparams = HyperParams(;
                 samples=100, K=10, epochs=2000, η=1e-3, transform=noise_model
             )
@@ -68,6 +70,18 @@ end
                 MSE(noise_model, x -> .-x .+ 23, n_samples),
             )
 
+            plot_global(
+                x -> x .+ 23,
+                noise_model,
+                target_model,
+                gen,
+                100000,
+                (-3:0.1:3),
+                (18:0.1:28),
+                ksd,
+                mae,
+                mse,
+            )
             #@test js_divergence(hist1.weights, hist2.weights)/hparams.samples < 0.03
 
         end
@@ -341,15 +355,17 @@ end
             dscr = Chain(
                 Dense(1, 11), elu, Dense(11, 29), elu, Dense(29, 11), elu, Dense(11, 1, σ)
             )
-            target_model = Normal(5.0f0, 2.0f0)
+            target_model = MixtureModel([
+                Normal(5.0f0, 2.0f0), Normal(-1.0f0, 1.0f0), Normal(-7.0f0, 0.4f0)
+            ])
 
             hparams = HyperParamsWGAN(;
                 noise_model=noise_model,
                 target_model=target_model,
                 data_size=100,
                 batch_size=1,
-                epochs=1e4,
-                n_critic=1,
+                epochs=1e3,
+                n_critic=4,
                 lr_dscr=1e-2,
                 #lr_gen = 1.4e-2,
                 lr_gen=1e-2,
