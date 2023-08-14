@@ -152,9 +152,7 @@ end;
         hparams = HyperParams(100, 10, 2000, 1e-2, Normal(0.0f0, 1.0f0))
 
         function real_model(ϵ)
-            return rand(MixtureModel(Normal[
-                Normal(5.0f0, 2.0f0),
-                Normal(-1.0f0, 1.0f0)]))
+            return rand(MixtureModel(Normal[Normal(5.0f0, 2.0f0), Normal(-1.0f0, 1.0f0)]))
         end
 
         train_set = real_model.(rand(Float32, hparams.samples))
