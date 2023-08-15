@@ -168,14 +168,14 @@ function auto_adaptative_block_learning(nn_model, data, hparams)
     @assert length(data) == hparams.samples
 
     K = 2
-    @info "\n\nK value set to $K.\n\n"
+    @debug "K value set to $K."
     losses = []
     optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
     @showprogress for epoch in 1:(hparams.epochs)
         K̂ = get_better_K(nn_model, data, K, hparams)
         if K < K̂
             K = K̂
-            @info "\n\nK value set to $K.\n\n"
+            @debug "K value set to $K."
         end
         loss, grads = Flux.withgradient(nn_model) do nn
             aₖ = zeros(K + 1)

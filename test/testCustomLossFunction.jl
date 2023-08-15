@@ -166,4 +166,26 @@ end;
         @test pvalue(HypothesisTests.ApproximateTwoSampleKSTest(validation_set, data)) >
             0.05
     end
+
+    @testset "learning modal auto_adaptative_block_learning Normal(4.0f0, 2.0f0)" begin
+        nn = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
+        hparams = AutoAdaptativeHyperParams(;
+            max_k=10, samples=1000, epochs=400, η=1e-2, transform=Normal(0.0f0, 1.0f0)
+        )
+
+        function real_model(ϵ)
+            return rand(Normal(4.0f0, 2.0f0))
+        end
+
+        train_set = real_model.(rand(Float32, hparams.samples))
+        loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
+
+        auto_adaptative_block_learning(nn, loader, hparams)
+
+        validation_set = real_model.(rand(Float32, hparams.samples))
+        data = vec(nn(rand(hparams.transform, hparams.samples)'))
+
+        @test pvalue(HypothesisTests.ApproximateTwoSampleKSTest(validation_set, data)) >
+            0.05
+    end
 end;
