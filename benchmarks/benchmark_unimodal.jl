@@ -74,7 +74,7 @@ include("benchmark_utils.jl")
                 epochs=1e4,
                 lr_dscr=1e-4,
                 lr_gen=1e-4,
-                dscr_steps=2,
+                dscr_steps=3,
                 gen_steps=0,
                 noise_model=noise_model,
                 target_model=target_model,
@@ -101,7 +101,7 @@ include("benchmark_utils.jl")
                 gen,
                 n_samples,
                 (-3:0.1:3),
-                (21:0.1:25),
+                (18:0.1:35),
             )
         end
 
