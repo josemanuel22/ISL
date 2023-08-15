@@ -117,7 +117,7 @@ include("benchmark_utils.jl")
                 epochs=1e3,
                 lr_dscr=1e-4,
                 lr_gen=1e-4,
-                dscr_steps=3,
+                dscr_steps=1,
                 gen_steps=0,
                 noise_model=Normal(0.0f0, 1.0f0),
                 target_model=target_model,
@@ -139,6 +139,16 @@ include("benchmark_utils.jl")
             )
             mse = MSE(
                 noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_samples
+            )
+
+            plot_global(
+                x -> quantile.(target_model, cdf(noise_model, x)),
+                noise_model,
+                target_model,
+                gen,
+                n_samples,
+                (-3:0.1:3),
+                (18:0.1:55),
             )
         end
 
