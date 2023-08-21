@@ -16,8 +16,7 @@ function KSD(noise_model, target_model, n_sample, range)
 
     data = vec(gen(rand(noise_model, n_sample)'))
     hist2 = fit(Histogram, data, range)
-    return maximum(abs.(hist1.weights - hist2.weights)) /
-           (n_sample * abs(range[2] - range[1]))
+    return maximum(abs.(hist1.weights - hist2.weights)) / n_sample
 end
 
 function MAE(noise_model, f̂ᵢ, n_sample)
@@ -68,20 +67,35 @@ function plot_transformation(real_transform, gen, range)
         linecolor=get(ColorSchemes.rainbow, 0.2),
     )
     y = gen(range')
-    return plot!(range, vec(y); legend=:bottomright, label="GAN", linecolor=:redsblues)
+    return plot!(range, vec(y); legend=:bottomright, label="GAN", linecolor=:redsblues, ylims=(-10,10))
 end
 
 function plot_global(
     real_transform, noise_model, target_model, gen, n_sample, range_transform, range_result
 )
-    ksd = KSD(noise_model, target_model, n_samples, 18:0.1:25)
-    mae = MAE(noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_samples)
-    mse = MSE(noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_samples)
+    function format_numbers(x)
+        if abs(x) < 0.01
+            formatted_x = @sprintf("%.2e", x)
+        else
+            formatted_x = @sprintf("%.4f", x)
+        end
+        return formatted_x
+    end
+    ksd = KSD(noise_model, target_model, n_samples, range_result)
+    mae = MAE(noise_model, real_transform, n_samples)
+    mse = MSE(noise_model, real_transform, n_samples)
 
     return plot(
         plot_transformation(real_transform, gen, range_transform),
         plot_result(noise_model, target_model, gen, n_sample, range_result);
-        plot_title=@sprintf("KSD: %0.2f     MEA: %0.2f     MSE: %0.2f", ksd, mae, mse),
+        plot_title="KSD: " *
+                   format_numbers(ksd) *
+                   " "^4 *
+                   "MEA: " *
+                   format_numbers(mae) *
+                   " "^4 *
+                   "MSE: " *
+                   format_numbers(mse),
         plot_titlefontsize=12,
         fmt=:png,
     )
@@ -111,12 +125,13 @@ function save_gan_model(gen, dscr, hparams)
         dscr_steps = hparams.dscr_steps
         noise_model = string(hparams.noise_model)
         target_model = string(hparams.target_model)
-        basename = "$gan-$noise_model-$target_modellr_gen=$lr_gen-dscr_steps=$dscr_steps"
+        basename = "$gan-$noise_model-$target_model-lr_gen=$lr_gen-dscr_steps=$dscr_steps"
         i = get_incremental_filename(basename)
         new_filename = basename * "-$i.bson"
         return new_filename
     end
     name = getName(hparams)
+    @info "name file: " * name
     @save name gen dscr hparams
 end
 
@@ -132,5 +147,6 @@ function save_adaptative_model(gen, hparams)
         return new_filename
     end
     name = getName(hparams)
+    @info "name file: " * name
     @save name gen hparams
 end
