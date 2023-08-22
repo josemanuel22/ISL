@@ -88,7 +88,7 @@ end;
 @testset "adaptative_block_learning" begin
     @testset "learning Normal(4.0f0, 2.0f0)" begin
         nn = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
-        hparams = HyperParams(1000, 10, 400, 1e-2, Normal(0.0f0, 1.0f0))
+        hparams = HyperParams(1000, 10, 1000, 1e-2, Normal(0.0f0, 1.0f0))
 
         function real_model(ϵ)
             return rand(Normal(4.0f0, 2.0f0))
@@ -112,7 +112,7 @@ end;
 
     @testset "learning uniform distribution (1,3)" begin
         nn = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
-        hparams = HyperParams(100, 10, 1000, 1e-2, Normal(0.0f0, 1.0f0))
+        hparams = HyperParams(100, 10, 2000, 1e-2, Normal(0.0f0, 1.0f0))
 
         function real_model(ϵ)
             return rand(Float32) * 2 + 1
@@ -132,7 +132,7 @@ end;
 
     @testset "learning Cauchy distribution" begin
         nn = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
-        hparams = HyperParams(100, 10, 1000, 1e-3, Normal(0.0f0, 1.0f0))
+        hparams = HyperParams(100, 10, 2000, 1e-3, Normal(0.0f0, 1.0f0))
 
         function real_model(ϵ)
             return rand(Cauchy(1.0f0, 2.0f0))
@@ -152,7 +152,7 @@ end;
 
     @testset "learning Bimodal Normal Distribution" begin
         nn = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
-        hparams = HyperParams(100, 10, 2000, 1e-2, Normal(0.0f0, 1.0f0))
+        hparams = HyperParams(100, 10, 4000, 1e-2, Normal(0.0f0, 1.0f0))
 
         function real_model(ϵ)
             return rand(MixtureModel(Normal[Normal(5.0f0, 2.0f0), Normal(-1.0f0, 1.0f0)]))
@@ -173,7 +173,7 @@ end;
     @testset "learning modal auto_adaptative_block_learning Normal(4.0f0, 2.0f0)" begin
         nn = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
         hparams = AutoAdaptativeHyperParams(;
-            max_k=10, samples=1000, epochs=400, η=1e-2, transform=Normal(0.0f0, 1.0f0)
+            max_k=10, samples=1000, epochs=1000, η=1e-2, transform=Normal(0.0f0, 1.0f0)
         )
 
         function real_model(ϵ)
