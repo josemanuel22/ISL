@@ -112,7 +112,7 @@ end;
 
     @testset "learning uniform distribution (1,3)" begin
         nn = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
-        hparams = HyperParams(100, 10, 1000, 1e-2, Normal(0.0f0, 1.0f0))
+        hparams = HyperParams(200, 10, 1000, 1e-2, Normal(0.0f0, 1.0f0))
 
         function real_model(ϵ)
             return rand(Float32) * 2 + 1
@@ -132,7 +132,7 @@ end;
 
     @testset "learning Cauchy distribution" begin
         nn = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
-        hparams = HyperParams(200, 10, 1000, 1e-3, Normal(0.0f0, 1.0f0))
+        hparams = HyperParams(1000, 10, 1000, 1e-2, Normal(0.0f0, 1.0f0))
 
         function real_model(ϵ)
             return rand(Cauchy(1.0f0, 2.0f0))
