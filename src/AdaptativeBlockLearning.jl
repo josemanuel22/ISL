@@ -1,3 +1,4 @@
+__precompile__()
 module AdaptativeBlockLearning
 
 using Flux
@@ -26,5 +27,8 @@ export _sigmoid,
     HyperParams,
     adaptative_block_learning,
     AutoAdaptativeHyperParams,
-    auto_adaptative_block_learning
+    auto_adaptative_block_learning,
+    adaptative_block_learning_1,
+    auto_adaptative_block_learning_1
+
 end

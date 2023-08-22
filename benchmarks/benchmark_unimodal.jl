@@ -28,8 +28,6 @@ include("benchmark_utils.jl")
 
             train_vanilla_gan(dscr, gen, hparams)
 
-            #save_gan_model(gen, dscr, hparams)
-
             hparams = AutoAdaptativeHyperParams(;
                 max_k=10, samples=100, epochs=400, η=1e-3, transform=noise_model
             )
@@ -38,16 +36,6 @@ include("benchmark_utils.jl")
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
             auto_adaptative_block_learning(gen, loader, hparams)
-
-            ksd = KSD(noise_model, target_model, n_samples, 18:0.1:28)
-            mae = min(
-                MAE(noise_model, x -> x .+ 23, n_samples),
-                MAE(noise_model, x -> .-x .+ 23, n_samples),
-            )
-            mse = min(
-                MSE(noise_model, x -> x .+ 23, n_samples),
-                MSE(noise_model, x -> .-x .+ 23, n_samples),
-            )
 
             plot_global(
                 x -> x .+ 23,
@@ -58,8 +46,6 @@ include("benchmark_utils.jl")
                 (-3:0.1:3),
                 (18:0.1:28),
             )
-            #@test js_divergence(hist1.weights, hist2.weights)/hparams.samples < 0.03
-
         end
 
         @test_experiments "N(0,1) to Uniform(22,24)" begin
@@ -89,10 +75,6 @@ include("benchmark_utils.jl")
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
             auto_adaptative_block_learning(gen, loader, hparams)
-
-            ksd = KSD(noise_model, target_model, n_samples, 21:0.1:25)
-            mae = MAE(noise_model, x -> 2 * cdf(Normal(0, 1), x) .+ 22, n_samples)
-            mse = MSE(noise_model, x -> 2 * cdf(Normal(0, 1), x) .+ 22, n_samples)
 
             plot_global(
                 x -> 2 * cdf(Normal(0, 1), x) .+ 22,
@@ -133,13 +115,13 @@ include("benchmark_utils.jl")
 
             auto_adaptative_block_learning(gen, loader, hparams)
 
-            ksd = KSD(noise_model, target_model, n_samples, 18:0.1:25)
-            mae = MAE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_samples
-            )
-            mse = MSE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_samples
-            )
+            # ksd = KSD(noise_model, target_model, n_samples, 18:0.1:25)
+            # mae = MAE(
+            #     noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_samples
+            # )
+            # mse = MSE(
+            #     noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_samples
+            # )
 
             plot_global(
                 x -> quantile.(target_model, cdf(noise_model, x)),
@@ -259,14 +241,6 @@ include("benchmark_utils.jl")
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
             adaptative_block_learning(gen, loader, hparams)
-
-            ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
-            mae = MAE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_samples
-            )
-            mse = MSE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_sample
-            )
         end
 
         @test_experiments "Uniform(-1,1) to Cauchy(23,1)" begin
@@ -296,14 +270,6 @@ include("benchmark_utils.jl")
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
             adaptative_block_learning(gen, loader, hparams)
-
-            ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
-            mae = MAE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_samples
-            )
-            mse = MSE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_sample
-            )
         end
 
         @test_experiments "Uniform(-1,1) to Pareto(1,23)" begin
@@ -333,14 +299,6 @@ include("benchmark_utils.jl")
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
             adaptative_block_learning(gen, loader, hparams)
-
-            ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
-            mae = MAE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_samples
-            )
-            mse = MSE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_sample
-            )
         end
     end
 end

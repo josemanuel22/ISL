@@ -1,6 +1,9 @@
 using AdaptativeBlockLearning
-using Test
 using HypothesisTests
+using Flux
+using Distributions
+using Test
+
 
 tol::Float64 = 1e-5
 
