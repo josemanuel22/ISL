@@ -17,7 +17,7 @@ include("benchmark_utils.jl")
             hparams = HyperParamsVanillaGan(;
                 data_size=100,
                 batch_size=1,
-                epochs=1e3,
+                epochs=1e4,
                 lr_dscr=1e-4,
                 lr_gen=1e-4,
                 dscr_steps=0,
@@ -29,7 +29,7 @@ include("benchmark_utils.jl")
             train_vanilla_gan(dscr, gen, hparams)
 
             hparams = HyperParams(;
-                samples=1000, K=100, epochs=100, η=1e-2, transform=noise_model
+                samples=200, K=10, epochs=1000, η=2e-2, transform=noise_model
             )
             #hparams = AutoAdaptativeHyperParams(;
             #    max_k=20, samples=1200, epochs=10000, η=1e-3, transform=noise_model
@@ -59,7 +59,7 @@ include("benchmark_utils.jl")
                 gen,
                 n_samples,
                 (-3:0.1:3),
-                (5:0.2:15),
+                (-8:0.2:8),
             )
 
             #@test js_divergence(hist1.weights, hist2.weights)/hparams.samples < 0.03
