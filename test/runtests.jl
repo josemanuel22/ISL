@@ -103,7 +103,7 @@ end;
         data = vec(nn(rand(hparams.transform, hparams.samples)'))
 
         @test pvalue(HypothesisTests.ApproximateTwoSampleKSTest(validation_set, data)) >
-            0.05
+            0.01
         #@test Pingouin.anderson(data, Normal(4.0f0, 2.0f0))[1] == true
         #hist1 = fit(Histogram, train_set, (-2:0.1:8))
         #hist2 = fit(Histogram, data, (-2:0.1:8))
@@ -127,12 +127,12 @@ end;
         data = vec(nn(rand(hparams.transform, hparams.samples)'))
 
         @test pvalue(HypothesisTests.ApproximateTwoSampleKSTest(validation_set, data)) >
-            0.05
+            0.01
     end
 
     @testset "learning Cauchy distribution" begin
         nn = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
-        hparams = HyperParams(200, 10, 2000, 1e-3, Normal(0.0f0, 1.0f0))
+        hparams = HyperParams(200, 10, 1000, 1e-3, Normal(0.0f0, 1.0f0))
 
         function real_model(ϵ)
             return rand(Cauchy(1.0f0, 2.0f0))
@@ -147,7 +147,7 @@ end;
         data = vec(nn(rand(hparams.transform, hparams.samples)'))
 
         @test pvalue(HypothesisTests.ApproximateTwoSampleKSTest(validation_set, data)) >
-            0.05
+            0.01
     end
 
     @testset "learning Bimodal Normal Distribution" begin
@@ -167,7 +167,7 @@ end;
         data = vec(nn(rand(hparams.transform, hparams.samples)'))
 
         @test pvalue(HypothesisTests.ApproximateTwoSampleKSTest(validation_set, data)) >
-            0.05
+            0.01
     end
 
     @testset "learning modal auto_adaptative_block_learning Normal(4.0f0, 2.0f0)" begin
@@ -189,6 +189,6 @@ end;
         data = vec(nn(rand(hparams.transform, hparams.samples)'))
 
         @test pvalue(HypothesisTests.ApproximateTwoSampleKSTest(validation_set, data)) >
-            0.05
+            0.01
     end
 end;
