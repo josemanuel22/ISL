@@ -85,18 +85,37 @@ function jensen_shannon_divergence(p::Vector{T}, q::Vector{T}) where {T<:Abstrac
     return 0.5f0 * (kldivergence(p .+ ϵ, q .+ ϵ) + kldivergence(q .+ ϵ, p .+ ϵ))
 end;
 
+"""
+    HyperParams
+
+    Hyper parameters for the method adaptative_block_learning
+
+    #Fields:
+    - samples::Int64 = 1000 (default argument), number of samples per histogram
+    - K::Int64 = 2, number of simulted observations
+    - epochs::Int64 = 100, number of epochs
+    - η::Float64 = 1e-3, learning rate
+    - transform = Normal(0.0f0, 1.0f0), transform to apply to the data
+
+"""
 @with_kw struct HyperParams
-    samples::Int64 = 1000
-    K::Int64 = 2
-    epochs::Int64 = 100
-    η::Float64 = 1e-3
-    transform = Normal(0.0f0, 1.0f0)
+    samples::Int64 = 1000 # number of samples per histogram
+    K::Int64 = 2    # number of simulted observations
+    epochs::Int64 = 100 # number of epochs
+    η::Float64 = 1e-3 #º learning rate
+    transform = Normal(0.0f0, 1.0f0) # transform to apply to the data
 end;
 
 """
     adaptative_block_learning(model, data, hparams)
 
-    Custom loss function for the model.
+    Custom loss function for the model. model is a Flux neuronal network model, data is a
+    loader Flux object and hparams is a HyperParams object.
+
+    #Arguments
+    - `nn_model::Flux.Chain`: is a Flux neuronal network model
+    - `data::Flux.DataLoader`: is a loader Flux object
+    - `hparams::HyperParams`: is a HyperParams object
 """
 function adaptative_block_learning(nn_model, data, hparams)
     @assert length(data) == hparams.samples
@@ -118,6 +137,39 @@ function adaptative_block_learning(nn_model, data, hparams)
     return losses
 end;
 
+function adaptative_block_learning_1(nn_model, loader, hparams)
+    @assert loader.batchsize == hparams.samples
+    @assert length(loader) == hparams.epochs
+    losses = []
+    optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
+    @showprogress for data in loader
+        loss, grads = Flux.withgradient(nn_model) do nn
+            aₖ = zeros(hparams.K + 1)
+            for i in 1:hparams.samples
+                x = rand(hparams.transform, hparams.K)
+                yₖ = nn(x')
+                aₖ += generate_aₖ(yₖ, data[i])
+            end
+            scalar_diff(aₖ ./ sum(aₖ))
+        end
+        Flux.update!(optim, nn_model, grads[1])
+        push!(losses, loss)
+    end
+    return losses
+end;
+
+"""
+    AutoAdaptativeHyperParams
+
+    Hyper parameters for the method adaptative_block_learning
+
+    #Fields
+    - `samples::Int64 = 1000 (default argument)`: number of samples per histogram
+    - `epochs::Int64 = 100`: number of epochs
+    - `η::Float64 = 1e-3`: learning rate
+    - `max_k::Int64 = 10`: maximum number of simulted observations
+    - `transform = Normal(0.0f0, 1.0f0)`: transform to apply to the data
+"""
 @with_kw struct AutoAdaptativeHyperParams
     samples::Int64 = 1000
     epochs::Int64 = 100
@@ -141,8 +193,8 @@ end;
 """
     convergence_to_uniform(aₖ)
 
-    Test the convergence of the distributino of the window of the rv's Aₖ to a uniform distribution.
-    It is implemented using a Chi-Square test.
+    Test the convergence of the distributino of the window of the rv's Aₖ to a uniform
+    distribution. It is implemented using a Chi-Square test.
 """
 function convergence_to_uniform(aₖ::Vector{T}) where {T<:Int}
     return pvalue(ChisqTest(aₖ, fill(1 / length(aₖ), length(aₖ)))) > 0.05
@@ -163,6 +215,17 @@ end;
     auto_adaptative_block_learning(model, data, hparams)
 
     Custom loss function for the model.
+
+    This method gradually adapts K (starting from 2) up to max_k (inclusive).
+    The value of K is chosen based on a simple two-sample test between the histogram
+    associated with the obtained result and the uniform distribution.
+
+    To see the value of K used in the test, set the logger level to debug before executing.
+
+    #Arguments
+    - `model::Flux.Chain`: is a Flux neuronal network model
+    - `data::Flux.DataLoader`: is a loader Flux object
+    - `hparams::AutoAdaptativeHyperParams`: is a AutoAdaptativeHyperParams object
 """
 function auto_adaptative_block_learning(nn_model, data, hparams)
     @assert length(data) == hparams.samples

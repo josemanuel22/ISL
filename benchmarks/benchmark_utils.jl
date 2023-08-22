@@ -112,6 +112,12 @@ function get_incremental_filename(base_name)
     end
 end
 
+"""
+    save_gan_model(gen, dscr, hparams)
+
+    save the model (generator, discriminator and hyper-parameters) in a bson file.
+    The name of the file is generated based on the hyper-parameters.
+"""
 function save_gan_model(gen, dscr, hparams)
     global gans = Dict(
         HyperParamsVanillaGan => "vgan",
@@ -135,6 +141,12 @@ function save_gan_model(gen, dscr, hparams)
     @save name gen dscr hparams
 end
 
+"""
+    save_adaptative_model(gen, hparams)
+
+    save the model (generator and hyper-parameters) in a bson file.
+    The name of the file is generated based on the hyper-parameters.
+"""
 function save_adaptative_model(gen, hparams)
     function getName(hparams)
         samples = hparams.samples
