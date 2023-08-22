@@ -1,6 +1,7 @@
 using AdaptativeBlockLearning
 using HypothesisTests
 using Flux
+using Distributions
 using Test
 
 
