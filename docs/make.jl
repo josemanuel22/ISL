@@ -14,4 +14,6 @@ makedocs(
 # for more information.
 deploydocs(
     repo = "github.com/josemanuel22/AdaptativeBlockLearning.git",
+    target="build",
+    push_preview = true,
 )
