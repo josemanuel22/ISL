@@ -7,5 +7,5 @@ Documentation for AdaptativeBlockLearning.jl
 
 ```@autodocs
 Modules = [AdaptativeBlockLearning]
-Order   = [:function, :type]
+Order   = [:module, :constant, :type, :function]
 ```
