@@ -152,14 +152,15 @@ end;
 
     @testset "learning Bimodal Normal Distribution" begin
         nn = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
-        hparams = HyperParams(200, 10, 4000, 1e-2, Normal(0.0f0, 1.0f0))
+        hparams = HyperParams(1000, 10, 1000, 1e-2, Normal(0.0f0, 1.0f0))
 
         target_model = MixtureModel(Normal[Normal(5.0f0, 2.0f0), Normal(-1.0f0, 1.0f0)])
 
-        train_set = real_model.(rand(Float32, hparams.samples))
+        train_set = Float32.(rand(target_model, hparams.samples))
         loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
         adaptative_block_learning(nn, loader, hparams)
+
 
         validation_set = real_model.(rand(Float32, hparams.samples))
         data = vec(nn(rand(hparams.transform, hparams.samples)'))
