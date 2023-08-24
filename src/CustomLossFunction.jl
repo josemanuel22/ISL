@@ -88,22 +88,22 @@ end;
 """
     HyperParams
 
-    Hyper parameters for the method adaptative_block_learning
+    Hyperparameters for the method adaptative_block_learning
 
-    #Fields:
-    - samples::Int64 = 1000 (default argument), number of samples per histogram
-    - K::Int64 = 2, number of simulted observations
-    - epochs::Int64 = 100, number of epochs
-    - η::Float64 = 1e-3, learning rate
-    - transform = Normal(0.0f0, 1.0f0), transform to apply to the data
-
+    @with_kw struct HyperParams
+        samples::Int64 = 1000               # number of samples per histogram
+        K::Int64 = 2                        # number of simulted observations
+        epochs::Int64 = 100                 # number of epochs
+        η::Float64 = 1e-3                   # learning rate
+        transform = Normal(0.0f0, 1.0f0)    # transform to apply to the data
+    end;
 """
 @with_kw struct HyperParams
-    samples::Int64 = 1000 # number of samples per histogram
-    K::Int64 = 2    # number of simulted observations
-    epochs::Int64 = 100 # number of epochs
-    η::Float64 = 1e-3 #º learning rate
-    transform = Normal(0.0f0, 1.0f0) # transform to apply to the data
+    samples::Int64 = 1000               # number of samples per histogram
+    K::Int64 = 2                        # number of simulted observations
+    epochs::Int64 = 100                 # number of epochs
+    η::Float64 = 1e-3                   # learning rate
+    transform = Normal(0.0f0, 1.0f0)    # transform to apply to the data
 end;
 
 """
@@ -161,14 +161,15 @@ end;
 """
     AutoAdaptativeHyperParams
 
-    Hyper parameters for the method adaptative_block_learning
+    Hyperparameters for the method adaptative_block_learning
 
-    #Fields
-    - `samples::Int64 = 1000 (default argument)`: number of samples per histogram
-    - `epochs::Int64 = 100`: number of epochs
-    - `η::Float64 = 1e-3`: learning rate
-    - `max_k::Int64 = 10`: maximum number of simulted observations
-    - `transform = Normal(0.0f0, 1.0f0)`: transform to apply to the data
+    @with_kw struct AutoAdaptativeHyperParams
+        samples::Int64 = 1000
+        epochs::Int64 = 100
+        η::Float64 = 1e-3
+        max_k::Int64 = 10
+        transform = Normal(0.0f0, 1.0f0)
+    end;
 """
 @with_kw struct AutoAdaptativeHyperParams
     samples::Int64 = 1000
