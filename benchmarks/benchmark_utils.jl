@@ -10,7 +10,7 @@ macro test_experiments(msg, ex)
     end
 end
 
-function KSD(noise_model, target_model, n_sample, range)
+function KSD(noise_model, target_model, gen, n_sample, range)
     train_set = rand(target_model, n_sample)
     hist1 = fit(Histogram, train_set, range)
 
@@ -19,13 +19,13 @@ function KSD(noise_model, target_model, n_sample, range)
     return maximum(abs.(hist1.weights - hist2.weights)) / n_sample
 end
 
-function MAE(noise_model, f̂ᵢ, n_sample)
+function MAE(noise_model, f̂ᵢ, gen, n_sample)
     xᵢ = rand(noise_model, n_sample)
     fᵢ = vec(gen(xᵢ'))
     return mean(abs.(fᵢ .- f̂ᵢ(xᵢ)))
 end
 
-function MSE(noise_model, f̂ᵢ, n_sample)
+function MSE(noise_model, f̂ᵢ, gen, n_sample)
     xᵢ = rand(noise_model, n_sample)
     fᵢ = vec(gen(xᵢ'))
     return mean((fᵢ .- f̂ᵢ(xᵢ)) .^ 2)
@@ -81,9 +81,9 @@ function plot_global(
         end
         return formatted_x
     end
-    ksd = KSD(noise_model, target_model, n_samples, range_result)
-    mae = MAE(noise_model, real_transform, n_samples)
-    mse = MSE(noise_model, real_transform, n_samples)
+    ksd = KSD(noise_model, target_model, gen, n_samples, range_result)
+    mae = MAE(noise_model, real_transform, gen, n_samples)
+    mse = MSE(noise_model, real_transform, gen, n_samples)
 
     return plot(
         plot_transformation(real_transform, gen, range_transform),
