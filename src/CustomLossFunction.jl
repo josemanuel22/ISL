@@ -163,6 +163,7 @@ end;
 
     Hyperparameters for the method adaptative_block_learning
 
+    ```julia
     @with_kw struct AutoAdaptativeHyperParams
         samples::Int64 = 1000
         epochs::Int64 = 100
@@ -170,6 +171,7 @@ end;
         max_k::Int64 = 10
         transform = Normal(0.0f0, 1.0f0)
     end;
+    ```
 """
 @with_kw struct AutoAdaptativeHyperParams
     samples::Int64 = 1000
