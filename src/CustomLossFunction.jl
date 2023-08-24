@@ -1,7 +1,7 @@
 """
     _sigmoid(ŷ, y)
 
-    Sigmoid function centered at y.
+Sigmoid function centered at `y`.
 """
 function _sigmoid(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
     return sigmoid_fast.((y .- ŷ) .* 20)
@@ -15,7 +15,7 @@ end;
 """
     ψₘ(y, m)
 
-    Bump function centered at m. Implemented as a gaussian function.
+Bump function centered at `m`. Implemented as a gaussian function.
 """
 function ψₘ(y::T, m::Int64) where {T<:AbstractFloat}
     stddev = 0.1f0
@@ -25,7 +25,7 @@ end
 """
     ϕ(yₖ, yₙ)
 
-    Sum of the sigmoid function centered at yₙ applied to the vector yₖ.
+Sum of the sigmoid function centered at `yₙ` applied to the vector `yₖ`.
 """
 function ϕ(yₖ::Matrix{T}, yₙ::T) where {T<:AbstractFloat}
     #return sum(_leaky_relu(yₖ, yₙ))
@@ -35,7 +35,7 @@ end;
 """
     γ(yₖ, yₙ, m)
 
-    Calculate the contribution of ψₘ ∘ ϕ(yₖ, yₙ) to the m bin of the histogram (Vector{Float}).
+Calculate the contribution of `ψₘ ∘ ϕ(yₖ, yₙ)` to the m bin of the histogram (Vector{Float}).
 """
 function γ(yₖ::Matrix{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}
     eₘ(m) = [j == m ? 1.0 : 0.0 for j in 0:length(yₖ)]
@@ -45,8 +45,8 @@ end;
 """
     γ_fast(yₖ, yₙ, m)
 
-Apply the γ function to the given parameters.
-This function is faster than the original γ function because it uses StaticArrays.
+Apply the `γ` function to the given parameters.
+This function is faster than the original `γ` function because it uses StaticArrays.
 However because Zygote does not support StaticArrays, this function can not be used in the training process.
 """
 function γ_fast(yₖ::Matrix{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}
@@ -57,8 +57,8 @@ end;
 """
     generate_aₖ(ŷ, y)
 
-    Generate a one step histogram (Vector{Float}) of the given vector ŷ of K simulted observations and the real data y.
-    generate_aₖ(ŷ, y) = ∑ₖ γ(ŷ, y, k)
+    Generate a one step histogram (Vector{Float}) of the given vector `ŷ` of `K` simulted observations and the real data `y`.
+    `generate_aₖ(ŷ, y) = ∑ₖ γ(ŷ, y, k)``
 """
 function generate_aₖ(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
     return sum([γ(ŷ, y, k) for k in 0:length(ŷ)])
@@ -67,14 +67,14 @@ end
 """
     scalar_diff(aₖ)
 
-    scalar difference between aₖ vector and uniform distribution vector
+    scalar difference between `aₖ` vector and uniform distribution vector
 """
 scalar_diff(aₖ::Vector{T}) where {T<:AbstractFloat} = sum((aₖ .- (1 ./ length(aₖ))) .^ 2)
 
 """
     jensen_shannon_∇(aₖ)
 
-    jensen shannon difference between aₖ vector and uniform distribution vector
+    jensen shannon difference between `aₖ` vector and uniform distribution vector
 """
 function jensen_shannon_∇(aₖ::Vector{T}) where {T<:AbstractFloat}
     return jensen_shannon_divergence(aₖ, fill(1 / length(aₖ), length(aₖ)))
@@ -88,15 +88,15 @@ end;
 """
     HyperParams
 
-    Hyperparameters for the method adaptative_block_learning
+Hyperparameters for the method adaptative_block_learning
 
-    @with_kw struct HyperParams
-        samples::Int64 = 1000               # number of samples per histogram
-        K::Int64 = 2                        # number of simulted observations
-        epochs::Int64 = 100                 # number of epochs
-        η::Float64 = 1e-3                   # learning rate
-        transform = Normal(0.0f0, 1.0f0)    # transform to apply to the data
-    end;
+@with_kw struct HyperParams
+    samples::Int64 = 1000               # number of samples per histogram
+    K::Int64 = 2                        # number of simulted observations
+    epochs::Int64 = 100                 # number of epochs
+    η::Float64 = 1e-3                   # learning rate
+    transform = Normal(0.0f0, 1.0f0)    # transform to apply to the data
+end;
 """
 @with_kw struct HyperParams
     samples::Int64 = 1000               # number of samples per histogram
@@ -109,13 +109,13 @@ end;
 """
     adaptative_block_learning(model, data, hparams)
 
-    Custom loss function for the model. model is a Flux neuronal network model, data is a
-    loader Flux object and hparams is a HyperParams object.
+Custom loss function for the model. model is a Flux neuronal network model, data is a
+loader Flux object and hparams is a HyperParams object.
 
-    #Arguments
-    - `nn_model::Flux.Chain`: is a Flux neuronal network model
-    - `data::Flux.DataLoader`: is a loader Flux object
-    - `hparams::HyperParams`: is a HyperParams object
+# Arguments
+- nn_model::Flux.Chain: is a Flux neuronal network model
+- data::Flux.DataLoader: is a loader Flux object
+- hparams::HyperParams: is a HyperParams object
 """
 function adaptative_block_learning(nn_model, data, hparams)
     @assert length(data) == hparams.samples
@@ -161,17 +161,17 @@ end;
 """
     AutoAdaptativeHyperParams
 
-    Hyperparameters for the method adaptative_block_learning
+Hyperparameters for the method adaptative_block_learning
 
-    ```julia
-    @with_kw struct AutoAdaptativeHyperParams
-        samples::Int64 = 1000
-        epochs::Int64 = 100
-        η::Float64 = 1e-3
-        max_k::Int64 = 10
-        transform = Normal(0.0f0, 1.0f0)
-    end;
-    ```
+```julia
+@with_kw struct AutoAdaptativeHyperParams
+    samples::Int64 = 1000
+    epochs::Int64 = 100
+    η::Float64 = 1e-3
+    max_k::Int64 = 10
+    transform = Normal(0.0f0, 1.0f0)
+end;
+```
 """
 @with_kw struct AutoAdaptativeHyperParams
     samples::Int64 = 1000
@@ -184,7 +184,7 @@ end;
 """
     get_window_of_Aₖ(model, target , K, n_samples)
 
-    Generate a window of the rv's Aₖ for a given model and target function.
+Generate a window of the rv's Aₖ for a given model and target function.
 """
 function get_window_of_Aₖ(transform, model, data, K::Int64)
     window = count.([
@@ -196,8 +196,8 @@ end;
 """
     convergence_to_uniform(aₖ)
 
-    Test the convergence of the distributino of the window of the rv's Aₖ to a uniform
-    distribution. It is implemented using a Chi-Square test.
+Test the convergence of the distributino of the window of the rv's `Aₖ` to a uniform
+distribution. It is implemented using a Chi-Square test.
 """
 function convergence_to_uniform(aₖ::Vector{T}) where {T<:Int}
     return pvalue(ChisqTest(aₖ, fill(1 / length(aₖ), length(aₖ)))) > 0.05
@@ -217,18 +217,18 @@ end;
 """
     auto_adaptative_block_learning(model, data, hparams)
 
-    Custom loss function for the model.
+Custom loss function for the model.
 
-    This method gradually adapts K (starting from 2) up to max_k (inclusive).
-    The value of K is chosen based on a simple two-sample test between the histogram
-    associated with the obtained result and the uniform distribution.
+This method gradually adapts K (starting from 2) up to max_k (inclusive).
+The value of K is chosen based on a simple two-sample test between the histogram
+associated with the obtained result and the uniform distribution.
 
-    To see the value of K used in the test, set the logger level to debug before executing.
+To see the value of K used in the test, set the logger level to debug before executing.
 
-    #Arguments
-    - `model::Flux.Chain`: is a Flux neuronal network model
-    - `data::Flux.DataLoader`: is a loader Flux object
-    - `hparams::AutoAdaptativeHyperParams`: is a AutoAdaptativeHyperParams object
+#Arguments
+- `model::Flux.Chain`: is a Flux neuronal network model
+- `data::Flux.DataLoader`: is a loader Flux object
+- `hparams::AutoAdaptativeHyperParams`: is a AutoAdaptativeHyperParams object
 """
 function auto_adaptative_block_learning(nn_model, data, hparams)
     @assert length(data) == hparams.samples
