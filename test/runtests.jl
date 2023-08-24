@@ -90,16 +90,14 @@ end;
         nn = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
         hparams = HyperParams(1000, 10, 1000, 1e-2, Normal(0.0f0, 1.0f0))
 
-        function real_model(ϵ)
-            return rand(Normal(4.0f0, 2.0f0))
-        end
+        target_model = Normal(4.0f0, 2.0f0)
 
-        train_set = real_model.(rand(Float32, hparams.samples))
+        train_set = Float32.(rand(target_model, hparams.samples))
         loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
         adaptative_block_learning(nn, loader, hparams)
 
-        validation_set = real_model.(rand(Float32, hparams.samples))
+        validation_set = Float32.(rand(target_model, hparams.samples))
         data = vec(nn(rand(hparams.transform, hparams.samples)'))
 
         @test pvalue(HypothesisTests.ApproximateTwoSampleKSTest(validation_set, data)) >
@@ -110,20 +108,18 @@ end;
         #@test js_divergence(hist1.weights, hist2.weights)/hparams.samples < 0.03
     end
 
-    @testset "learning uniform distribution (1,3)" begin
+    @testset "learning uniform distribution (-2,2)" begin
         nn = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
-        hparams = HyperParams(200, 10, 1000, 1e-2, Normal(0.0f0, 1.0f0))
+        hparams = HyperParams(1000, 10, 1000, 1e-2, Normal(0.0f0, 1.0f0))
 
-        function real_model(ϵ)
-            return rand(Float32) * 2 + 1
-        end
+        target_model = Uniform(-2,2)
 
-        train_set = real_model.(rand(Float32, hparams.samples))
+        train_set = Float32.(rand(target_model, hparams.samples))
         loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
         adaptative_block_learning(nn, loader, hparams)
 
-        validation_set = real_model.(rand(Float32, hparams.samples))
+        validation_set = Float32.(rand(target_model, hparams.samples))
         data = vec(nn(rand(hparams.transform, hparams.samples)'))
 
         @test pvalue(HypothesisTests.ApproximateTwoSampleKSTest(validation_set, data)) >
@@ -132,18 +128,16 @@ end;
 
     @testset "learning Cauchy distribution" begin
         nn = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
-        hparams = HyperParams(1000, 10, 1000, 1e-2, Normal(0.0f0, 1.0f0))
+        hparams = HyperParams(1000, 10, 2000, 1e-2, Normal(0.0f0, 1.0f0))
 
-        function real_model(ϵ)
-            return rand(Cauchy(1.0f0, 2.0f0))
-        end
+        target_model = Cauchy(1.0f, 3.0f0)
 
-        train_set = Float32.(real_model.(rand(Float32, hparams.samples)))
+        train_set = Float32.(rand(target_model, hparams.samples))
         loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
         adaptative_block_learning(nn, loader, hparams)
 
-        validation_set = real_model.(rand(Float32, hparams.samples))
+        validation_set = Float32.(rand(target_model, hparams.samples))
         data = vec(nn(rand(hparams.transform, hparams.samples)'))
 
         @test pvalue(HypothesisTests.ApproximateTwoSampleKSTest(validation_set, data)) >
@@ -152,7 +146,7 @@ end;
 
     @testset "learning Bimodal Normal Distribution" begin
         nn = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
-        hparams = HyperParams(1000, 10, 1000, 1e-2, Normal(0.0f0, 1.0f0))
+        hparams = HyperParams(1000, 100, 1000, 1e-2, Normal(0.0f0, 1.0f0))
 
         target_model = MixtureModel(Normal[Normal(5.0f0, 2.0f0), Normal(-1.0f0, 1.0f0)])
 
@@ -161,8 +155,7 @@ end;
 
         adaptative_block_learning(nn, loader, hparams)
 
-
-        validation_set = real_model.(rand(Float32, hparams.samples))
+        validation_set = Float32.(rand(target_model, hparams.samples))
         data = vec(nn(rand(hparams.transform, hparams.samples)'))
 
         @test pvalue(HypothesisTests.ApproximateTwoSampleKSTest(validation_set, data)) >
