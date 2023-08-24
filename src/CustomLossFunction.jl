@@ -58,7 +58,7 @@ end;
     generate_aₖ(ŷ, y)
 
     Generate a one step histogram (Vector{Float}) of the given vector `ŷ` of `K` simulted observations and the real data `y`.
-    `generate_aₖ(ŷ, y) = ∑ₖ γ(ŷ, y, k)``
+    `generate_aₖ(ŷ, y) = ∑ₖ γ(ŷ, y, k)`
 """
 function generate_aₖ(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
     return sum([γ(ŷ, y, k) for k in 0:length(ŷ)])
@@ -88,8 +88,9 @@ end;
 """
     HyperParams
 
-Hyperparameters for the method adaptative_block_learning
+Hyperparameters for the method `adaptative_block_learning`
 
+```julia
 @with_kw struct HyperParams
     samples::Int64 = 1000               # number of samples per histogram
     K::Int64 = 2                        # number of simulted observations
@@ -97,6 +98,7 @@ Hyperparameters for the method adaptative_block_learning
     η::Float64 = 1e-3                   # learning rate
     transform = Normal(0.0f0, 1.0f0)    # transform to apply to the data
 end;
+````
 """
 @with_kw struct HyperParams
     samples::Int64 = 1000               # number of samples per histogram
@@ -161,7 +163,7 @@ end;
 """
     AutoAdaptativeHyperParams
 
-Hyperparameters for the method adaptative_block_learning
+Hyperparameters for the method `adaptative_block_learning`
 
 ```julia
 @with_kw struct AutoAdaptativeHyperParams
@@ -184,7 +186,7 @@ end;
 """
     get_window_of_Aₖ(model, target , K, n_samples)
 
-Generate a window of the rv's Aₖ for a given model and target function.
+Generate a window of the rv's `Aₖ` for a given model and target function.
 """
 function get_window_of_Aₖ(transform, model, data, K::Int64)
     window = count.([
@@ -219,11 +221,11 @@ end;
 
 Custom loss function for the model.
 
-This method gradually adapts K (starting from 2) up to max_k (inclusive).
-The value of K is chosen based on a simple two-sample test between the histogram
+This method gradually adapts `K` (starting from `2`) up to `max_k` (inclusive).
+The value of `K` is chosen based on a simple two-sample test between the histogram
 associated with the obtained result and the uniform distribution.
 
-To see the value of K used in the test, set the logger level to debug before executing.
+To see the value of `K` used in the test, set the logger level to debug before executing.
 
 #Arguments
 - `model::Flux.Chain`: is a Flux neuronal network model
