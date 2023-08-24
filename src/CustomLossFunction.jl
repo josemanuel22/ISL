@@ -57,8 +57,8 @@ end;
 """
     generate_aₖ(ŷ, y)
 
-    Generate a one step histogram (Vector{Float}) of the given vector `ŷ` of `K` simulted observations and the real data `y`.
-    `generate_aₖ(ŷ, y) = ∑ₖ γ(ŷ, y, k)`
+Generate a one step histogram (Vector{Float}) of the given vector `ŷ` of `K` simulted observations and the real data `y`
+`generate_aₖ(ŷ, y) = ∑ₖ γ(ŷ, y, k)`
 """
 function generate_aₖ(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
     return sum([γ(ŷ, y, k) for k in 0:length(ŷ)])
@@ -67,14 +67,14 @@ end
 """
     scalar_diff(aₖ)
 
-    scalar difference between `aₖ` vector and uniform distribution vector
+Scalar difference between `aₖ` vector and uniform distribution vector.
 """
 scalar_diff(aₖ::Vector{T}) where {T<:AbstractFloat} = sum((aₖ .- (1 ./ length(aₖ))) .^ 2)
 
 """
     jensen_shannon_∇(aₖ)
 
-    jensen shannon difference between `aₖ` vector and uniform distribution vector
+Jensen shannon difference between `aₖ` vector and uniform distribution vector.
 """
 function jensen_shannon_∇(aₖ::Vector{T}) where {T<:AbstractFloat}
     return jensen_shannon_divergence(aₖ, fill(1 / length(aₖ), length(aₖ)))
