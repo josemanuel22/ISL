@@ -6,7 +6,7 @@ println("Generating Docs")
 makedocs(;
     sitename = "AdaptativeBlockLearning",
     format = Documenter.HTML(),
-    modules = [AdaptativeBlockLearning]
+    modules = [AdaptativeBlockLearning],
     pages=[
         "Home" => "index.md",
         "GAN" => "gan.md",
