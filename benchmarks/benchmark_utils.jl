@@ -88,7 +88,7 @@ function plot_transformation(real_transform, gen, range)
         linecolor=get(ColorSchemes.rainbow, 0.2),
     )
     y = gen(range')
-    return plot!(range, vec(y); legend=:bottomright, label="neuronal network", linecolor=:redsblues, ylims=(-10,10))
+    return plot!(range, vec(y); legend=:bottomright, label="neural network", linecolor=:redsblues, ylims=(-10,10))
 end
 
 function plot_global(
