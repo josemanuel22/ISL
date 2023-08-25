@@ -13,9 +13,9 @@ end
 """
 Calculate KSD metric for a given model.
 
-```math
-KSD = \sup_{x} |\mathbb{P}_{X}(\mathcal{x})-\mathbb{P}_{θ}(x)|
-```
+``
+KSD = \\sup_{x} |\\mathbb{P}_{X}(\\mathcal{x})-\\mathbb{P}_{θ}(x)|
+``
 """
 function KSD(noise_model, target_model, gen, n_sample, range)
     train_set = rand(target_model, n_sample)
@@ -29,9 +29,9 @@ end
 """
 Calculate MAE metric for a given model.
 
-```math
-MAE = \int_{-\infty}^{\infty} |f(z) - \tilde{f}(z)| d\mathbb{P}_{\mathcal{Z}}(z)
-```
+``
+MAE = \\int_{-\\infty}^{\\infty} |f(z) - \\tilde{f}(z)| d\\mathbb{P}_{\\mathcal{Z}}(z)
+``
 """
 function MAE(noise_model, f̂ᵢ, gen, n_sample)
     xᵢ = rand(noise_model, n_sample)
@@ -42,9 +42,9 @@ end
 """
 Calculate MSE metric for a given model.
 
-```math
-MSE = \int_{-\infty}^{\infty} (f(z) - \tilde{f}(z))^2 d\mathbb{P}_{\mathcal{Z}}(z)
-```
+``
+MSE = \\int_{-\\infty}^{\\infty} (f(z) - \\tilde{f}(z))^2 d\\mathbb{P}_{\\mathcal{Z}}(z)
+``
 """
 function MSE(noise_model, f̂ᵢ, gen, n_sample)
     xᵢ = rand(noise_model, n_sample)
