@@ -3,10 +3,16 @@ using AdaptativeBlockLearning
 
 println("Generating Docs")
 
-makedocs(
+makedocs(;
     sitename = "AdaptativeBlockLearning",
     format = Documenter.HTML(),
     modules = [AdaptativeBlockLearning]
+    pages=[
+        "Home" => "index.md",
+        "GAN" => "gan.md",
+        "Example" => "example.md",
+        "Benchmark Utils" => "benchmark_utils.md",
+    ],
 )
 
 # Documenter can also automatically deploy documentation to gh-pages.
@@ -16,4 +22,5 @@ deploydocs(
     repo = "github.com/josemanuel22/AdaptativeBlockLearning.git",
     target="build",
     push_preview = true,
+    devbranch="main",
 )
