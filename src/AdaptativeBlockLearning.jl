@@ -29,6 +29,8 @@ export _sigmoid,
     AutoAdaptativeHyperParams,
     auto_adaptative_block_learning,
     adaptative_block_learning_1,
-    auto_adaptative_block_learning_1
+    auto_adaptative_block_learning_1,
+    PartialAutoAdaptativeHyperParams,
+    partial_auto_adaptative_block_learning
 
 end

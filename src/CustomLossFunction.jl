@@ -288,3 +288,51 @@ function auto_adaptative_block_learning_1(nn_model, loader, hparams)
     end
     return losses
 end;
+
+
+@with_kw struct PartialAutoAdaptativeHyperParams
+    samples::Int64 = 1000
+    epochs::Int64 = 100
+    η::Float64 = 1e-3
+    max_k::Int64 = 10
+    n_partitions::Int64 = 4
+    transform = Normal(0.0f0, 1.0f0)
+end;
+
+function partial_auto_adaptative_block_learning(nn_model, data, hparams)
+    @assert length(data) == hparams.samples
+    @assert length(nn_model) == hparams.n_partitions
+
+    losses = []
+    optim = []
+    for partition in 1:hparams.n_partitions
+        push!(optim, Flux.setup(Flux.Adam(hparams.η), nn_model[partition]))
+    end
+
+    sort_data = sort(data.data)
+    sort_data_split = collect(Iterators.partition(sort_data, Int64(floor(length(sort_data)/hparams.n_partitions))))
+
+    for partition in 1:hparams.n_partitions
+        @showprogress for epoch in 1:(hparams.epochs)
+            K = 2
+            @debug "K value set to $K."
+            K̂ = get_better_K(nn_model[partition], sort_data_split[partition], K, hparams)
+            if K < K̂
+                K = K̂
+                @debug "K value set to $K."
+            end
+            loss, grads = Flux.withgradient(nn_model[partition]) do nn
+                aₖ = zeros(K + 1)
+                for i in 1:length(sort_data_split[partition])
+                    x = rand(hparams.transform, K)
+                    yₖ = nn(x')
+                    aₖ += generate_aₖ(yₖ, sort_data_split[partition][i])
+                end
+                scalar_diff(aₖ ./ sum(aₖ))
+            end
+            Flux.update!(optim[partition], nn_model[partition], grads[1])
+            push!(losses, loss)
+        end
+    end
+    return losses
+end;
