@@ -3,13 +3,13 @@ using AdaptativeBlockLearning
 
 println("Generating Docs")
 
-makedocs(
+makedocs(;
     sitename = "AdaptativeBlockLearning",
     format = Documenter.HTML(),
-    modules = [AdaptativeBlockLearning]
+    modules = [AdaptativeBlockLearning],
     pages=[
         "Home" => "index.md",
-        "GAN" => "GAN.md",
+        "GAN" => "gan.md",
         "Example" => "example.md",
         "Benchmark Utils" => "benchmark_utils.md",
     ],
@@ -22,4 +22,5 @@ deploydocs(
     repo = "github.com/josemanuel22/AdaptativeBlockLearning.git",
     target="build",
     push_preview = true,
+    devbranch="main",
 )
