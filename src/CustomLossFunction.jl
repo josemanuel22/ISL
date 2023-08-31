@@ -40,7 +40,7 @@ end;
 
 Calculate the contribution of `ψₘ ∘ ϕ(yₖ, yₙ)` to the `m` bin of the histogram (Vector{Float}).
 ```math
-γ(yₖ, yₙ, m) = ψₘ ∘ ϕ(yₖ, yₙ)
+γ(yₖ, yₙ, m) = ψₘ \\circ ϕ(yₖ, yₙ)
 ```
 """
 function γ(yₖ::Matrix{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}
