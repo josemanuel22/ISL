@@ -18,7 +18,7 @@ KSD = \\sup_{x} |\\mathbb{P}_{X}(\\mathcal{x})-\\mathbb{P}_{θ}(x)|
 ```
 """
 function KSD(noise_model, target_model, gen, n_sample, range)
-    train_set = Float32.(rand(target_model, n_sample))
+    train_set = rand(target_model, n_sample)
     hist1 = fit(Histogram, train_set, range)
 
     data = vec(gen(rand(noise_model, n_sample)'))
@@ -34,7 +34,7 @@ MAE = \\int_{-\\infty}^{\\infty} |f(z) - \\tilde{f}(z)| d\\mathbb{P}_{\\mathcal{
 ```
 """
 function MAE(noise_model, f̂ᵢ, gen, n_sample)
-    xᵢ = Float32.(rand(noise_model, n_sample))
+    xᵢ = rand(noise_model, n_sample)
     fᵢ = vec(gen(xᵢ'))
     return mean(abs.(fᵢ .- f̂ᵢ(xᵢ)))
 end
@@ -47,13 +47,13 @@ MSE = \\int_{-\\infty}^{\\infty} (f(z) - \\tilde{f}(z))^2 d\\mathbb{P}_{\\mathca
 ```
 """
 function MSE(noise_model, f̂ᵢ, gen, n_sample)
-    xᵢ = Float32.(rand(noise_model, n_sample))
+    xᵢ = rand(noise_model, n_sample)
     fᵢ = vec(gen(xᵢ'))
     return mean((fᵢ .- f̂ᵢ(xᵢ)) .^ 2)
 end
 
 function plot_result(noise_model, target_model, model, n_sample, range)
-    x = Float32.(rand(noise_model, n_sample))
+    x = rand(noise_model, n_sample)
     ŷ = model(x')
     histogram(
         ŷ';
