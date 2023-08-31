@@ -13,9 +13,9 @@ end
 """
 Calculate KSD metric for a given model.
 
-``
+```math
 KSD = \\sup_{x} |\\mathbb{P}_{X}(\\mathcal{x})-\\mathbb{P}_{θ}(x)|
-``
+```
 """
 function KSD(noise_model, target_model, gen, n_sample, range)
     train_set = rand(target_model, n_sample)
@@ -29,9 +29,9 @@ end
 """
 Calculate MAE metric for a given model.
 
-``
+```math
 MAE = \\int_{-\\infty}^{\\infty} |f(z) - \\tilde{f}(z)| d\\mathbb{P}_{\\mathcal{Z}}(z)
-``
+```
 """
 function MAE(noise_model, f̂ᵢ, gen, n_sample)
     xᵢ = rand(noise_model, n_sample)
@@ -42,9 +42,9 @@ end
 """
 Calculate MSE metric for a given model.
 
-``
+```math
 MSE = \\int_{-\\infty}^{\\infty} (f(z) - \\tilde{f}(z))^2 d\\mathbb{P}_{\\mathcal{Z}}(z)
-``
+```
 """
 function MSE(noise_model, f̂ᵢ, gen, n_sample)
     xᵢ = rand(noise_model, n_sample)
@@ -150,8 +150,8 @@ function save_gan_model(gen, dscr, hparams)
         gan = gans[typeof(hparams)]
         lr_gen = hparams.lr_gen
         dscr_steps = hparams.dscr_steps
-        noise_model = string(hparams.noise_model)
-        target_model = string(hparams.target_model)
+        noise_model = replace(strip(string(hparams.noise_model)), "\n" => "", r"(K = .*)" => "", r"components\[.*\] " => "", r"prior = " => "", "μ=" => "", "σ=" => "", r"\{Float.*\}" => "")
+        target_model = replace(strip(string(hparams.target_model)), "\n" => "", r"(K = .*)" => "", r"components\[.*\] " => "", r"prior = " => "", "μ=" => "", "σ=" => "", r"\{Float.*\}" => "")
         basename = "$gan-$noise_model-$target_model-lr_gen=$lr_gen-dscr_steps=$dscr_steps"
         i = get_incremental_filename(basename)
         new_filename = basename * "-$i.bson"
