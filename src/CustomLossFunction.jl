@@ -112,7 +112,7 @@ Hyperparameters for the method `adaptative_block_learning`
     η::Float64 = 1e-3                   # learning rate
     transform = Normal(0.0f0, 1.0f0)    # transform to apply to the data
 end;
-````
+```
 """
 @with_kw struct HyperParams
     samples::Int64 = 1000               # number of samples per histogram
