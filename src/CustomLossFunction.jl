@@ -16,8 +16,6 @@ end;
     ψₘ(y, m)
 
 Bump function centered at `m`. Implemented as a gaussian function.
-
-
 """
 function ψₘ(y::T, m::Int64) where {T<:AbstractFloat}
     stddev = 0.1f0
@@ -28,9 +26,9 @@ end
     ϕ(yₖ, yₙ)
 
 Sum of the sigmoid function centered at `yₙ` applied to the vector `yₖ`.
-``math
+```math
 ϕ(yₖ, yₙ) = ∑_{i=1}^K σ(yₖ^i, yₙ)
-``
+```
 """
 function ϕ(yₖ::Matrix{T}, yₙ::T) where {T<:AbstractFloat}
     #return sum(_leaky_relu(yₖ, yₙ))
@@ -41,9 +39,9 @@ end;
     γ(yₖ, yₙ, m)
 
 Calculate the contribution of `ψₘ ∘ ϕ(yₖ, yₙ)` to the `m` bin of the histogram (Vector{Float}).
-``math
+```math
 γ(yₖ, yₙ, m) = ψₘ ∘ ϕ(yₖ, yₙ)
-``
+```
 """
 function γ(yₖ::Matrix{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}
     eₘ(m) = [j == m ? 1.0 : 0.0 for j in 0:length(yₖ)]
@@ -68,9 +66,9 @@ end;
 Generate a one step histogram (Vector{Float}) of the given vector `ŷ` of `K` simulted observations and the real data `y`
 `generate_aₖ(ŷ, y) = ∑ₖ γ(ŷ, y, k)`
 
-``math
+```math
 \\vec{aₖ} = ∑_{k=0}^K γ(ŷ, y, k) = ∑_{k=0}^K ∑_{i=1}^N ψₖ ∘ ϕ(ŷ, yᵢ)
-``
+```
 """
 function generate_aₖ(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
     return sum([γ(ŷ, y, k) for k in 0:length(ŷ)])
@@ -81,9 +79,9 @@ end
 
 Scalar difference between `aₖ` vector and uniform distribution vector.
 
-``math
+```math
 loss(weights) = scalar_diff(aₖ) = <(a₀ - N/(K+1), ..., aₖ - N/(K+1)), (a₀ - N/(K+1), ..., aₖ - N/(K+1))> = ∑_{k=0}^{K}(a_{k} - (N/(K+1)))^2
-``
+```
 """
 scalar_diff(aₖ::Vector{T}) where {T<:AbstractFloat} = sum((aₖ .- (1 ./ length(aₖ))) .^ 2)
 
