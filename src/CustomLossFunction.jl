@@ -80,7 +80,7 @@ end
 Scalar difference between `aₖ` vector and uniform distribution vector.
 
 ```math
-loss(weights) = scalar_diff(aₖ) = \\langle(a₀ - N/(K+1), \\cdots, aₖ - N/(K+1)), (a₀ - N/(K+1), \\cdots, aₖ - N/(K+1))\\rangle = ∑_{k=0}^{K}(a_{k} - (N/(K+1)))^2
+loss(weights) = \operatorname{scalar_diff}(aₖ) = \\langle (a₀ - N/(K+1), \\cdots, aₖ - N/(K+1)), (a₀ - N/(K+1), \\cdots, aₖ - N/(K+1))\\rangle = ∑_{k=0}^{K}(a_{k} - (N/(K+1)))^2
 ```
 """
 scalar_diff(aₖ::Vector{T}) where {T<:AbstractFloat} = sum((aₖ .- (1 ./ length(aₖ))) .^ 2)
