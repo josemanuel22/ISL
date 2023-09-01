@@ -11,7 +11,7 @@ makedocs(;
         "Home" => "index.md",
         "GAN" => "gan.md",
         "Example" => "example.md",
-        "Benchmark Utils" => "benchmark.md",
+        "Benchmark" => "benchmark.md",
     ],
 )
 
