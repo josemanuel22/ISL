@@ -9,6 +9,8 @@ jobs:
       - uses: julia-actions/cache@v1
       - uses: julia-actions/julia-format
       - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-uploadcodecov@latest
+      - uses: codecov/codecov-action@v3
+        with:
+          files: lcov.info
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
