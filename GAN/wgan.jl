@@ -82,14 +82,3 @@ function train_wgan(dscr, gen, hparams::HyperParamsWGAN)
     end
     return (losses_gen, losses_dscr)
 end
-
-function plot_model(real_model, model, range)
-    μ = 0.0f0
-    stddev = 1.0f0
-    x = rand(Normal(μ, stddev), 1000000)
-    ϵ = rand(Float32, 1000000)
-    y = real_model.(ϵ)
-    histogram(y; bins=range)
-    ŷ = model(x')
-    return histogram!(ŷ'; bins=range)
-end
