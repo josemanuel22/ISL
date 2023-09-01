@@ -1,6 +1,33 @@
 
 include("./mmd.jl")
 
+"""
+    HyperParamsMMD1D
+
+Hyper-parameters for the MMD GAN 1D.
+
+```julia
+@with_kw struct HyperParamsMMD1D
+    target_model = Normal(23.0f0, 1.0f0)
+    noise_model = Normal(0.0f0, 1.0f0)
+
+    data_size::Int = 1000
+    batch_size::Int = 100
+    latent_dim::Int = 1
+    epochs::Int = 1000
+    num_gen::Int = 1
+    num_enc_dec::Int = 1
+    lr_enc::Float64 = 1.0e-10
+    lr_dec::Float64 = 1.0e-10
+    lr_gen::Float64 = 1.0e-10
+
+    lambda_AE::Float64 = 8.0
+
+    base::Float64 = 1.0
+    sigma_list::Array{Float64,1} = [1.0, 2.0, 4.0, 8.0, 16.0] ./ base
+end
+```
+"""
 @with_kw struct HyperParamsMMD1D
     target_model = Normal(23.0f0, 1.0f0)
     noise_model = Normal(0.0f0, 1.0f0)
@@ -22,7 +49,12 @@ include("./mmd.jl")
 end
 
 
-# Initialize models and optimizers
+"""
+    train_mmd_gan_1d(enc, dec, gen, hparams::HyperParamsMMD1D)
+
+Train the MMD GAN 1D. ``enc`` is the encoder, ``dec`` is the decoder used as dscr,
+and ``gen`` is the generator. hparams is the hyper-parameters.
+"""
 function train_mmd_gan_1d(enc, dec, gen, hparams::HyperParamsMMD1D)
     #hparams = HyperParams()
 

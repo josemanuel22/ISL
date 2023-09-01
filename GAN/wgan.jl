@@ -1,3 +1,23 @@
+"""
+HyperParamsWGAN
+
+Hyper-parameters for the wasserstein GAN:
+
+```julia
+@with_kw struct HyperParamsWGAN
+    noise_model = Normal(0.0f0, 1.0f0)
+    target_model = Normal(23.0f0, 1.0f0)
+    data_size::Int = 10000
+    batch_size::Int = 100
+    latent_dim::Int = 1
+    epochs::Int = 20
+    n_critic::Int = 5
+    clip_value::Float32 = 0.01
+    lr_dscr::Float64 = 0.00005
+    lr_gen::Float64 = 0.00005
+end
+```
+"""
 @with_kw struct HyperParamsWGAN
     noise_model = Normal(0.0f0, 1.0f0)
     target_model = Normal(23.0f0, 1.0f0)
@@ -53,6 +73,13 @@ function train_gan(gen, discr, original_data, opt_gen, opt_discr, hparams::Hyper
     return loss
 end
 
+"""
+    train_wgan(dscr, gen, hparams::HyperParamsVanillaGan)
+
+Train the vanilla GAN. `dscr` is the neural-network model for the discriminator,
+`gen` is the neural-network model for the generator,
+and `hparams` is the hyper-parameters for the training.
+"""
 function train_wgan(dscr, gen, hparams::HyperParamsWGAN)
     #hparams = HyperParams()
 

@@ -1,3 +1,25 @@
+
+"""
+HyperParamsVanillaGan
+
+Hyper-parameters for the vanilla GAN.
+
+```julia
+@with_kw struct HyperParamsVanillaGan
+    noise_model = Normal(0.0f0, 1.0f0)
+    target_model = Normal(23.0f0, 1.0f0)
+    data_size::Int = 10000
+    batch_size::Int = 100
+    latent_dim::Int = 1
+    epochs::Int = 1000
+    lr_dscr::Float64 = 0.000001
+    lr_gen::Float64 = 0.000002
+    dscr_steps::Int = 5
+    gen_steps::Int = 1
+end
+```
+
+"""
 @with_kw struct HyperParamsVanillaGan
     noise_model = Normal(0.0f0, 1.0f0)
     target_model = Normal(23.0f0, 1.0f0)
@@ -29,6 +51,7 @@ end
 
 Zygote.@nograd train_discr
 
+
 function train_gan(gen, discr, original_data, opt_gen, opt_discr, hparams::HyperParamsVanillaGan)
     noise = gpu(
         rand!(
@@ -59,6 +82,12 @@ function train_gan(gen, discr, original_data, opt_gen, opt_discr, hparams::Hyper
     return loss
 end
 
+
+"""
+    train_vanilla_gan(dscr, gen, hparams::HyperParamsVanillaGan)
+
+Train the vanilla GAN. `dscr` is the neural-network model for the discriminator, `gen` is the neural-network model for the generator, and `hparams` is the hyper-parameters for the training.
+"""
 function train_vanilla_gan(dscr, gen, hparams::HyperParamsVanillaGan)
     #hparams = HyperParamsVanillaGan()
 
