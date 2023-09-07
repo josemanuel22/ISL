@@ -5,7 +5,7 @@ include("benchmark_utils.jl")
 
 @test_experiments "vanilla_gan" begin
     @test_experiments "Origin N(0,1)" begin
-        noise_model = Normal(0.0f0, 1.0f0)
+        noise_model = Uniform(-1.0f0, 1.0f0)
         n_samples = 10000
 
         @test_experiments "N(0,1) to M(N(5.0f0, 2.0f0), N(-1.0f0, 1.0f0))" begin
@@ -13,7 +13,7 @@ include("benchmark_utils.jl")
             dscr = Chain(
                 Dense(1, 11), elu, Dense(11, 29), elu, Dense(29, 11), elu, Dense(11, 1, σ)
             )
-            target_model = MixtureModel([Normal(4.0f0, 2.0f0), Normal(-2.0f0, 1.0f0)])
+            target_model = Pareto(1.0f0,1.0f0)
             hparams = HyperParamsVanillaGan(;
                 data_size=100,
                 batch_size=1,
@@ -53,13 +53,13 @@ include("benchmark_utils.jl")
 
             #save_gan_model(gen, dscr, hparams)
             plot_global(
-                x -> -quantile.(target_model, cdf(noise_model, x)),
+                x -> -quantile.(-target_model, -cdf(noise_model, x)) .+ 2,
                 noise_model,
                 target_model,
                 gen,
                 n_samples,
-                (-3:0.1:3),
-                (5:0.2:15),
+                (-1:0.1:1),
+                (0:0.2:10),
             )
 
             #@test js_divergence(hist1.weights, hist2.weights)/hparams.samples < 0.03
