@@ -85,10 +85,10 @@ function plot_transformation(real_transform, gen, range)
         xlabel="z noise space",
         ylabel="x target space",
         label="Ideal",
-        linecolor=get(ColorSchemes.rainbow, 0.2),
+        linecolor=:redsblues,
     )
     y = gen(range')
-    return plot!(range, vec(y); legend=:bottomright, label="neural network", linecolor=:redsblues, ylims=(-10,10))
+    return plot!(range, vec(y); legend=:bottomright, label="neural network", linecolor=get(ColorSchemes.rainbow, 0.2), ylims=(-20,20))
 end
 
 function plot_global(

@@ -1,7 +1,7 @@
 ```@meta
 CurrentModule = AdaptativeBlockLearning
 ```
-# AdaptativeBlockLearning.jl
+# AdaptativeBlockLearning
 
 Documentation for AdaptativeBlockLearning.jl
 
