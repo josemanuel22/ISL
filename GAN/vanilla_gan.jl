@@ -86,7 +86,9 @@ end
 """
     train_vanilla_gan(dscr, gen, hparams::HyperParamsVanillaGan)
 
-Train the vanilla GAN. `dscr` is the neural-network model for the discriminator, `gen` is the neural-network model for the generator, and `hparams` is the hyper-parameters for the training.
+Train the vanilla GAN. `dscr` is the neural-network model for the discriminator,
+`gen` is the neural-network model for the generator,
+and `hparams` is the hyper-parameters for the training.
 """
 function train_vanilla_gan(dscr, gen, hparams::HyperParamsVanillaGan)
     #hparams = HyperParamsVanillaGan()
