@@ -4,7 +4,7 @@
 Sigmoid function centered at `y`.
 """
 function _sigmoid(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
-    return sigmoid_fast.((y .- ŷ) .* 20)
+    return sigmoid_fast.((y .- ŷ) .* 10)
 end;
 
 function _leaky_relu(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
