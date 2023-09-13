@@ -1,15 +1,26 @@
+# AR process parameters
+Base.@kwdef mutable struct ARParams
+    ϕ::Vector{Float32} = [0.4f0, 0.3f0, 0.2f0]  # AR coefficients (=> AR(3))
+    proclen::Int = 10000                        # Process length
+    x₁::Float32 = 0.0f0                         # Initial value
+    noise = Normal(0.0f0, 1.0f0)                # Noise to add to the data
+    seqshift::Int = 1                           # Shift between sequences (see utils.jl)
+    train_ratio::Float64 = 0.8                  # Percentage of data in the train set
+end
+
+
 # Generates an AR(p) process with coefficients `ϕ`.
 # `ϕ` should be provided as a vector and it represents the coefficients of the AR model.
 # Hence the order of the generated process is equal to the length of `ϕ`.
 # `s` indicates the total length of the series to be generated.
-function generate_process(ϕ::AbstractVector{Float32}, s::Int)
+function generate_process(ϕ::AbstractVector{Float32}, s::Int, x₁::Float32=0.0f0, noise=Normal(0.0f0, 1.0f0))
     s > 0 || error("s must be positive")
     # Generate white noise
-    ϵ = randn(Float32, s)
+    ϵ = Float32.(rand(noise, s))
     # Initialize time series
     X = zeros(Float32, s)
     p = length(ϕ)
-    X[1] = 10.0f0
+    X[1] = x₁
     # Reverse the order of the coefficients for multiplication later on
     ϕ = reverse(ϕ)
     # Fill first p observations
