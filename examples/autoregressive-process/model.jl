@@ -127,7 +127,8 @@ function ts_adaptative_block_learning(nn_model, Xₜ, Xₜ₊₁, hparams)
             aₖ = zeros(hparams.K + 1)
             for i in (1:(hparams.window_size))
                 xₖ = rand(hparams.noise_model, hparams.K)
-                yₖ = nn(xₖ')
+                nn_cp = deepcopy(nn)
+                yₖ = nn_cp(xₖ')
                 aₖ += generate_aₖ(yₖ, batch[j + i])
             end
             j += hparams.window_size
@@ -162,7 +163,8 @@ function get_stats(nn_model, data_xₜ, data_xₜ₊₁, hparams)
         aₖ = zeros(hparams.K + 1)
         for i in 1:(hparams.window_size)
             xₖ = rand(hparams.noise_model, hparams.K)
-            yₖ = nn_model(xₖ')
+            nn_cp = deepcopy(nn)
+            yₖ = nn_cp(xₖ')
             aₖ += generate_aₖ(yₖ, batch[i])
         end
         push!(losses, scalar_diff(aₖ ./ sum(aₖ)))
@@ -174,12 +176,18 @@ function plot_ts(nn_model, xₜ, xₜ₊₁, hparams)
     Flux.reset!(nn_model)
     nn_model([xₜ.data[1]])
     plot(xₜ.data[1:1000]; seriestype=:scatter)
-    return plot!(vec(-nn_model.([xₜ.data[1:1000]]')...) .+3 ; seriestype=:scatter)
+    return plot!(-vec(nn_model.([xₜ.data[1:1000]]')...) ; seriestype=:scatter)
+end
+
+function get_density(nn, t)
+
+
+
 end
 
 @test_experiments "testing" begin
     ar_hparams = ARParams(; ϕ = [0.5f0, 0.3f0, 0.2f0], x₁ = rand(Normal(0.0f0, 0.5f0)), proclen=1000, noise=Normal(0.0f0, 0.5f0))
-    hparams = HyperParamsTS(; η = 1e-3, epochs = 500, window_size = 10, K = 5)
+    hparams = HyperParamsTS(; η = 1e-3, epochs = 500, window_size = 100, K = 5)
 
     nn_model = Chain(RNN(1 => 32, relu), RNN(32 => 32, relu), Dense(32 => 1, identity))
 
