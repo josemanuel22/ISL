@@ -131,10 +131,13 @@ function ts_adaptative_block_learning(nn_model, Xₜ, Xₜ₊₁, hparams)
                 yₖ = nn_cp(xₖ')
                 aₖ += generate_aₖ(yₖ, batch[j + i])
             end
-            j += hparams.window_size
             scalar_diff(aₖ ./ sum(aₖ))
         end
         Flux.update!(optim, nn_model, grads[1])
+        for i in (1:(hparams.window_size))
+            nn_model([batch[j + i]])
+        end
+        j += hparams.window_size
         push!(losses, loss)
     end
     return losses
@@ -146,8 +149,8 @@ function ts_mse_learning(nn_model, Xₜ, Xₜ₊₁, hparams)
     @showprogress for epoch in (1:(hparams.epochs))
         Flux.reset!(nn_model)   # Reset the hidden state of the RNN
         loss, grads = Flux.withgradient(nn_model) do nn
-            nn(Xₜ[1])    # Warm-up the model
-            sum(Flux.Losses.mse.([nn(x)[1] for x in Xₜ[1:(end - 1)]], Xₜ₊₁[1:end]))
+            nn([Xₜ[1]]')    # Warm-up the model
+            sum(Flux.Losses.mse.([nn([x]')[1] for x in Xₜ[1:(end - 1)]], Xₜ₊₁[1:end]))
         end
         Flux.update!(optim, nn_model, grads[1])
         push!(losses, loss)
@@ -172,22 +175,43 @@ function get_stats(nn_model, data_xₜ, data_xₜ₊₁, hparams)
     return losses
 end
 
+function get_window_of_Aₖ(transform, model, data, K::Int64)
+    Flux.reset!(model)
+    res = []
+    for d in data
+        xₖ = rand(transform, K)
+        model_cp = deepcopy(model)
+        yₖ = model_cp(xₖ')
+        push!(res, yₖ .< d)
+    end
+    return [count(x -> x == i, count.(res)) for i in 0:K]
+end;
+
 function plot_ts(nn_model, xₜ, xₜ₊₁, hparams)
     Flux.reset!(nn_model)
     nn_model([xₜ.data[1]])
-    plot(xₜ.data[1:1000]; seriestype=:scatter)
-    return plot!(-vec(nn_model.([xₜ.data[1:1000]]')...) ; seriestype=:scatter)
+    plot(xₜ.data[1:800]; seriestype=:scatter)
+    return plot!(vec(nn_model.([xₜ.data[1:800]]')...) ; seriestype=:scatter)
 end
 
-function get_density(nn, t)
-
-
-
+function get_density(nn, data, t, m)
+    Flux.reset!(nn)
+    res = []
+    for d in data[1:t-1]
+       nn([d])
+    end
+    for _ in 1:m
+        nn_cp = deepcopy(nn)
+        xₜ = rand(Normal(0.0f0, 1.0f0))
+        yₜ = nn_cp([xₜ])
+        append!(res, yₜ)
+    end
+    return res
 end
 
 @test_experiments "testing" begin
-    ar_hparams = ARParams(; ϕ = [0.5f0, 0.3f0, 0.2f0], x₁ = rand(Normal(0.0f0, 0.5f0)), proclen=1000, noise=Normal(0.0f0, 0.5f0))
-    hparams = HyperParamsTS(; η = 1e-3, epochs = 500, window_size = 100, K = 5)
+    ar_hparams = ARParams(; ϕ = [0.7f0, 0.1f0, 0.2f0], x₁ = rand(Normal(0.0f0, 0.5f0)), proclen=1000, noise=Normal(0.0f0, 0.5f0))
+    hparams = HyperParamsTS(; seed = 50, η = 1e-3, epochs = 800, window_size = 100, K = 5)
 
     nn_model = Chain(RNN(1 => 32, relu), RNN(32 => 32, relu), Dense(32 => 1, identity))
 
@@ -195,9 +219,18 @@ end
         hparams, ar_hparams
     )
 
+    loss = ts_mse_learning(nn_model, collect(loaderXtrain)[1], collect(loaderYtrain)[1], hparams)
+
     loss = ts_adaptative_block_learning(
         nn_model, loaderXtrain, loaderYtrain, hparams
     )
 
     plot_ts(nn_model, loaderXtrain, loaderYtrain, hparams)
+
+    @gif for i in 1:100
+        histogram(get_density(nn_model, collect(loaderXtrain)[1], i, 1000); bins=(-25:0.2:20), normalize=:pdf, label="t=$i")
+        println("$i")
+    end every 2
+
+    bar(get_window_of_Aₖ(Normal(0.0f0, 1.0f0), nn_model, collect(loaderXtrain)[1], 5))
 end
