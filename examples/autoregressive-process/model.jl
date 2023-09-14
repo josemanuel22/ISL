@@ -84,19 +84,19 @@ function generate_batch_train_test_data(hparams, arparams)
     )
     loaderYtrain = Flux.DataLoader(
         Ytrain;
-        batchsize=round(Int, arparams.train_ratio * (arparams.proclen - 1)),
+        batchsize=round(Int, arparams.train_ratio * arparams.proclen),
         shuffle=false,
         partial=false,
     )
     loaderXtest = Flux.DataLoader(
         Xtest;
-        batchsize=round(Int, (1 - arparams.train_ratio) * (arparams.proclen)),
+        batchsize=round(Int, arparams.train_ratio * arparams.proclen),
         shuffle=false,
         partial=false,
     )
     loaderYtest = Flux.DataLoader(
         Ytest;
-        batchsize=round(Int, (1 - arparams.train_ratio) * (arparams.proclen - 1)),
+        batchsize=round(Int, arparams.train_ratio * arparams.proclen),
         shuffle=false,
         partial=false,
     )
@@ -119,7 +119,7 @@ end
 function ts_adaptative_block_learning(nn_model, Xₜ, Xₜ₊₁, hparams)
     losses = []
     optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
-    @showprogress for batch in Xₜ₊₁
+    @showprogress for (batch_Xₜ, batch_Xₜ₊₁) in zip(Xₜ, Xₜ₊₁)
         j = 0
         Flux.reset!(nn_model)
         nn_model([Xₜ.data[1]]) # Warm up recurrent model on first observation
@@ -129,14 +129,15 @@ function ts_adaptative_block_learning(nn_model, Xₜ, Xₜ₊₁, hparams)
                 xₖ = rand(hparams.noise_model, hparams.K)
                 nn_cp = deepcopy(nn)
                 yₖ = nn_cp(xₖ')
-                aₖ += generate_aₖ(yₖ, batch[j + i])
+                aₖ += generate_aₖ(yₖ, batch_Xₜ₊₁[j + i])
+                nn([batch_Xₜ[j + i]])
             end
             scalar_diff(aₖ ./ sum(aₖ))
         end
         Flux.update!(optim, nn_model, grads[1])
-        for i in (1:(hparams.window_size))
-            nn_model([batch[j + i]])
-        end
+        #for i in (1:(hparams.window_size))
+        #    nn_model([batch[j + i]])
+        #end
         j += hparams.window_size
         push!(losses, loss)
     end
@@ -210,8 +211,8 @@ function get_density(nn, data, t, m)
 end
 
 @test_experiments "testing" begin
-    ar_hparams = ARParams(; ϕ = [0.7f0, 0.1f0, 0.2f0], x₁ = rand(Normal(0.0f0, 0.5f0)), proclen=1000, noise=Normal(0.0f0, 0.5f0))
-    hparams = HyperParamsTS(; seed = 50, η = 1e-3, epochs = 800, window_size = 100, K = 5)
+    ar_hparams = ARParams(; ϕ = [0.5f0, 0.3f0, 0.2f0], x₁ = rand(Normal(0.0f0, 0.5f0)), proclen=2000, noise=Normal(0.0f0, 0.5f0))
+    hparams = HyperParamsTS(; seed = 50, η = 1e-3, epochs = 1000, window_size = 100, K = 5)
 
     nn_model = Chain(RNN(1 => 32, relu), RNN(32 => 32, relu), Dense(32 => 1, identity))
 
