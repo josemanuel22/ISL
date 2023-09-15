@@ -84,19 +84,19 @@ function generate_batch_train_test_data(hparams, arparams)
     )
     loaderYtrain = Flux.DataLoader(
         Ytrain;
-        batchsize=round(Int, arparams.train_ratio * arparams.proclen),
+        batchsize=round(Int, arparams.train_ratio * arparams.proclen - 1),
         shuffle=false,
         partial=false,
     )
     loaderXtest = Flux.DataLoader(
         Xtest;
-        batchsize=round(Int, arparams.train_ratio * arparams.proclen),
+        batchsize=round(Int, (1 - arparams.train_ratio) * arparams.proclen),
         shuffle=false,
         partial=false,
     )
     loaderYtest = Flux.DataLoader(
         Ytest;
-        batchsize=round(Int, arparams.train_ratio * arparams.proclen),
+        batchsize=round(Int, (1 - arparams.train_ratio) * arparams.proclen - 1),
         shuffle=false,
         partial=false,
     )
@@ -161,16 +161,19 @@ end
 
 function get_stats(nn_model, data_xₜ, data_xₜ₊₁, hparams)
     losses = []
-    @showprogress for batch in data_xₜ₊₁
+    @showprogress for (batch_xₜ, batch_xₜ₊₁) in zip(data_xₜ, data_xₜ₊₁)
+        j = 0
         Flux.reset!(nn_model)
-        nn_model([data_xₜ.data[1]])
+        nn_model([batch_xₜ[1]])
         aₖ = zeros(hparams.K + 1)
         for i in 1:(hparams.window_size)
             xₖ = rand(hparams.noise_model, hparams.K)
-            nn_cp = deepcopy(nn)
+            nn_cp = deepcopy(nn_model)
             yₖ = nn_cp(xₖ')
-            aₖ += generate_aₖ(yₖ, batch[i])
+            aₖ += generate_aₖ(yₖ, batch_xₜ₊₁[j + i])
+            nn_model([batch_xₜ[j + i]])
         end
+        j += hparams.window_size
         push!(losses, scalar_diff(aₖ ./ sum(aₖ)))
     end
     return losses
@@ -188,18 +191,11 @@ function get_window_of_Aₖ(transform, model, data, K::Int64)
     return [count(x -> x == i, count.(res)) for i in 0:K]
 end;
 
-function plot_ts(nn_model, xₜ, xₜ₊₁, hparams)
-    Flux.reset!(nn_model)
-    nn_model([xₜ.data[1]])
-    plot(xₜ.data[1:800]; seriestype=:scatter)
-    return plot!(vec(nn_model.([xₜ.data[1:800]]')...) ; seriestype=:scatter)
-end
-
 function get_density(nn, data, t, m)
     Flux.reset!(nn)
     res = []
-    for d in data[1:t-1]
-       nn([d])
+    for d in data[1:(t - 1)]
+        nn([d])
     end
     for _ in 1:m
         nn_cp = deepcopy(nn)
@@ -211,8 +207,13 @@ function get_density(nn, data, t, m)
 end
 
 @test_experiments "testing" begin
-    ar_hparams = ARParams(; ϕ = [0.5f0, 0.3f0, 0.2f0], x₁ = rand(Normal(0.0f0, 0.5f0)), proclen=2000, noise=Normal(0.0f0, 0.5f0))
-    hparams = HyperParamsTS(; seed = 50, η = 1e-3, epochs = 1000, window_size = 100, K = 5)
+    ar_hparams = ARParams(;
+        ϕ=[0.5f0, 0.3f0, 0.2f0],
+        x₁=rand(Normal(0.0f0, 0.5f0)),
+        proclen=2000,
+        noise=Normal(0.0f0, 0.5f0),
+    )
+    hparams = HyperParamsTS(; seed=1234, η=1e-3, epochs=1000, window_size=100, K=5)
 
     nn_model = Chain(RNN(1 => 32, relu), RNN(32 => 32, relu), Dense(32 => 1, identity))
 
@@ -220,18 +221,50 @@ end
         hparams, ar_hparams
     )
 
-    loss = ts_mse_learning(nn_model, collect(loaderXtrain)[1], collect(loaderYtrain)[1], hparams)
-
-    loss = ts_adaptative_block_learning(
-        nn_model, loaderXtrain, loaderYtrain, hparams
+    loss = ts_mse_learning(
+        nn_model, collect(loaderXtrain)[1], collect(loaderYtrain)[1], hparams
     )
+
+    loss = ts_adaptative_block_learning(nn_model, loaderXtrain, loaderYtrain, hparams)
 
     plot_ts(nn_model, loaderXtrain, loaderYtrain, hparams)
 
     @gif for i in 1:100
-        histogram(get_density(nn_model, collect(loaderXtrain)[1], i, 1000); bins=(-25:0.2:20), normalize=:pdf, label="t=$i")
+        histogram(
+            get_density(nn_model, collect(loaderXtrain)[1], i, 1000);
+            bins=(-25:0.2:20),
+            normalize=:pdf,
+            label="t=$i",
+        )
         println("$i")
     end every 2
 
-    bar(get_window_of_Aₖ(Normal(0.0f0, 1.0f0), nn_model, collect(loaderXtrain)[1], 5))
+    loss = get_stats(nn_model, loaderXtrain, loaderYtrain, hparams)
+
+    bar(get_window_of_Aₖ(Normal(0.0f0, 1.0f0), nn_model, collect(loaderXtrain)[1], 2))
+
+    Flux.reset!(nn_model)
+    for data in collect(loaderXtrain)[2]
+        nn_model.([[data]])
+    end
+
+    prediction = Vector{Float32}()
+    for data in collect(loaderXtest)[2]
+        y = nn_model.([[data]])
+        append!(prediction, y[1])
+    end
+
+    plot(prediction; seriestype=:scatter)
+    plot!(Float32.(collect(loaderXtest)[1]); seriestype=:scatter)
+
+    ND(Float32.(collect(loaderXtest)[1])[1:200], prediction[1:200])
+
+    RMSE(Float32.(collect(loaderXtest)[1])[1:200], prediction[1:200])
+
+    y = collect(loaderYtest)[1]
+    Flux.reset!(nn_model)
+    nn_model.([collect(loaderXtest)[1]'])
+    collect(loaderYtrain)[1]
+
+    get_watson_durbin_test(y, ŷ)
 end

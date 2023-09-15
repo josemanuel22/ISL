@@ -1,52 +1,88 @@
-# AR process parameters
-Base.@kwdef mutable struct ARParams
-    ϕ::Vector{Float32} = [0.4f0, 0.3f0, 0.2f0]  # AR coefficients (=> AR(3))
-    proclen::Int = 10000                        # Process length
-    x₁::Float32 = 0.0f0                         # Initial value
-    noise = Normal(0.0f0, 1.0f0)                # Noise to add to the data
-    seqshift::Int = 1                           # Shift between sequences (see utils.jl)
-    train_ratio::Float64 = 0.8                  # Percentage of data in the train set
+using LinearAlgebra
+using ToeplitzMatrices
+
+ND(xₜ, x̂ₜ) = sum(abs.(xₜ .- x̂ₜ)) / sum(abs.(xₜ))
+
+function RMSE(xₜ, x̂ₜ)
+    return sqrt((1 / length(xₜ)) * sum((xₜ .- x̂ₜ) .^ 2)) / ((1 / length(xₜ)) * sum(xₜ))
 end
 
-
-# Generates an AR(p) process with coefficients `ϕ`.
-# `ϕ` should be provided as a vector and it represents the coefficients of the AR model.
-# Hence the order of the generated process is equal to the length of `ϕ`.
-# `s` indicates the total length of the series to be generated.
-function generate_process(ϕ::AbstractVector{Float32}, s::Int, x₁::Float32=0.0f0, noise=Normal(0.0f0, 1.0f0))
-    s > 0 || error("s must be positive")
-    # Generate white noise
-    ϵ = Float32.(rand(noise, s))
-    # Initialize time series
-    X = zeros(Float32, s)
-    p = length(ϕ)
-    X[1] = x₁
-    # Reverse the order of the coefficients for multiplication later on
-    ϕ = reverse(ϕ)
-    # Fill first p observations
-    for t ∈ 1:p-1
-        X[t+1] = X[1:t]'ϕ[1:t] + ϵ[t+1]
-    end
-    # Compute values iteratively
-    for t ∈ p+1:s
-        X[t] = X[t-p:t-1]'ϕ + ϵ[t]
-    end
-    X
+function QLρ(xₜ, x̂ₜ; ρ=0.5)
+    return 2 *
+           (sum(abs.(xₜ))^-1) *
+           sum(ρ .* (xₜ .- x̂ₜ) .* (xₜ .> x̂ₜ) .+ (1 - ρ) .* (x̂ₜ .- xₜ) .* (xₜ .<= x̂ₜ))
 end
 
-# Create batches of a time series `X` by splitting the series into
-# sequences of length `s`. Each new sequence is shifted by `r` steps.
-# When s == r,  the series is split into non-overlapping batches.
-function batch_timeseries(X, s::Int, r::Int)
-    r > 0 || error("r must be positive")
-    # If X is passed in format T×1, reshape it
-    if isa(X, AbstractVector)
-        X = permutedims(X)
+function get_watson_durbin_test(y, ŷ)
+    e = []
+    for (yₜ, ŷₜ) in zip(y, ŷ)
+        append!(e, yₜ - ŷₜ)
     end
-    T = size(X, 2)
-    s ≤ T || error("s cannot be longer than the total series")
-    # Ensure uniform sequence lengths by dropping the first observations until
-    # the total sequence length matches a multiple of the batchsize
-    X = X[:, ((T - s) % r)+1:end]
-    [X[:, t:r:end-s+t] for t ∈ 1:s] # Output
+    sum = 0
+    for i in 2:2:length(e)
+        sum += (e[i] - e[i - 1])^2
+    end
+    return sum / sum(e .^ 2)
+end
+
+function yule_(x::Vector{Float64};
+    order::Int64=1,
+    method="adjusted",
+    df::Union{Nothing,Int64}=nothing,
+    inv=false,
+    demean=true
+)
+    method in ("adjusted", "mle") ||
+        throw(ArgumentError("ACF estimation method must be 'adjusted' or 'MLE'"))
+
+    x = copy(x)
+    if demean
+        x .-= mean(x)
+    end
+    n = isnothing(df) ? length(x) : df
+
+    adj_needed = method == "adjusted"
+
+    if ndims(x) > 1 || size(x, 2) != 1
+        throw(ArgumentError("Expecting a vector to estimate AR parameters"))
+    end
+
+    r = zeros(Float64, order + 1)
+    r[1] = sum(x .^ 2) / n
+    for k in 2:order+1
+        x[1:(end - k)]
+        x[k : (end)]
+        r[k]
+        println(x[1:(end - k)])
+        r[k] = sum(x[1:(end - k)] .* x[k : (end)] ) / (n - k * adj_needed)
+    end
+    R = Toeplitz(r[1:end-1], conj(r[1:end-1]))
+
+    rho = 0
+    try
+        rho = R \ r[2:end]
+    catch err
+        if occursin("Singular matrix", string(err))
+            @warn "Matrix is singular. Using pinv."
+            rho = pinv(R) * r[2:end]
+        else
+            throw(err)
+        end
+    end
+
+    sigmasq = r[1] - dot(r[2:end], rho)
+    sigma = isnan(sigmasq) || sigmasq <= 0 ? NaN : sqrt(sigmasq)
+
+    if inv
+        return rho, sigma, inv(R)
+    else
+        return rho, sigma
+    end
+end
+
+function plot_ts(nn_model, xₜ, xₜ₊₁, hparams)
+    Flux.reset!(nn_model)
+    nn_model([xₜ.data[1]])
+    plot(xₜ.data[1:15000]; seriestype=:scatter)
+    return plot!(vec(nn_model.([xₜ.data[1:15000]]')...); seriestype=:scatter)
 end
