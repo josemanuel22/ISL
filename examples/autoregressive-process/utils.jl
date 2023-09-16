@@ -25,12 +25,13 @@ function get_watson_durbin_test(y, ŷ)
     return sum / sum(e .^ 2)
 end
 
-function yule_(x::Vector{Float64};
+function yule_walker(
+    x::Vector{Float64};
     order::Int64=1,
     method="adjusted",
     df::Union{Nothing,Int64}=nothing,
     inv=false,
-    demean=true
+    demean=true,
 )
     method in ("adjusted", "mle") ||
         throw(ArgumentError("ACF estimation method must be 'adjusted' or 'MLE'"))
@@ -49,14 +50,10 @@ function yule_(x::Vector{Float64};
 
     r = zeros(Float64, order + 1)
     r[1] = sum(x .^ 2) / n
-    for k in 2:order+1
-        x[1:(end - k)]
-        x[k : (end)]
-        r[k]
-        println(x[1:(end - k)])
-        r[k] = sum(x[1:(end - k)] .* x[k : (end)] ) / (n - k * adj_needed)
+    for k = 1:order
+        r[k+1] = sum(x[1:end-k] .* x[k+1:end]) / (n - k * adj_needed)
     end
-    R = Toeplitz(r[1:end-1], conj(r[1:end-1]))
+    R = Toeplitz(r[1:(end - 1)], conj(r[1:(end - 1)]))
 
     rho = 0
     try
