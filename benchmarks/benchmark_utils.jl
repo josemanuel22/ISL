@@ -88,7 +88,7 @@ function plot_transformation(real_transform, gen, range)
         linecolor=:redsblues,
     )
     y = gen(range')
-    return plot!(range, vec(y); legend=:bottomright, label="neural network", linecolor=get(ColorSchemes.rainbow, 0.2), ylims=(-20,20))
+    return plot!(range, vec(y); legend=:bottomright, label="neural network", linecolor=get(ColorSchemes.rainbow, 0.2), ylims=(-10,10))
 end
 
 function plot_global(
@@ -149,7 +149,7 @@ function save_gan_model(gen, dscr, hparams)
     function getName(hparams)
         gan = gans[typeof(hparams)]
         lr_gen = hparams.lr_gen
-        dscr_steps = hparams.dscr_steps
+        dscr_steps = hparams.n_critic
         noise_model = replace(strip(string(hparams.noise_model)), "\n" => "", r"(K = .*)" => "", r"components\[.*\] " => "", r"prior = " => "", "μ=" => "", "σ=" => "", r"\{Float.*\}" => "")
         target_model = replace(strip(string(hparams.target_model)), "\n" => "", r"(K = .*)" => "", r"components\[.*\] " => "", r"prior = " => "", "μ=" => "", "σ=" => "", r"\{Float.*\}" => "")
         basename = "$gan-$noise_model-$target_model-lr_gen=$lr_gen-dscr_steps=$dscr_steps"

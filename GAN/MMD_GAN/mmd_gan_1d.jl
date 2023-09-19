@@ -38,9 +38,9 @@ end
     epochs::Int = 1000
     num_gen::Int = 1
     num_enc_dec::Int = 1
-    lr_enc::Float64 = 1.0e-10
-    lr_dec::Float64 = 1.0e-10
-    lr_gen::Float64 = 1.0e-10
+    lr_enc::Float64 = 1.0e-3
+    lr_dec::Float64 = 1.0e-3
+    lr_gen::Float64 = 1.0e-3
 
     lambda_AE::Float64 = 8.0
 
@@ -73,6 +73,8 @@ function train_mmd_gan_1d(enc, dec, gen, hparams::HyperParamsMMD1D)
     @showprogress for epoch in 1:(hparams.epochs)
         for _ in 1:(hparams.num_enc_dec)
             loss, grads = Flux.withgradient(enc, dec) do enc, dec
+                Flux.reset!(enc)
+                Flux.reset!(dec)
                 target = Float32.(rand(hparams.target_model, hparams.batch_size))
                 noise = Float32.(rand(hparams.noise_model,  hparams.batch_size))
                 encoded_target = enc(target')
@@ -93,6 +95,7 @@ function train_mmd_gan_1d(enc, dec, gen, hparams::HyperParamsMMD1D)
         end
         for _ in 1:(hparams.num_gen)
             loss, grads = Flux.withgradient(gen) do gen
+                Flux.reset!(gen)
                 target = Float32.(rand(hparams.target_model, hparams.batch_size))
                 noise = Float32.(rand(hparams.noise_model,  hparams.batch_size))
                 encoded_target = enc(target')
