@@ -4,7 +4,8 @@ using ToeplitzMatrices
 ND(xₜ, x̂ₜ) = sum(abs.(xₜ .- x̂ₜ)) / sum(abs.(xₜ))
 
 function RMSE(xₜ, x̂ₜ)
-    return sqrt((1 / length(xₜ)) * sum((xₜ .- x̂ₜ) .^ 2)) / ((1 / length(xₜ)) * sum(xₜ))
+    return sqrt((1 / length(xₜ)^2) * sum((xₜ .- x̂ₜ) .^ 2)) /
+           ((1 / length(xₜ)^2) * sum(abs.(xₜ)))
 end
 
 function QLρ(xₜ, x̂ₜ; ρ=0.5)
@@ -50,8 +51,8 @@ function yule_walker(
 
     r = zeros(Float64, order + 1)
     r[1] = sum(x .^ 2) / n
-    for k = 1:order
-        r[k+1] = sum(x[1:end-k] .* x[k+1:end]) / (n - k * adj_needed)
+    for k in 1:order
+        r[k + 1] = sum(x[1:(end - k)] .* x[(k + 1):end]) / (n - k * adj_needed)
     end
     R = Toeplitz(r[1:(end - 1)], conj(r[1:(end - 1)]))
 

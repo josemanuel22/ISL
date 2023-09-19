@@ -9,10 +9,14 @@ include("./utils.jl")
     @test ND([1, 2, 4], [1, 2, 3]) == 1 / 7
     @test ND([1, 2, 3], [1, 2, 4]) == 1 / 6
     @test ND([2, 3, 7], [4, 2, 5]) == 5 / 12
+    @test ND([2, -3, 7], [4, -2, 5]) == 5 / 12
 end;
 
 @testset "RMSE" begin
     @test RMSE([1, 2, 3], [1, 2, 3]) == 0.0
+    @test RMSE([1, 2, 3], [2, 3, 4]) == sqrt(3)/2
+    @test RMSE([1, 2, 3, 5], [2, 3, 4, 0]) == 8*sqrt(7)/11
+    @test RMSE([1, 2, 3, -5], [2, 3, 4, 0]) == 8*sqrt(7)/11
 end;
 
 @testset "QLρ" begin
@@ -21,6 +25,10 @@ end;
     @test QLρ([2, 3, 7], [4, 2, 5]; ρ=0.5) == 5 / 12
     x = rand(5)
     x̂ = rand(5)
+    @test QLρ(x, x̂; ρ=0.5) == ND(x, x̂)
+
+    x = .-rand(5)
+    x̂ = .-rand(5)
     @test QLρ(x, x̂; ρ=0.5) == ND(x, x̂)
 
     @test QLρ([2, 3, 7], [4, 2, 5]; ρ=0.9) ≈ 29 / 60
