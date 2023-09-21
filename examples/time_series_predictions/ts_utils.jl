@@ -1,7 +1,6 @@
 using LinearAlgebra
 using ToeplitzMatrices
 
-
 #
 # AutoRegressive Process Utils
 #
@@ -100,7 +99,6 @@ function generate_batch_train_test_data(hparams, arparams)
     return (loaderXtrain, loaderYtrain, loaderXtest, loaderYtest)
 end
 
-
 ## Utils to measure time series performance
 
 ND(xₜ, x̂ₜ) = sum(abs.(xₜ .- x̂ₜ)) / sum(abs.(xₜ))
@@ -178,6 +176,64 @@ function yule_walker(
     else
         return rho, sigma
     end
+end
+
+function plot_univariate_ts_prediction(nn_model, X_train, X_test, hparams)
+    prediction = Vector{Float32}()
+    Flux.reset!(nn_model)
+    for data in X_train
+        y = nn_model([data])
+        append!(prediction, y[1])
+    end
+
+    ideal = vcat(X_train, X_test)
+    t = 1:length(ideal)
+    plot(
+        t,
+        ideal;
+        xlabel="t",
+        ylabel="y",
+        label="Ideal",
+        linecolor=:redsblues,
+        plot_titlefontsize=12,
+        fmt=:png,
+    )
+
+    prediction = Vector{Float32}()
+    for data in X_test
+        y = nn_model([data])
+        append!(prediction, y[1])
+    end
+
+    t = (length(X_train):(length(X_train) + length(prediction))-1)
+    plot!(t, prediction; label="Prediction", linecolor=get(ColorSchemes.rainbow, 0.2))
+
+    return vline!([length(X_train)]; line=(:dash, :black))
+end
+
+function plot_multivariate_ts_prediction(nn_model, X_train, X_test, hparams)
+    Flux.reset!(nn_model)
+    for data in X_train
+        nn_model([data])
+    end
+
+    prediction = Vector{Float32}()
+    for data in X_test
+        y = nn_model([data])
+        append!(prediction, y[1])
+    end
+
+    plot(
+        [x[1] for x in X_test];
+        xlabel="t",
+        ylabel="y",
+        label="Ideal",
+        linecolor=:redsblues,
+        plot_titlefontsize=12,
+        fmt=:png,
+    )
+
+    return plot!(prediction; label="Prediction", linecolor=get(ColorSchemes.rainbow, 0.2))
 end
 
 function plot_ts(nn_model, Xₜ, Xₜ₊₁, hparams)

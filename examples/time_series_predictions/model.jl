@@ -58,6 +58,8 @@ end
 
     loss = ts_adaptative_block_learning(nn_model, loaderXtrain, loaderYtrain, hparams)
 
+    plot_univariate_ts_prediction(nn_model, collect(loaderXtrain)[1], collect(loaderXtest)[1], hparams)
+
     plot_ts(nn_model, loaderXtrain, loaderYtrain, hparams)
 
     loss = ts_mse_learning(
