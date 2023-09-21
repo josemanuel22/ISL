@@ -301,7 +301,6 @@ function auto_adaptative_block_learning_1(nn_model, loader, hparams)
 end;
 
 # Hyperparameters for the method `ts_adaptative_block_learning`
-
 """
     HyperParamsTS
 
@@ -328,23 +327,22 @@ function ts_adaptative_block_learning(nn_model, Xₜ, Xₜ₊₁, hparams)
     losses = []
     optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
     @showprogress for (batch_Xₜ, batch_Xₜ₊₁) in zip(Xₜ, Xₜ₊₁)
-        j = 0
         Flux.reset!(nn_model)
         nn_model([batch_Xₜ[1]]) # Warm up recurrent model on first observation
-        loss, grads = Flux.withgradient(nn_model) do nn
-            aₖ = zeros(hparams.K + 1)
-            for i in (1:(hparams.window_size))
-                xₖ = rand(hparams.noise_model, hparams.K)
-                nn_cp = deepcopy(nn)
-                yₖ = nn_cp(xₖ')
-                aₖ += generate_aₖ(yₖ, batch_Xₜ₊₁[j + i])
-                nn([batch_Xₜ[j + i]])
+        for j in (0:hparams.window_size:length(batch_Xₜ) - hparams.window_size)
+            loss, grads = Flux.withgradient(nn_model) do nn
+                aₖ = zeros(hparams.K + 1)
+                for i in 1:(hparams.window_size)
+                    #xₖ = rand(hparams.noise_model, hparams.K)
+                    yₖ = reshape([nn()[1]],1,1)# for _ in 1:hparams.K]...)
+                    aₖ += generate_aₖ(yₖ, batch_Xₜ₊₁[j + i])
+                    nn([batch_Xₜ[j + i]])
+                end
+                scalar_diff(aₖ ./ sum(aₖ))
             end
-            scalar_diff(aₖ ./ sum(aₖ))
+            Flux.update!(optim, nn_model, grads[1])
+            push!(losses, loss)
         end
-        Flux.update!(optim, nn_model, grads[1])
-        j += hparams.window_size
-        push!(losses, loss)
     end
     return losses
 end

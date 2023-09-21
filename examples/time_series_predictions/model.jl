@@ -11,6 +11,30 @@ using Plots
 include("../../benchmarks/benchmark_utils.jl")
 include("ts_utils.jl")
 
+
+
+# Define a custom neural network model
+mutable struct TSModel
+    layer1::Flux.Recur
+    layer2::Dense
+end
+
+# Define the constructor for the custom model
+TSModel() = TSModel(
+    RNN(1 => 1, relu),
+    Dense(2, 1, relu),
+)
+
+function (model::TSModel)()
+    return model.layer2([rand(Normal(0.0f0, 1.0f0)), model.layer1.state[1]])
+end
+
+# Implement the forward method
+function (model::TSModel)(x)
+    model.layer1(x)
+    #return model.layer2([rand(Normal(0.0f0, 1.0f0)), x[1]])
+end
+
 function ts_covariates_mse_learning(nn_model, Xₜ, Xₜ₊₁, hparams)
     losses = []
     optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
@@ -155,10 +179,10 @@ end
         [
             [
                 df1["Power(MW)"][i],
-                df1["Power(MW)"][i],
-                df1["Power(MW)"][i],
-                df1["Power(MW)"][i],
-                df1["Power(MW)"][i],
+                df2["Power(MW)"][i],
+                df3["Power(MW)"][i],
+                df4["Power(MW)"][i],
+                df5["Power(MW)"][i],
             ] for i in 1:length(df1["Power(MW)"][1:num_training_data])
         ];
         batchsize=round(Int, num_training_data),
@@ -170,10 +194,10 @@ end
         [
             [
                 df1["Power(MW)"][i],
-                df1["Power(MW)"][i],
-                df1["Power(MW)"][i],
-                df1["Power(MW)"][i],
-                df1["Power(MW)"][i],
+                df2["Power(MW)"][i],
+                df3["Power(MW)"][i],
+                df4["Power(MW)"][i],
+                df5["Power(MW)"][i],
             ] for i in 1:length(df1["Power(MW)"][2:(num_training_data + 1)])
         ];
         batchsize=round(Int, num_training_data),
@@ -186,10 +210,10 @@ end
         [
             [
                 df1["Power(MW)"][i],
-                df1["Power(MW)"][i],
-                df1["Power(MW)"][i],
-                df1["Power(MW)"][i],
-                df1["Power(MW)"][i],
+                df2["Power(MW)"][i],
+                df3["Power(MW)"][i],
+                df4["Power(MW)"][i],
+                df5["Power(MW)"][i],
             ] for i in
             1:length(
                 df1["Power(MW)"][num_training_data:(num_training_data + num_test_data)]
