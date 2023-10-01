@@ -323,24 +323,25 @@ end
 
 Custom loss function for the model `nn_model` on time series data `Xₜ` and `Xₜ₊₁`.
 """
-function ts_adaptative_block_learning(nn_model, Xₜ, Xₜ₊₁, hparams)
+function ts_adaptative_block_learning(rec, gen, Xₜ, Xₜ₊₁, hparams)
     losses = []
-    optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
+    optim_rec = Flux.setup(Flux.Adam(hparams.η), rec)
+    optim_gen = Flux.setup(Flux.Adam(hparams.η), gen)
     @showprogress for (batch_Xₜ, batch_Xₜ₊₁) in zip(Xₜ, Xₜ₊₁)
-        Flux.reset!(nn_model)
-        nn_model([batch_Xₜ[1]]) # Warm up recurrent model on first observation
+        Flux.reset!(rec)
         for j in (0:hparams.window_size:length(batch_Xₜ) - hparams.window_size)
-            loss, grads = Flux.withgradient(nn_model) do nn
+            loss, grads = Flux.withgradient(rec, gen) do rec, gen
                 aₖ = zeros(hparams.K + 1)
                 for i in 1:(hparams.window_size)
-                    #xₖ = rand(hparams.noise_model, hparams.K)
-                    yₖ = reshape([nn()[1]],1,1)# for _ in 1:hparams.K]...)
+                    s = rec([batch_Xₜ[j + i]])
+                    xₖ = rand(hparams.noise_model, hparams.K)
+                    yₖ = hcat([gen(vcat(x, s)) for x in xₖ]...)
                     aₖ += generate_aₖ(yₖ, batch_Xₜ₊₁[j + i])
-                    nn([batch_Xₜ[j + i]])
                 end
                 scalar_diff(aₖ ./ sum(aₖ))
             end
-            Flux.update!(optim, nn_model, grads[1])
+            Flux.update!(optim_rec, rec, grads[1])
+            Flux.update!(optim_gen, gen, grads[2])
             push!(losses, loss)
         end
     end
@@ -355,27 +356,27 @@ Where `Xₜ` is a vector of vectors where each vector [x₁, x₂, ..., xₙ] is
 we want to predict the value at position x₁ using the values [x₂, ..., xₙ] as covariate and
 `Xₜ₊₁` is a vector.
 """
-function ts_covariates_adaptative_block_learning(nn_model, Xₜ, Xₜ₊₁, hparams)
+function ts_covariates_adaptative_block_learning(rec, gen, Xₜ, Xₜ₊₁, hparams)
     losses = []
-    optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
+    optim_rec = Flux.setup(Flux.Adam(hparams.η), rec)
+    optim_gen = Flux.setup(Flux.Adam(hparams.η), gen)
     @showprogress for _ in 1:(hparams.epochs)
-        j = 0
-        Flux.reset!(nn_model)
-        nn_model(Xₜ[1])
-        loss, grads = Flux.withgradient(nn_model) do nn
-            aₖ = zeros(hparams.K + 1)
-            for i in (1:(hparams.window_size))
-                xₖ = rand(hparams.noise_model, hparams.K)
-                nn_cp = deepcopy(nn)
-                yₖ = nn_cp.([vcat(x, Xₜ[j + i][2:end]) for x in xₖ])
-                aₖ += generate_aₖ(cat(yₖ...; dims=2), Xₜ₊₁[j + i][1])
-                nn(Xₜ[j + i])
+        for j in (0:hparams.window_size:length(Xₜ) - hparams.window_size)
+            Flux.reset!(rec)
+            loss, grads = Flux.withgradient(rec, gen) do rec, gen
+                aₖ = zeros(hparams.K + 1)
+                for i in (1:(hparams.window_size))
+                    s = rec(Xₜ[j + i])
+                    xₖ = rand(hparams.noise_model, hparams.K)
+                    yₖ = hcat([gen(vcat(x, s)) for x in xₖ]...)
+                    aₖ += generate_aₖ(yₖ, Xₜ₊₁[j + i][1])
+                end
+                scalar_diff(aₖ ./ sum(aₖ))
             end
-            scalar_diff(aₖ ./ sum(aₖ))
+            Flux.update!(optim_rec, rec, grads[1])
+            Flux.update!(optim_gen, gen, grads[2])
+            push!(losses, loss)
         end
-        Flux.update!(optim, nn_model, grads[1])
-        j += hparams.window_size
-        push!(losses, loss)
     end
     return losses
 end

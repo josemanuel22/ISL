@@ -72,11 +72,11 @@ function train_mmd_gan_1d(enc, dec, gen, hparams::HyperParamsMMD1D)
     losses_dscr = []
     @showprogress for epoch in 1:(hparams.epochs)
         for _ in 1:(hparams.num_enc_dec)
+            target = Float32.(rand(hparams.target_model, hparams.batch_size))
+            noise = Float32.(rand(hparams.noise_model,  hparams.batch_size))
             loss, grads = Flux.withgradient(enc, dec) do enc, dec
                 Flux.reset!(enc)
                 Flux.reset!(dec)
-                target = Float32.(rand(hparams.target_model, hparams.batch_size))
-                noise = Float32.(rand(hparams.noise_model,  hparams.batch_size))
                 encoded_target = enc(target')
                 decoded_target = dec(encoded_target)
                 L2_AE_target = Flux.mse(decoded_target', target)
@@ -94,10 +94,10 @@ function train_mmd_gan_1d(enc, dec, gen, hparams::HyperParamsMMD1D)
             push!(losses_dscr, loss)
         end
         for _ in 1:(hparams.num_gen)
+            target = Float32.(rand(hparams.target_model, hparams.batch_size))
+            noise = Float32.(rand(hparams.noise_model,  hparams.batch_size))
             loss, grads = Flux.withgradient(gen) do gen
                 Flux.reset!(gen)
-                target = Float32.(rand(hparams.target_model, hparams.batch_size))
-                noise = Float32.(rand(hparams.noise_model,  hparams.batch_size))
                 encoded_target = enc(target')
                 encoded_noise = enc(gen(noise'))
                 MMD = sqrt(

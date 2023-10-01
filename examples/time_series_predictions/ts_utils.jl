@@ -99,6 +99,57 @@ function generate_batch_train_test_data(hparams, arparams)
     return (loaderXtrain, loaderYtrain, loaderXtest, loaderYtest)
 end
 
+function generate_batch_train_test_data(hparams, arparams1, arparams2)
+    Random.seed!(hparams.seed)
+    # Get data
+    Xtrain = []
+    Ytrain = []
+    Xtest = []
+    Ytest = []
+    for _ in 1:(hparams.epochs)
+        if rand(Bernoulli(0.5))
+            xtrain, xtest, ytrain, ytest = generate_train_test_data(arparams1)
+            append!(Xtrain, xtrain)
+            append!(Ytrain, ytrain)
+            append!(Xtest, xtest)
+            append!(Ytest, ytest)
+        else
+            xtrain, xtest, ytrain, ytest = generate_train_test_data(arparams2)
+            append!(Xtrain, xtrain)
+            append!(Ytrain, ytrain)
+            append!(Xtest, xtest)
+            append!(Ytest, ytest)
+        end
+    end
+
+    loaderXtrain = Flux.DataLoader(
+        Xtrain;
+        batchsize=round(Int, arparams1.train_ratio * arparams1.proclen),
+        shuffle=false,
+        partial=false,
+    )
+    loaderYtrain = Flux.DataLoader(
+        Ytrain;
+        batchsize=round(Int, arparams1.train_ratio * arparams1.proclen - 1),
+        shuffle=false,
+        partial=false,
+    )
+    loaderXtest = Flux.DataLoader(
+        Xtest;
+        batchsize=round(Int, (1 - arparams1.train_ratio) * arparams1.proclen),
+        shuffle=false,
+        partial=false,
+    )
+    loaderYtest = Flux.DataLoader(
+        Ytest;
+        batchsize=round(Int, (1 - arparams1.train_ratio) * arparams1.proclen - 1),
+        shuffle=false,
+        partial=false,
+    )
+
+    return (loaderXtrain, loaderYtrain, loaderXtest, loaderYtest)
+end
+
 ## Utils to measure time series performance
 
 ND(xₜ, x̂ₜ) = sum(abs.(xₜ .- x̂ₜ)) / sum(abs.(xₜ))
@@ -127,7 +178,7 @@ function get_watson_durbin_test(y, ŷ)
 end
 
 function yule_walker(
-    x::Vector{Real};
+    x::Vector{Float32};
     order::Int64=1,
     method="adjusted",
     df::Union{Nothing,Int64}=nothing,
@@ -178,11 +229,42 @@ function yule_walker(
     end
 end
 
-function plot_univariate_ts_prediction(nn_model, X_train, X_test, hparams)
+function ts_forecasting(rec, gen, ts, t₀, τ, n_average)
     prediction = Vector{Float32}()
-    Flux.reset!(nn_model)
+    stdevss = Vector{Float32}()
+    Flux.reset!(rec)
+    s = 0
+    for data in ts[1:t₀]
+        s = rec([data])
+    end
+
+
+    for data in ts[t₀:(t₀ + τ - 1)]
+        y, stdev = average_prediction(gen, s, n_average)
+        s = rec([y[1]])
+        append!(prediction, y[1])
+        append!(stdevss, stdev)
+    end
+    return prediction, stdevss
+end
+
+function average_prediction(gen, s, n_average)
+    elements = Float32[]
+    for _ in 1:n_average
+        ϵ = rand(Normal(0.0f0, 1.0f0))
+        y = gen([ϵ, s...])
+        push!(elements, y[1])
+    end
+    return mean(elements), std(elements)
+end
+
+function plot_univariate_ts_prediction(rec, gen, X_train, X_test, hparams; n_average=1000)
+    prediction = Vector{Float32}()
+    Flux.reset!(rec)
+    s = 0
     for data in X_train
-        y = nn_model([data])
+        s = rec([data])
+        y, _ = average_prediction(gen, s, n_average)
         append!(prediction, y[1])
     end
 
@@ -200,31 +282,67 @@ function plot_univariate_ts_prediction(nn_model, X_train, X_test, hparams)
     )
 
     prediction = Vector{Float32}()
+    std_prediction = Vector{Float32}()
     for data in X_test
-        y = nn_model([data])
+        y, std = average_prediction(gen, s, n_average)
+        s = rec([data])
         append!(prediction, y[1])
+        append!(std_prediction, std)
     end
 
-    t = (length(X_train):(length(X_train) + length(prediction))-1)
-    plot!(t, prediction; label="Prediction", linecolor=get(ColorSchemes.rainbow, 0.2))
+    t = (length(X_train):((length(X_train) + length(prediction)) - 1))
+    plot!(
+        t,
+        prediction;
+        label="Prediction",
+        linecolor=get(ColorSchemes.rainbow, 0.2),
+        ribbon=std_prediction,
+    )
 
-    return vline!([length(X_train)]; line=(:dash, :black))
+    function format_numbers(x)
+        if abs(x) < 0.01
+            formatted_x = @sprintf("%.2e", x)
+        else
+            formatted_x = @sprintf("%.4f", x)
+        end
+        return formatted_x
+    end
+
+    nd = ND(X_test, prediction)
+    rmse = RMSE(X_test, prediction)
+    qlρ = QLρ(X_test, prediction; ρ=0.9)
+
+    return vline!(
+        [length(X_train)];
+        line=(:dash, :black),
+        label="",
+        plot_title="ND: " *
+                   format_numbers(nd) *
+                   " "^4 *
+                   "RMSE: " *
+                   format_numbers(rmse) *
+                   " "^4 *
+                   "QLₚ₌₀.₉: " *
+                   format_numbers(qlρ),
+    )
+
 end
 
-function plot_multivariate_ts_prediction(nn_model, X_train, X_test, hparams)
-    Flux.reset!(nn_model)
-    for data in X_train
-        nn_model([data])
-    end
-
+function plot_univariate_ts_forecasting(rec, gen, X_train, X_test, hparams; n_average=1000)
     prediction = Vector{Float32}()
-    for data in X_test
-        y = nn_model([data])
+    Flux.reset!(rec)
+    s = 0
+    for data in X_train
+        s = rec([data])
+        y, _ = average_prediction(gen, s, n_average)
         append!(prediction, y[1])
     end
 
+    ideal = vcat(X_train, X_test)
+    t = 1:length(ideal)
     plot(
-        [x[1] for x in X_test];
+        t,
+        ideal;
         xlabel="t",
         ylabel="y",
         label="Ideal",
@@ -233,12 +351,198 @@ function plot_multivariate_ts_prediction(nn_model, X_train, X_test, hparams)
         fmt=:png,
     )
 
-    return plot!(prediction; label="Prediction", linecolor=get(ColorSchemes.rainbow, 0.2))
+    prediction = Vector{Float32}()
+    std_prediction = Vector{Float32}()
+    for data in X_test
+        y, std = average_prediction(gen, s, n_average)
+        s = rec([y[1]])
+        append!(prediction, y[1])
+        append!(std_prediction, std)
+    end
+
+    t = (length(X_train):((length(X_train) + length(prediction)) - 1))
+    plot!(
+        t,
+        prediction;
+        label="Prediction",
+        linecolor=get(ColorSchemes.rainbow, 0.2),
+        ribbon=std_prediction,
+    )
+
+    function format_numbers(x)
+        if abs(x) < 0.01
+            formatted_x = @sprintf("%.2e", x)
+        else
+            formatted_x = @sprintf("%.4f", x)
+        end
+        return formatted_x
+    end
+
+    nd = ND(X_test, prediction)
+    rmse = RMSE(X_test, prediction)
+    qlρ = QLρ(X_test, prediction; ρ=0.9)
+
+    return vline!(
+        [length(X_train)];
+        line=(:dash, :black),
+        label="",
+        plot_title="ND: " *
+                   format_numbers(nd) *
+                   " "^4 *
+                   "RMSE: " *
+                   format_numbers(rmse) *
+                   " "^4 *
+                   "QLₚ₌₀.₉: " *
+                   format_numbers(qlρ),
+    )
 end
 
-function plot_ts(nn_model, Xₜ, Xₜ₊₁, hparams)
-    Flux.reset!(nn_model)
-    nn_model([Xₜ.data[1]])
-    plot(Xₜ.data[1:15000]; seriestype=:scatter)
-    return plot!(vec(nn_model.([xX.data[1:15000]]')...); seriestype=:scatter)
+function plot_multivariate_ts_prediction(rec, gen, X_train, X_test, hparams; n_average=1000)
+    prediction = Vector{Float32}()
+    Flux.reset!(rec)
+    for data in X_train
+        s = rec(data)
+        y, _ = average_prediction(gen, s, n_average)
+        append!(prediction, y[1])
+    end
+
+    ideal = vcat(X_train, X_test)
+    t = 1:length(ideal)
+    plot(
+        t,
+        [x[1] for x in ideal];
+        xlabel="t",
+        ylabel="y",
+        label="Ideal",
+        linecolor=:redsblues,
+        plot_titlefontsize=12,
+        fmt=:png,
+    )
+
+    #=     t = 1:length(X_train)
+        plot!(
+            t,
+            prediction;
+            xlabel="t",
+            ylabel="y",
+            label="Prediction",
+            linecolor=:darkblue,
+            plot_titlefontsize=12,
+            fmt=:png,
+        ) =#
+
+    prediction = Vector{Float32}()
+    std_prediction = Vector{Float32}()
+    for data in X_test
+        s = rec(data)
+        y, std = average_prediction(gen, s, n_average)
+        append!(prediction, y[1])
+        append!(std_prediction, std[1])
+    end
+
+    t = (length(X_train):((length(X_train) + length(prediction)) - 1))
+    plot!(
+        t,
+        prediction;
+        label="Prediction",
+        linecolor=get(ColorSchemes.rainbow, 0.2),
+        ribbon=std_prediction,
+    )
+
+    X₁_test = [x[1] for x in X_test]
+    nd = ND(X₁_test, prediction)
+    rmse = RMSE(X₁_test, prediction)
+
+    function format_numbers(x)
+        if abs(x) < 0.01
+            formatted_x = @sprintf("%.2e", x)
+        else
+            formatted_x = @sprintf("%.4f", x)
+        end
+        return formatted_x
+    end
+
+    return vline!(
+        [length(X_train)];
+        line=(:dash, :black),
+        label="",
+        plot_title="ND: " * format_numbers(nd) * " "^4 * "RMSE: " * format_numbers(rmse),
+    )
+end
+
+function syntetic_data(t, σ)
+    A₁₁, A₁₂, A₂₁, A₂₂ = 2.0, 2.0, 2.0, 2.0
+
+    #f₁₁ = rand(1:5)
+    f₁₁ = 2.0
+    #f₁₂ = rand(20:25)
+    f₁₂ = 15.0
+    #f₂₁ = rand(10:15)
+    f₂₁ = 6.0
+    #f₂₂ = rand(20:25)
+    f₂₂ = 20.0
+    f₁(t, ν) = A₁₁ * sin(2 * π * f₁₁ * t) + A₁₂ * sin(2 * π * f₁₂ * t) + ν
+    f₂(t, ν) = A₂₁ * sin(2 * π * f₂₁ * t) + A₂₂ * sin(2 * π * f₂₂ * t) + ν
+
+    if rand(Bernoulli(1 / 2))
+        return f₁(t, rand(Normal(0.0f0, σ))) + f₂(t, rand(Normal(0.0f0, σ)))
+    else
+        return f₂(t, rand(Normal(0.0f0, σ))) + f₂(t, rand(Normal(0.0f0, σ)))
+    end
+end
+
+function get_statistics(rec, gen, hparams, ar_hparams, n_average)
+    loaderXtrain, loaderYtrain, loaderXtest, loaderYtest = generate_batch_train_test_data(
+        hparams, ar_hparams
+    )
+
+    nds = []
+    rmses = []
+    @showprogress for i in 1:(99)
+        X_train = collect(loaderXtrain)[i]
+        X_test = collect(loaderXtest)[i]
+        prediction = Vector{Float32}()
+        Flux.reset!(rec)
+        for data in X_train
+            s = rec([data])
+            y, _ = average_prediction(gen, s, n_average)
+            append!(prediction, y[1])
+        end
+        for data in X_test
+            s = rec([data])
+            y, _ = average_prediction(gen, s, n_average)
+            append!(prediction, y[1])
+        end
+        push!(nds, ND(vcat(X_train, X_test), prediction))
+        push!(rmses, RMSE(vcat(X_train, X_test), prediction))
+    end
+    return mean(nds), mean(rmses)
+end
+
+function save_model_ts(rec, gen, hparams, ar_hparams)
+    function get_incremental_filename(base_name)
+        i = 1
+        while true
+            new_filename = base_name * "-$i.bson"
+            if !isfile(new_filename)
+                return i
+            end
+            i += 1
+        end
+    end
+
+    epochs = hparams.epochs
+    lr = hparams.η
+    window_size = hparams.window_size
+    K = hparams.K
+    proclen = ar_hparams.proclen
+    ar_params = ar_hparams.ϕ
+    noise = ar_hparams.noise
+    train_ratio = ar_hparams.train_ratio
+
+    base_name = "$(ar_params)_$(proclen)_$(noise)_$(train_ratio)_$(epochs)_$(lr)_$(window_size)_$(K)"
+    i = get_incremental_filename(base_name)
+    new_filename = base_name * "-$i.bson"
+    @info "name file: " * new_filename
+    @save new_filename rec gen hparams ar_hparams
 end
