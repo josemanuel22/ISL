@@ -13,7 +13,7 @@ include("benchmark_utils.jl")
             dscr = Chain(
                 Dense(1, 11), elu, Dense(11, 29), elu, Dense(29, 11), elu, Dense(11, 1, σ)
             )
-            target_model = MixtureModel([Normal(4.0f0, 2.0f0), Normal(-2.0f0, 1.0f0)])
+            target_model =
             hparams = HyperParamsVanillaGan(;
                 data_size=100,
                 batch_size=1,
@@ -29,7 +29,7 @@ include("benchmark_utils.jl")
             train_vanilla_gan(dscr, gen, hparams)
 
             hparams = HyperParams(;
-                samples=1000, K=100, epochs=100, η=1e-2, transform=noise_model
+                samples=1000, K=10, epochs=1000, η=1e-2, transform=noise_model
             )
             #hparams = AutoAdaptativeHyperParams(;
             #    max_k=20, samples=1200, epochs=10000, η=1e-3, transform=noise_model
@@ -38,6 +38,7 @@ include("benchmark_utils.jl")
             loader = Flux.DataLoader(train_set; batchsize= hparams.samples, shuffle=true, partial=false)
 
             #save_gan_model(gen, dscr, hparams)
+
 
             adaptative_block_learning_1(gen, loader, hparams)
 
@@ -53,13 +54,13 @@ include("benchmark_utils.jl")
 
             #save_gan_model(gen, dscr, hparams)
             plot_global(
-                x -> -quantile.(target_model, cdf(noise_model, x)),
+                x -> quantile.(target_model, cdf(noise_model, x)),
                 noise_model,
                 target_model,
                 gen,
                 n_samples,
                 (-3:0.1:3),
-                (5:0.2:15),
+                (:0.2:10),
             )
 
             #@test js_divergence(hist1.weights, hist2.weights)/hparams.samples < 0.03

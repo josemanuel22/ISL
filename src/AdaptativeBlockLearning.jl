@@ -29,6 +29,12 @@ export _sigmoid,
     AutoAdaptativeHyperParams,
     auto_adaptative_block_learning,
     adaptative_block_learning_1,
-    auto_adaptative_block_learning_1
+    auto_adaptative_block_learning_1,
+    HyperParamsTS,
+    ts_adaptative_block_learning,
+    ts_covariates_adaptative_block_learning,
+    get_proxy_histogram_loss_ts,
+    get_window_of_Aₖ_ts,
+    get_density
 
 end

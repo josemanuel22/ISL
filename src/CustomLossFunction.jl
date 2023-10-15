@@ -4,13 +4,12 @@
 Sigmoid function centered at `y`.
 """
 function _sigmoid(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
-    return sigmoid_fast.((y .- ŷ) .* 20)
+    return sigmoid_fast.((y .- ŷ) .* 10.0f0)
 end;
 
 function _leaky_relu(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
-    return min.(0.001 .* (y .- ŷ) .+ 1., leakyrelu.((y .- ŷ) .* 10, 0.001))
+    return min.(0.001 .* (y .- ŷ) .+ 1.0, leakyrelu.((y .- ŷ) .* 10, 0.001))
 end;
-
 
 """
     ψₘ(y, m)
@@ -140,7 +139,7 @@ function adaptative_block_learning(nn_model, data, hparams)
     @showprogress for epoch in 1:(hparams.epochs)
         loss, grads = Flux.withgradient(nn_model) do nn
             aₖ = zeros(hparams.K + 1)
-            for i in 1:hparams.samples
+            for i in 1:(hparams.samples)
                 x = rand(hparams.transform, hparams.K)
                 yₖ = nn(x')
                 aₖ += generate_aₖ(yₖ, data.data[i])
@@ -161,7 +160,7 @@ function adaptative_block_learning_1(nn_model, loader, hparams)
     @showprogress for data in loader
         loss, grads = Flux.withgradient(nn_model) do nn
             aₖ = zeros(hparams.K + 1)
-            for i in 1:hparams.samples
+            for i in 1:(hparams.samples)
                 x = rand(hparams.transform, hparams.K)
                 yₖ = nn(x')
                 aₖ += generate_aₖ(yₖ, data[i])
@@ -203,9 +202,7 @@ end;
 Generate a window of the rv's `Aₖ` for a given model and target function.
 """
 function get_window_of_Aₖ(transform, model, data, K::Int64)
-    window = count.([
-        model(rand(transform, K)') .< d for d in data
-    ])
+    window = count.([model(rand(transform, K)') .< d for d in data])
     return [count(x -> x == i, window) for i in 0:K]
 end;
 
@@ -221,7 +218,7 @@ end;
 
 function get_better_K(nn_model, data, min_K, hparams)
     K = hparams.max_k
-    for k in min_K:hparams.max_k
+    for k in min_K:(hparams.max_k)
         if !convergence_to_uniform(get_window_of_Aₖ(hparams.transform, nn_model, data, k))
             K = k
             break
@@ -261,7 +258,7 @@ function auto_adaptative_block_learning(nn_model, data, hparams)
         end
         loss, grads = Flux.withgradient(nn_model) do nn
             aₖ = zeros(K + 1)
-            for i in 1:hparams.samples
+            for i in 1:(hparams.samples)
                 x = rand(hparams.transform, K)
                 yₖ = nn(x')
                 aₖ += generate_aₖ(yₖ, data.data[i])
@@ -290,7 +287,7 @@ function auto_adaptative_block_learning_1(nn_model, loader, hparams)
         end
         loss, grads = Flux.withgradient(nn_model) do nn
             aₖ = zeros(K + 1)
-            for i in 1:hparams.samples
+            for i in 1:(hparams.samples)
                 x = rand(hparams.transform, K)
                 yₖ = nn(x')
                 aₖ += generate_aₖ(yₖ, data[i])
@@ -302,3 +299,143 @@ function auto_adaptative_block_learning_1(nn_model, loader, hparams)
     end
     return losses
 end;
+
+# Hyperparameters for the method `ts_adaptative_block_learning`
+"""
+    HyperParamsTS
+
+Hyperparameters for the method `ts_adaptative_block_learning`
+"""
+Base.@kwdef mutable struct HyperParamsTS
+    seed::Int = 72                              # Random seed
+    dev = cpu                                   # Device: cpu or gpu
+    η::Float64 = 1e-3                           # Learning rate
+    epochs::Int = 100                           # Number of epochs
+    noise_model = Normal(0.0f0, 1.0f0)          # Noise to add to the data
+    window_size = 100                          # Window size for the histogram
+    K = 10                                      # Number of simulted observations
+end
+
+# Train and output the model according to the chosen hyperparameters `hparams`
+
+"""
+    ts_adaptative_block_learning(nn_model, Xₜ, Xₜ₊₁, hparams)
+
+Custom loss function for the model `nn_model` on time series data `Xₜ` and `Xₜ₊₁`.
+"""
+function ts_adaptative_block_learning(rec, gen, Xₜ, Xₜ₊₁, hparams)
+    losses = []
+    optim_rec = Flux.setup(Flux.Adam(hparams.η), rec)
+    optim_gen = Flux.setup(Flux.Adam(hparams.η), gen)
+    @showprogress for (batch_Xₜ, batch_Xₜ₊₁) in zip(Xₜ, Xₜ₊₁)
+        Flux.reset!(rec)
+        for j in (0:hparams.window_size:length(batch_Xₜ) - hparams.window_size)
+            loss, grads = Flux.withgradient(rec, gen) do rec, gen
+                aₖ = zeros(hparams.K + 1)
+                for i in 1:(hparams.window_size)
+                    s = rec([batch_Xₜ[j + i]])
+                    xₖ = rand(hparams.noise_model, hparams.K)
+                    yₖ = hcat([gen(vcat(x, s)) for x in xₖ]...)
+                    aₖ += generate_aₖ(yₖ, batch_Xₜ₊₁[j + i])
+                end
+                scalar_diff(aₖ ./ sum(aₖ))
+            end
+            Flux.update!(optim_rec, rec, grads[1])
+            Flux.update!(optim_gen, gen, grads[2])
+            push!(losses, loss)
+        end
+    end
+    return losses
+end
+
+"""
+    ts_covariates_adaptative_block_learning(nn_model, Xₜ, Xₜ₊₁, hparams)
+
+Custom loss function for the model `nn_model` on time series data `Xₜ` and `Xₜ₊₁`.
+Where `Xₜ` is a vector of vectors where each vector [x₁, x₂, ..., xₙ] is a time series where
+we want to predict the value at position x₁ using the values [x₂, ..., xₙ] as covariate and
+`Xₜ₊₁` is a vector.
+"""
+function ts_covariates_adaptative_block_learning(rec, gen, Xₜ, Xₜ₊₁, hparams)
+    losses = []
+    optim_rec = Flux.setup(Flux.Adam(hparams.η), rec)
+    optim_gen = Flux.setup(Flux.Adam(hparams.η), gen)
+    @showprogress for _ in 1:(hparams.epochs)
+        for j in (0:hparams.window_size:length(Xₜ) - hparams.window_size)
+            Flux.reset!(rec)
+            loss, grads = Flux.withgradient(rec, gen) do rec, gen
+                aₖ = zeros(hparams.K + 1)
+                for i in (1:(hparams.window_size))
+                    s = rec(Xₜ[j + i])
+                    xₖ = rand(hparams.noise_model, hparams.K)
+                    yₖ = hcat([gen(vcat(x, s)) for x in xₖ]...)
+                    aₖ += generate_aₖ(yₖ, Xₜ₊₁[j + i][1])
+                end
+                scalar_diff(aₖ ./ sum(aₖ))
+            end
+            Flux.update!(optim_rec, rec, grads[1])
+            Flux.update!(optim_gen, gen, grads[2])
+            push!(losses, loss)
+        end
+    end
+    return losses
+end
+
+"""
+    get_proxy_histogram_loss_ts(nn_model, data_xₜ, data_xₜ₊₁, hparams)
+
+Get the loss of the model `nn_model` on the data `data_xₜ` and `data_xₜ₊₁` using the
+proxy histogram method.
+"""
+function get_proxy_histogram_loss_ts(nn_model, data_xₜ, data_xₜ₊₁, hparams)
+    losses = []
+    @showprogress for (batch_xₜ, batch_xₜ₊₁) in zip(data_xₜ, data_xₜ₊₁)
+        j = 0
+        Flux.reset!(nn_model)
+        nn_model([batch_xₜ[1]])
+        aₖ = zeros(hparams.K + 1)
+        for i in 1:(hparams.window_size)
+            xₖ = rand(hparams.noise_model, hparams.K)
+            nn_cp = deepcopy(nn_model)
+            yₖ = nn_cp(xₖ')
+            aₖ += generate_aₖ(yₖ, batch_xₜ₊₁[j + i])
+            nn_model([batch_xₜ[j + i]])
+        end
+        j += hparams.window_size
+        push!(losses, scalar_diff(aₖ ./ sum(aₖ)))
+    end
+    return losses
+end
+
+function get_window_of_Aₖ_ts(transform, model, data, K::Int64)
+    Flux.reset!(model)
+    res = []
+    for d in data
+        xₖ = rand(transform, K)
+        model_cp = deepcopy(model)
+        yₖ = model_cp(xₖ')
+        push!(res, yₖ .< d)
+    end
+    return [count(x -> x == i, count.(res)) for i in 0:K]
+end;
+
+"""
+    get_density(nn, data, t, m)
+
+Generate `m` samples from the model `nn` given the data `data` up to time `t`.
+Can be used to generate the histogram at time `t` of the model.
+"""
+function get_density(nn, data, t, m)
+    Flux.reset!(nn)
+    res = []
+    for d in data[1:(t - 1)]
+        nn([d])
+    end
+    for _ in 1:m
+        nn_cp = deepcopy(nn)
+        xₜ = rand(Normal(0.0f0, 1.0f0))
+        yₜ = nn_cp([xₜ])
+        append!(res, yₜ)
+    end
+    return res
+end
