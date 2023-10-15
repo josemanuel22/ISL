@@ -314,7 +314,6 @@ end
     X₁_test = [x[1] for x in X_test]
 end
 
-
 @test_experiments "testing electricity-f" begin
     csv_file_path = "/Users/jmfrutos/github/AdaptativeBlockLearning/examples/time_series_predictions/data/LD2011_2014.txt"
 
@@ -350,8 +349,8 @@ end
         Dense(16, 1, identity; init=Flux.randn32(MersenneTwister(1))),
     )
 
-    start = 36000
-    num_training_data = 1000
+    start = 35040
+    num_training_data = 35040
     loaderXtrain = Flux.DataLoader(
         [df.MT_333[i] for i in start:(start + num_training_data)];
         batchsize=round(Int, num_training_data),
@@ -379,11 +378,10 @@ end
 
     losses = []
     @showprogress for _ in 1:1000
-        loss = ts_adaptative_block_learning_1(rec, gen, loaderx , loadery, hparams)
+        loss = ts_adaptative_block_learning_1(rec, gen, loaderx, loadery, hparams)
         append!(losses, loss)
     end
 end
-
 
 @test_experiments "testing electricity-c" begin
     csv_file_path = "/Users/jmfrutos/github/AdaptativeBlockLearning/examples/time_series_predictions/data/LD2011_2014.txt"
@@ -491,11 +489,11 @@ end
     end
 end
 
-@test_experiments "testing " begin
+@test_experiments "testing syntetic" begin
     function generate_syntetic(range)
         data = []
         for x in range
-            ϵ = Float32(rand(Normal(0.0f0, 1.0f0)))
+            ϵ = Float32(rand(Normal(0.0f0, 0.2f0)))
             if rand(Bernoulli(0.5))
                 y = 10 * cos(x - 0.5) + ϵ
             else
@@ -506,12 +504,12 @@ end
         return data
     end
 
+    #generating train data
     range = -4:0.01:4
     data = generate_syntetic(range)
 
     hparams = HyperParamsTS(; seed=1234, η=1e-3, epochs=20, window_size=800, K=10)
 
-    #nn_model = Chain(RNN(1 => 32, relu), RNN(32 => 32, relu), Dense(32 => 1, identity))
     rec = Chain(RNN(1 => 2, relu), RNN(2 => 2, relu))
     gen = Chain(Dense(3, 16, relu), Dense(16, 1, identity))
 
@@ -535,28 +533,40 @@ end
         append!(losses, loss)
     end
 
+    #generating test data
+    range = -4:0.02:4
+    data = generate_syntetic(range)
+    loaderXtest = Flux.DataLoader(
+        [Float32(y[2]) for y in data[1:end-1]];
+        batchsize=round(Int, 10000),
+        shuffle=false,
+        partial=false,
+    )
+
+    loaderYtest = Flux.DataLoader(
+        [Float32(y[2]) for y in data[2:end]];
+        batchsize=round(Int, 10000),
+        shuffle=false,
+        partial=false,
+    )
+
+    n_average = 1000
     prediction = Vector{Float32}()
     Flux.reset!(rec)
     s = 0
-    X_train = collect(loaderXtrain)[1]
-    for data in X_train
-        s = rec([data])
-        y, _ = average_prediction(gen, s, n_average)
-        append!(prediction, y[1])
+    X_test = collect(loaderXtest)[1]
+    τ = 20
+    for t in (0:τ:length(range) - τ)
+        s = rec(X_test[t+1:(t + τ)]')
+        for i in 1:τ
+            xₖ = rand(hparams.noise_model, n_average)
+            y = mean(hcat([gen(vcat(x, s[:,i])) for x in xₖ]...))
+            append!(prediction, y[1])
+        end
     end
 
-    ideal = X_train
-    t = 1:length(ideal)
-    plot(
-        t,
-        ideal;
-        xlabel="t",
-        ylabel="y",
-        label="Ideal",
-        linecolor=:redsblues,
-        plot_titlefontsize=12,
-        fmt=:png,
-        seriestype=:scatter,
-    )
-    plot!(prediction; seriestype=:scatter)
+    scatter(X_test, label="ideal", color=get(ColorSchemes.rainbow, 0.2), legend=:topright, marker=:circle, markersize=3)
+    scatter!(prediction, label="prediction", color=:redsblues, marker=:circle, markersize=3)
+    xlabel!("t")
+    ylabel!("y")
 end
