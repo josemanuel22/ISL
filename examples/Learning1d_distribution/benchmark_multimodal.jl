@@ -1,7 +1,7 @@
 using AdaptativeBlockLearning
 using GAN
 
-include("benchmark_utils.jl")
+include("../utils.jl")
 
 @test_experiments "vanilla_gan" begin
     @test_experiments "Origin N(0,1)" begin

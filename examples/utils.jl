@@ -10,6 +10,15 @@ macro test_experiments(msg, ex)
     end
 end
 
+function format_numbers(x)
+    if abs(x) < 0.01
+        formatted_x = @sprintf("%.2e", x)
+    else
+        formatted_x = @sprintf("%.4f", x)
+    end
+    return formatted_x
+end
+
 """
 Calculate KSD metric for a given model.
 
@@ -94,14 +103,6 @@ end
 function plot_global(
     real_transform, noise_model, target_model, gen, n_sample, range_transform, range_result
 )
-    function format_numbers(x)
-        if abs(x) < 0.01
-            formatted_x = @sprintf("%.2e", x)
-        else
-            formatted_x = @sprintf("%.4f", x)
-        end
-        return formatted_x
-    end
     ksd = KSD(noise_model, target_model, gen, n_samples, range_result)
     mae = MAE(noise_model, real_transform, gen, n_samples)
     mse = MSE(noise_model, real_transform, gen, n_samples)
@@ -182,4 +183,22 @@ function save_adaptative_model(gen, hparams)
     name = getName(hparams)
     @info "name file: " * name
     @save name gen hparams
+end
+
+"""
+    moving_average(arr, window_size)
+"""
+function moving_average(arr::Vector{T}, window_size::Int) where {T}
+    if window_size <= 0
+        throw(ArgumentError("window_size must be positive"))
+    end
+
+    cumsum_arr = cumsum(arr)
+    ma = [cumsum_arr[i] / i for i in 1:window_size]
+
+    for i in (window_size + 1):length(arr)
+        push!(ma, (cumsum_arr[i] - cumsum_arr[i - window_size]) / window_size)
+    end
+
+    return ma
 end

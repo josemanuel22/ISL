@@ -1,6 +1,8 @@
 using LinearAlgebra
 using ToeplitzMatrices
 
+include("../utils.jl")
+
 #
 # AutoRegressive Process Utils
 #
@@ -99,59 +101,7 @@ function generate_batch_train_test_data(hparams, arparams)
     return (loaderXtrain, loaderYtrain, loaderXtest, loaderYtest)
 end
 
-function generate_batch_train_test_data(hparams, arparams1, arparams2)
-    Random.seed!(hparams.seed)
-    # Get data
-    Xtrain = []
-    Ytrain = []
-    Xtest = []
-    Ytest = []
-    for _ in 1:(hparams.epochs)
-        if rand(Bernoulli(0.5))
-            xtrain, xtest, ytrain, ytest = generate_train_test_data(arparams1)
-            append!(Xtrain, xtrain)
-            append!(Ytrain, ytrain)
-            append!(Xtest, xtest)
-            append!(Ytest, ytest)
-        else
-            xtrain, xtest, ytrain, ytest = generate_train_test_data(arparams2)
-            append!(Xtrain, xtrain)
-            append!(Ytrain, ytrain)
-            append!(Xtest, xtest)
-            append!(Ytest, ytest)
-        end
-    end
-
-    loaderXtrain = Flux.DataLoader(
-        Xtrain;
-        batchsize=round(Int, arparams1.train_ratio * arparams1.proclen),
-        shuffle=false,
-        partial=false,
-    )
-    loaderYtrain = Flux.DataLoader(
-        Ytrain;
-        batchsize=round(Int, arparams1.train_ratio * arparams1.proclen - 1),
-        shuffle=false,
-        partial=false,
-    )
-    loaderXtest = Flux.DataLoader(
-        Xtest;
-        batchsize=round(Int, (1 - arparams1.train_ratio) * arparams1.proclen),
-        shuffle=false,
-        partial=false,
-    )
-    loaderYtest = Flux.DataLoader(
-        Ytest;
-        batchsize=round(Int, (1 - arparams1.train_ratio) * arparams1.proclen - 1),
-        shuffle=false,
-        partial=false,
-    )
-
-    return (loaderXtrain, loaderYtrain, loaderXtest, loaderYtest)
-end
-
 ## Utils to measure time series performance
-
 ND(xₜ, x̂ₜ) = sum(abs.(xₜ .- x̂ₜ)) / sum(abs.(xₜ))
 
 function RMSE(xₜ, x̂ₜ)
@@ -238,7 +188,6 @@ function ts_forecasting(rec, gen, ts, t₀, τ, n_average)
         s = rec([data])
     end
 
-
     for data in ts[t₀:(t₀ + τ - 1)]
         y, stdev = average_prediction(gen, s, n_average)
         s = rec([y[1]])
@@ -298,15 +247,6 @@ function plot_univariate_ts_prediction(rec, gen, X_train, X_test, hparams; n_ave
         linecolor=get(ColorSchemes.rainbow, 0.2),
         ribbon=std_prediction,
     )
-
-    function format_numbers(x)
-        if abs(x) < 0.01
-            formatted_x = @sprintf("%.2e", x)
-        else
-            formatted_x = @sprintf("%.4f", x)
-        end
-        return formatted_x
-    end
 
     nd = ND(X_test, prediction)
     rmse = RMSE(X_test, prediction)
@@ -368,15 +308,6 @@ function plot_univariate_ts_forecasting(rec, gen, X_train, X_test, hparams; n_av
         linecolor=get(ColorSchemes.rainbow, 0.2),
         ribbon=std_prediction,
     )
-
-    function format_numbers(x)
-        if abs(x) < 0.01
-            formatted_x = @sprintf("%.2e", x)
-        else
-            formatted_x = @sprintf("%.4f", x)
-        end
-        return formatted_x
-    end
 
     nd = ND(X_test, prediction)
     rmse = RMSE(X_test, prediction)
@@ -453,70 +384,12 @@ function plot_multivariate_ts_prediction(rec, gen, X_train, X_test, hparams; n_a
     nd = ND(X₁_test, prediction)
     rmse = RMSE(X₁_test, prediction)
 
-    function format_numbers(x)
-        if abs(x) < 0.01
-            formatted_x = @sprintf("%.2e", x)
-        else
-            formatted_x = @sprintf("%.4f", x)
-        end
-        return formatted_x
-    end
-
     return vline!(
         [length(X_train)];
         line=(:dash, :black),
         label="",
         plot_title="ND: " * format_numbers(nd) * " "^4 * "RMSE: " * format_numbers(rmse),
     )
-end
-
-function syntetic_data(t, σ)
-    A₁₁, A₁₂, A₂₁, A₂₂ = 2.0, 2.0, 2.0, 2.0
-
-    #f₁₁ = rand(1:5)
-    f₁₁ = 2.0
-    #f₁₂ = rand(20:25)
-    f₁₂ = 15.0
-    #f₂₁ = rand(10:15)
-    f₂₁ = 6.0
-    #f₂₂ = rand(20:25)
-    f₂₂ = 20.0
-    f₁(t, ν) = A₁₁ * sin(2 * π * f₁₁ * t) + A₁₂ * sin(2 * π * f₁₂ * t) + ν
-    f₂(t, ν) = A₂₁ * sin(2 * π * f₂₁ * t) + A₂₂ * sin(2 * π * f₂₂ * t) + ν
-
-    if rand(Bernoulli(1 / 2))
-        return f₁(t, rand(Normal(0.0f0, σ))) + f₂(t, rand(Normal(0.0f0, σ)))
-    else
-        return f₂(t, rand(Normal(0.0f0, σ))) + f₂(t, rand(Normal(0.0f0, σ)))
-    end
-end
-
-function get_statistics(rec, gen, hparams, ar_hparams, n_average)
-    loaderXtrain, loaderYtrain, loaderXtest, loaderYtest = generate_batch_train_test_data(
-        hparams, ar_hparams
-    )
-
-    nds = []
-    rmses = []
-    @showprogress for i in 1:(99)
-        X_train = collect(loaderXtrain)[i]
-        X_test = collect(loaderXtest)[i]
-        prediction = Vector{Float32}()
-        Flux.reset!(rec)
-        for data in X_train
-            s = rec([data])
-            y, _ = average_prediction(gen, s, n_average)
-            append!(prediction, y[1])
-        end
-        for data in X_test
-            s = rec([data])
-            y, _ = average_prediction(gen, s, n_average)
-            append!(prediction, y[1])
-        end
-        push!(nds, ND(vcat(X_train, X_test), prediction))
-        push!(rmses, RMSE(vcat(X_train, X_test), prediction))
-    end
-    return mean(nds), mean(rmses)
 end
 
 function save_model_ts(rec, gen, hparams, ar_hparams)
