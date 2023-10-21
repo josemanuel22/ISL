@@ -12,7 +12,7 @@ Implicit generative models have the capability to learn arbitrary complex data d
 To install ISL, simply use Julia's package manager. The module is not registered so you need to clone the repository and follow the following steps:
 
 ````
-julia> push!(LOAD_PATH,pwd()) # You are in the BirthDeathProcess Repository
+julia> push!(LOAD_PATH,pwd()) # You are in the ISL Repository
 julia> using AdaptativeBlockLearning
 ````
 
