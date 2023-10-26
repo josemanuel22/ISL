@@ -1,7 +1,17 @@
 """
-    _sigmoid(ŷ, y)
+_sigmoid(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
 
-Sigmoid function centered at `y`.
+Calculate the sigmoid function centered at `y`.
+
+# Arguments
+- `ŷ::Matrix{T}`: The matrix of values to apply the sigmoid function to.
+- `y::T`: The center value around which the sigmoid function is centered.
+
+# Returns
+A matrix of the same size as `ŷ` containing the sigmoid-transformed values.
+
+This function calculates the sigmoid function for each element in the matrix `ŷ` centered at the value `y`. It applies a fast sigmoid transformation with a scaling factor of 10.0.
+
 """
 function _sigmoid(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
     return sigmoid_fast.((y .- ŷ) .* 10.0f0)
@@ -12,9 +22,19 @@ function _leaky_relu(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
 end;
 
 """
-    ψₘ(y, m)
+ψₘ(y::T, m::Int64) where {T<:AbstractFloat}
 
-Bump function centered at `m`. Implemented as a gaussian function.
+Calculate the bump function centered at `m`, implemented as a Gaussian function.
+
+# Arguments
+- `y::T`: The input value for which to compute the bump function.
+- `m::Int64`: The center point around which the bump function is centered.
+
+# Returns
+A floating-point value representing the bump function's value at the input `y`.
+
+This function calculates the bump function, which is centered at the integer value `m`. It is implemented as a Gaussian function with a standard deviation of 0.1.
+
 """
 function ψₘ(y::T, m::Int64) where {T<:AbstractFloat}
     stddev = 0.1f0
@@ -22,12 +42,22 @@ function ψₘ(y::T, m::Int64) where {T<:AbstractFloat}
 end
 
 """
-    ϕ(yₖ, yₙ)
+ϕ(yₖ::Matrix{T}, yₙ::T) where {T<:AbstractFloat}
 
-Sum of the sigmoid function centered at `yₙ` applied to the vector `yₖ`.
+Calculate the sum of sigmoid functions centered at `yₙ` applied to the vector `yₖ`.
+
+# Arguments
+- `yₖ::Matrix{T}`: A matrix of values for which to compute the sum of sigmoid functions.
+- `yₙ::T`: The center value around which the sigmoid functions are centered.
+
+# Returns
+A floating-point value representing the sum of sigmoid-transformed values.
+
+This function calculates the sum of sigmoid functions, each centered at the value `yₙ`, applied element-wise to the matrix `yₖ`. The sum is computed according to the formula:
+
 ```math
 ϕ(yₖ, yₙ) = ∑_{i=1}^K σ(yₖ^i, yₙ)
-```
+````
 """
 function ϕ(yₖ::Matrix{T}, yₙ::T) where {T<:AbstractFloat}
     #return sum(_leaky_relu(yₖ, yₙ))
@@ -35,11 +65,24 @@ function ϕ(yₖ::Matrix{T}, yₙ::T) where {T<:AbstractFloat}
 end;
 
 """
-    γ(yₖ, yₙ, m)
+γ(yₖ::Matrix{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}
 
-Calculate the contribution of `ψₘ ∘ ϕ(yₖ, yₙ)` to the `m` bin of the histogram (Vector{Float}).
+Calculate the contribution of `ψₘ ∘ ϕ(yₖ, yₙ)` to the `m` bin of the histogram as a Vector{Float}.
+
+# Arguments
+- `yₖ::Matrix{T}`: A matrix of values for which to compute the contribution.
+- `yₙ::T`: The center value around which the sigmoid and bump functions are centered.
+- `m::Int64`: The bin index for which to calculate the contribution.
+
+# Returns
+A vector of floating-point values representing the contribution to the `m` bin of the histogram.
+
+This function calculates the contribution of the composition of `ψₘ` and `ϕ(yₖ, yₙ)` to the `m`-th bin of the histogram. The result is a vector of floating-point values.
+
+The contribution is computed according to the formula:
+
 ```math
-γ(yₖ, yₙ, m) = ψₘ \\circ ϕ(yₖ, yₙ)
+γ(yₖ, yₙ, m) = ψₘ ∘ ϕ(yₖ, yₙ)
 ```
 """
 function γ(yₖ::Matrix{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}
@@ -48,12 +91,28 @@ function γ(yₖ::Matrix{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}
 end;
 
 """
-    γ_fast(yₖ, yₙ, m)
+γ_fast(yₖ::Matrix{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}
 
-Apply the `γ` function to the given parameters.
-This function is faster than the original `γ` function because it uses StaticArrays.
-However because Zygote does not support StaticArrays, this function can not be used in the training process.
+Apply the `γ` function to the given parameters using StaticArrays for improved performance.
+
+# Arguments
+- `yₖ::Matrix{T}`: A matrix of values for which to compute the contribution.
+- `yₙ::T`: The center value around which the sigmoid and bump functions are centered.
+- `m::Int64`: The bin index for which to calculate the contribution.
+
+# Returns
+A StaticVector{T} representing the contribution to the `m` bin of the histogram.
+
+This function applies the `γ` function to compute the contribution of the composition of `ψₘ` and `ϕ(yₖ, yₙ)` to the `m`-th bin of the histogram. The result is a StaticVector{T} for improved performance.
+
+Please note that although this function offers improved performance, it cannot be used in the training process with Zygote because Zygote does not support StaticArrays.
+
 """
+function γ_fast(yₖ::Matrix{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}
+    eₘ(m) = SVector{length(yₖ) + 1, T}(j == m ? 0.0 : 0.0 for j in 0:length(yₖ))
+    return eₘ(m) * ψₘ(ϕ(yₖ, yₙ), m)
+end;
+
 function γ_fast(yₖ::Matrix{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}
     eₘ(m) = SVector{length(yₖ) + 1,T}(j == m ? 0.0 : 0.0 for j in 0:length(yₖ))
     return eₘ(m) * ψₘ(ϕ(yₖ, yₙ), m)
@@ -329,7 +388,7 @@ function ts_adaptative_block_learning(rec, gen, Xₜ, Xₜ₊₁, hparams)
     optim_gen = Flux.setup(Flux.Adam(hparams.η), gen)
     @showprogress for (batch_Xₜ, batch_Xₜ₊₁) in zip(Xₜ, Xₜ₊₁)
         Flux.reset!(rec)
-        for j in (0:hparams.window_size:length(batch_Xₜ) - hparams.window_size)
+        for j in (0:(hparams.window_size):(length(batch_Xₜ) - hparams.window_size))
             loss, grads = Flux.withgradient(rec, gen) do rec, gen
                 aₖ = zeros(hparams.K + 1)
                 for i in 1:(hparams.window_size)
@@ -361,7 +420,7 @@ function ts_covariates_adaptative_block_learning(rec, gen, Xₜ, Xₜ₊₁, hpa
     optim_rec = Flux.setup(Flux.Adam(hparams.η), rec)
     optim_gen = Flux.setup(Flux.Adam(hparams.η), gen)
     @showprogress for _ in 1:(hparams.epochs)
-        for j in (0:hparams.window_size:length(Xₜ) - hparams.window_size)
+        for j in (0:(hparams.window_size):(length(Xₜ) - hparams.window_size))
             Flux.reset!(rec)
             loss, grads = Flux.withgradient(rec, gen) do rec, gen
                 aₖ = zeros(hparams.K + 1)
