@@ -3,7 +3,6 @@ using GAN
 
 include("../utils.jl")
 
-
 @test_experiments "vanilla_gan" begin
     @test_experiments "Origin N(0,1)" begin
         noise_model = Uniform(-1.0f0, 1.0f0)
@@ -14,7 +13,7 @@ include("../utils.jl")
             dscr = Chain(
                 Dense(1, 11), elu, Dense(11, 29), elu, Dense(29, 11), elu, Dense(11, 1, σ)
             )
-            target_model = Pareto(1.0f0, 1.0f0)
+            target_model = Normal(0.0f0, 1.0f0)
             hparams = HyperParamsVanillaGan(;
                 data_size=100,
                 batch_size=1,
@@ -36,31 +35,7 @@ include("../utils.jl")
             train_set = Float32.(rand(target_model, hparams.samples))
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            K = auto_adaptative_block_learning(gen, loader, hparams)
-
-            plot_global(
-                x -> -quantile.(-target_model, cdf(noise_model, x)),
-                noise_model,
-                target_model,
-                gen,
-                n_samples,
-                (-3:0.1:3),
-                (0:0.1:5),
-            )
-
-            p2 = plot(
-                K;
-                plot_title="K vs Epochs",
-                xlabel="Epochs",
-                ylabel="K value",
-                fmt=:png,
-                plot_titlefontsize=12,
-                linecolor=:redsblues,
-                label="K",
-                legend=:bottomright
-            )
-
-            plot(p1, p2, layout=(2,1), size=(700, 700))
+            auto_adaptative_block_learning(gen, loader, hparams)
         end
 
         @test_experiments "N(0,1) to Uniform(22,24)" begin
@@ -330,7 +305,7 @@ end
             dscr = Chain(
                 Dense(1, 11), elu, Dense(11, 29), elu, Dense(29, 11), elu, Dense(11, 1, σ)
             )
-            target_model = Pareto(1.0f0, 2.0f0)
+            target_model = Normal(23.0f0, 1.0f0)
 
             hparams = HyperParamsWGAN(;
                 noise_model=noise_model,
