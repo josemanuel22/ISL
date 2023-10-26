@@ -18,7 +18,7 @@ This macro is used for running experiments and measuring the execution time and 
     # Code for the experiment
     result = perform_experiment()
 end
-```º
+```
 """
 macro test_experiments(msg, ex)
     @info "executing $msg"

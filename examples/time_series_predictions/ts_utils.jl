@@ -7,7 +7,21 @@ include("../utils.jl")
 # AutoRegressive Process Utils
 #
 
-# AR process parameters
+"""
+    struct ARParams
+
+A mutable struct to hold parameters for generating AutoRegressive (AR) processes and datasets.
+
+# Fields
+- `ϕ::Vector{Float32} = [0.4f0, 0.3f0, 0.2f0]`: An array of AR coefficients. By default, it represents an AR(3) process.
+- `proclen::Int = 10000`: The length of the AR process to be generated.
+- `x₁::Float32 = 0.0f0`: The initial value of the AR process.
+- `noise = Normal(0.0f0, 1.0f0)`: The noise distribution to add to the generated data. It is a Normal distribution
+  with mean 0 and standard deviation 1.
+- `seqshift::Int = 1`: The shift between sequences, which may be used in other parts of the code (see `utils.jl`).
+- `train_ratio::Float64 = 0.8`: The percentage of data to be included in the training set. By default, it is set to 80%.
+
+"""
 Base.@kwdef mutable struct ARParams
     ϕ::Vector{Float32} = [0.4f0, 0.3f0, 0.2f0]  # AR coefficients (=> AR(3))
     proclen::Int = 10000                        # Process length
@@ -102,13 +116,104 @@ function generate_batch_train_test_data(hparams, arparams)
 end
 
 ## Utils to measure time series performance
+
+"""
+    ND(xₜ, x̂ₜ)
+
+Calculate the Normalized Deviation (ND) between true and predicted values.
+
+# Arguments
+- `xₜ::Vector{Float64}`: The true values (actual observations).
+- `x̂ₜ::Vector{Float64}`: The predicted values.
+
+# Returns
+- `nd::Float64`: The Normalized Deviation (ND) between xₜ and x̂ₜ.
+
+# Details
+The Normalized Deviation (ND) is a metric that quantifies the relative deviation between true values (xₜ) and
+predicted values (x̂ₜ). It is calculated as the sum of absolute differences between xₜ and x̂ₜ, normalized by
+the sum of absolute values of xₜ.
+
+The function calculates ND as follows:
+- Computes the absolute differences between xₜ and x̂ₜ.
+- Calculates the sum of absolute differences.
+- Normalizes the sum by dividing it by the sum of absolute values of xₜ.
+
+ND provides a measure of the relative error between the true and predicted values, taking into account the scale of
+the true values.
+
+Example:
+```julia
+true_values = [1.2, 2.3, 3.4, 4.5]
+predicted_values = [1.0, 2.2, 3.3, 4.7]
+nd = ND(true_values, predicted_values)
+"""
 ND(xₜ, x̂ₜ) = sum(abs.(xₜ .- x̂ₜ)) / sum(abs.(xₜ))
 
+"""
+    RMSE(xₜ, x̂ₜ)
+
+Calculate the Root Mean Squared Error (RMSE) between true and predicted values.
+
+# Arguments
+- `xₜ::Vector{Float64}`: The true values (actual observations).
+- `x̂ₜ::Vector{Float64}`: The predicted values.
+
+# Returns
+- `rmse::Float64`: The Root Mean Squared Error (RMSE) between xₜ and x̂ₜ.
+
+# Details
+The Root Mean Squared Error (RMSE) is a widely used metric for evaluating the accuracy of predictive models.
+It measures the square root of the mean of the squared differences between true values (xₜ) and predicted values (x̂ₜ).
+
+The function calculates RMSE as follows:
+- Computes the squared differences between xₜ and x̂ₜ.
+- Calculates the mean of the squared differences.
+- Takes the square root of the mean to obtain the RMSE.
+
+Example:
+```julia
+true_values = [1.2, 2.3, 3.4, 4.5]
+predicted_values = [1.0, 2.2, 3.3, 4.7]
+rmse = RMSE(true_values, predicted_values)
+"""
 function RMSE(xₜ, x̂ₜ)
     return sqrt((1 / length(xₜ)^2) * sum((xₜ .- x̂ₜ) .^ 2)) /
            ((1 / length(xₜ)^2) * sum(abs.(xₜ)))
 end
 
+"""
+    QLρ(xₜ, x̂ₜ; ρ=0.5)
+
+Calculate the Quantile Loss function with a quantile level ρ.
+
+# Arguments
+- `xₜ::Vector{Float64}`: The true values (actual observations).
+- `x̂ₜ::Vector{Float64}`: The predicted values.
+- `ρ::Float64=0.5`: The quantile level (default: 0.5, which corresponds to the median).
+
+# Returns
+- `loss::Float64`: The Quantile Loss at the specified quantile level ρ.
+
+# Details
+The Quantile Loss function measures the discrepancy between true values (xₜ) and predicted values (x̂ₜ)
+at a specified quantile level ρ. It is a robust loss function that is less sensitive to outliers
+compared to the mean squared error (MSE) loss.
+
+The function calculates the Quantile Loss as follows:
+- For each observation, it computes the absolute difference between the true and predicted values.
+- It then applies a weighted absolute difference, giving more weight to observations where xₜ > x̂ₜ for ρ,
+  and less weight when xₜ ≤ x̂ₜ for (1 - ρ).
+- Finally, it scales the loss by 2 divided by the sum of the absolute values of the true observations.
+
+Example:
+```julia
+true_values = [1.2, 2.3, 3.4, 4.5]
+predicted_values = [1.0, 2.2, 3.3, 4.7]
+quantile_level = 0.75
+loss = QLρ(true_values, predicted_values, ρ=quantile_level)
+```
+"""
 function QLρ(xₜ, x̂ₜ; ρ=0.5)
     return 2 *
            (sum(abs.(xₜ))^-1) *
@@ -127,6 +232,48 @@ function get_watson_durbin_test(y, ŷ)
     return sum / sum(e .^ 2)
 end
 
+
+"""
+    yule_walker(x::Vector{Float32};
+                order::Int64=1,
+                method="adjusted",
+                df::Union{Nothing,Int64}=nothing,
+                inv=false,
+                demean=true,
+    )
+
+Estimate AutoRegressive (AR) parameters using the Yule-Walker equations.
+
+# Arguments
+- `x::Vector{Float32}`: The input time series data.
+- `order::Int64=1`: The order of the AR model to estimate (default: 1).
+- `method::String="adjusted"`: The method for estimating the autocorrelation function (ACF).
+  - "adjusted" (default): Use adjusted ACF estimation.
+  - "mle": Use maximum likelihood estimation.
+- `df::Union{Nothing,Int64}=nothing`: The degrees of freedom for ACF estimation (default: nothing).
+- `inv::Bool=false`: If true, return the inverse of the Toeplitz matrix in addition to AR parameters (default: false).
+- `demean::Bool=true`: If true, demean the input data by subtracting its mean (default: true).
+
+# Returns
+- If `inv` is false (default), returns a tuple containing:
+  - `rho::Vector{Float64}`: The estimated AR coefficients.
+  - `sigma::Float64`: The estimated standard deviation.
+- If `inv` is true, returns a tuple containing:
+  - `rho::Vector{Float64}`: The estimated AR coefficients.
+  - `sigma::Float64`: The estimated standard deviation.
+  - `R_inv::Matrix{Float64}`: The inverse of the Toeplitz matrix used in estimation.
+
+# Details
+This function estimates AR parameters using the Yule-Walker equations. It supports different ACF estimation methods
+(adjusted or maximum likelihood) and can optionally return the inverse of the Toeplitz matrix.
+
+Example:
+```julia
+data = [0.1, 0.2, 0.3, 0.4, 0.5]
+order = 2
+rho, sigma = yule_walker(data, order=order, method="mle")
+```
+"""
 function yule_walker(
     x::Vector{Float32};
     order::Int64=1,
@@ -265,7 +412,6 @@ function plot_univariate_ts_prediction(rec, gen, X_train, X_test, hparams; n_ave
                    "QLₚ₌₀.₉: " *
                    format_numbers(qlρ),
     )
-
 end
 
 function plot_univariate_ts_forecasting(rec, gen, X_train, X_test, hparams; n_average=1000)
@@ -392,6 +538,31 @@ function plot_multivariate_ts_prediction(rec, gen, X_train, X_test, hparams; n_a
     )
 end
 
+"""
+    save_model_ts(rec, gen, hparams, ar_hparams)
+
+Save model training results and parameters to a BSON file with an incremental filename.
+
+# Arguments
+- `rec`: A trained reconstruction model.
+- `gen`: A trained generation model.
+- `hparams`: Hyperparameters for the training.
+- `ar_hparams`: Hyperparameters for the AutoRegressive (AR) process used in the data generation.
+
+# Details
+This function saves the trained reconstruction and generation models, along with the hyperparameters used in training
+and AR process configuration, to a BSON file with an incremental filename. The incremental filename is generated to avoid
+overwriting existing files.
+
+The generated filename is constructed based on various parameters, including the AR process parameters, process length, noise
+distribution, training ratio, training epochs, learning rate, window size, and number of components (K).
+
+Example:
+```julia
+rec_model, gen_model, hparams, ar_hparams = train_models()
+save_model_ts(rec_model, gen_model, hparams, ar_hparams)
+```
+"""
 function save_model_ts(rec, gen, hparams, ar_hparams)
     function get_incremental_filename(base_name)
         i = 1
