@@ -5,9 +5,13 @@ using Printf
 
 macro test_experiments(msg, ex)
     @info "executing $msg"
-    quote
+    start_time = time()
+    mem = @allocated quote
         $(esc(ex))
     end
+    end_time = time()
+    elapsed_time = end_time - start_time
+    @info "Execution time for $msg: $elapsed_time seconds, memory allocated: $mem bytes"
 end
 
 function format_numbers(x)
@@ -97,7 +101,14 @@ function plot_transformation(real_transform, gen, range)
         linecolor=:redsblues,
     )
     y = gen(range')
-    return plot!(range, vec(y); legend=:bottomright, label="neural network", linecolor=get(ColorSchemes.rainbow, 0.2), ylims=(-10,10))
+    return plot!(
+        range,
+        vec(y);
+        legend=:bottomright,
+        label="neural network",
+        linecolor=get(ColorSchemes.rainbow, 0.2),
+        ylims=(-10, 10),
+    )
 end
 
 function plot_global(
@@ -151,8 +162,26 @@ function save_gan_model(gen, dscr, hparams)
         gan = gans[typeof(hparams)]
         lr_gen = hparams.lr_gen
         dscr_steps = hparams.n_critic
-        noise_model = replace(strip(string(hparams.noise_model)), "\n" => "", r"(K = .*)" => "", r"components\[.*\] " => "", r"prior = " => "", "μ=" => "", "σ=" => "", r"\{Float.*\}" => "")
-        target_model = replace(strip(string(hparams.target_model)), "\n" => "", r"(K = .*)" => "", r"components\[.*\] " => "", r"prior = " => "", "μ=" => "", "σ=" => "", r"\{Float.*\}" => "")
+        noise_model = replace(
+            strip(string(hparams.noise_model)),
+            "\n" => "",
+            r"(K = .*)" => "",
+            r"components\[.*\] " => "",
+            r"prior = " => "",
+            "μ=" => "",
+            "σ=" => "",
+            r"\{Float.*\}" => "",
+        )
+        target_model = replace(
+            strip(string(hparams.target_model)),
+            "\n" => "",
+            r"(K = .*)" => "",
+            r"components\[.*\] " => "",
+            r"prior = " => "",
+            "μ=" => "",
+            "σ=" => "",
+            r"\{Float.*\}" => "",
+        )
         basename = "$gan-$noise_model-$target_model-lr_gen=$lr_gen-dscr_steps=$dscr_steps"
         i = get_incremental_filename(basename)
         new_filename = basename * "-$i.bson"
