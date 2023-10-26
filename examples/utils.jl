@@ -3,6 +3,23 @@ using BSON: @save, @load
 using ColorSchemes, Colors
 using Printf
 
+"""
+Macro for executing experiments and logging execution time and memory usage.
+
+This macro is used for running experiments and measuring the execution time and memory allocated during the execution of a given expression (`ex`). It logs information about the execution process, including the start time, end time, elapsed time, and memory allocated.
+
+# Arguments
+- `msg::String`: A descriptive message for the experiment being executed.
+- `ex::Expr`: The expression representing the experiment to be executed.
+
+# Example
+```julia
+@test_experiments "Experiment 1" begin
+    # Code for the experiment
+    result = perform_experiment()
+end
+```º
+"""
 macro test_experiments(msg, ex)
     @info "executing $msg"
     start_time = time()
@@ -111,6 +128,30 @@ function plot_transformation(real_transform, gen, range)
     )
 end
 
+"""
+Generate and display a global plot summarizing the performance of a generative model.
+
+This function creates a global plot that summarizes the performance of a generative model by displaying various evaluation metrics and visualizations of data transformations and generated results.
+
+# Arguments
+- `real_transform`: A function representing the real data transformation.
+- `noise_model`: A function representing the noise model used.
+- `target_model`: A function representing the target data model.
+- `gen`: The generative model to evaluate.
+- `n_sample::Int`: The number of samples to generate for evaluation.
+- `range_transform`: The range of values for the data transformation plot.
+- `range_result`: The range of values for the generated result plot.
+
+# Returns
+- A global plot displaying data transformations, generated results, and evaluation metrics.
+
+# Example
+```julia
+# Define real_transform, noise_model, target_model, gen, n_sample, range_transform, and range_result
+plot = plot_global(real_transform, noise_model, target_model, gen, n_sample, range_transform, range_result)
+display(plot)
+```
+"""
 function plot_global(
     real_transform, noise_model, target_model, gen, n_sample, range_transform, range_result
 )
@@ -146,10 +187,26 @@ function get_incremental_filename(base_name)
 end
 
 """
-    save_gan_model(gen, dscr, hparams)
+Save the GAN model (generator, discriminator, and hyper-parameters) to a BSON file.
 
-Save the model (generator, discriminator and hyper-parameters) in a bson file.
-The name of the file is generated based on the hyper-parameters.
+This function takes a generator `gen`, a discriminator `dscr`, and a structure `hparams` containing hyper-parameters. It saves both the generator, discriminator, and hyper-parameters to a BSON file. The name of the file is automatically generated based on the hyper-parameters, ensuring uniqueness.
+
+# Arguments
+- `gen`: The generator model to be saved.
+- `dscr`: The discriminator model to be saved.
+- `hparams`: A structure containing hyper-parameters.
+
+# Example
+```julia
+using BSON
+
+# Create a GAN model and hyper-parameters
+generator_model = ...
+discriminator_model = ...
+hyperparameters = HyperParamsVanillaGan(lr_gen=0.001, n_critic=5, noise_model=..., target_model=...)
+
+# Save the GAN model and hyper-parameters to a file
+save_gan_model(generator_model, discriminator_model, hyperparameters)
 """
 function save_gan_model(gen, dscr, hparams)
     global gans = Dict(
@@ -193,10 +250,25 @@ function save_gan_model(gen, dscr, hparams)
 end
 
 """
-    save_adaptative_model(gen, hparams)
+Save the adaptive model (generator and hyper-parameters) to a BSON file.
 
-Save the model (generator and hyper-parameters) in a bson file.
-The name of the file is generated based on the hyper-parameters.
+This function takes a generator `gen` and a structure `hparams` containing hyper-parameters. It saves both the generator and hyper-parameters to a BSON file. The name of the file is automatically generated based on the hyper-parameters, ensuring uniqueness.
+
+# Arguments
+- `gen`: The generator model to be saved.
+- `hparams`: A structure containing hyper-parameters.
+
+# Example
+```julia
+using BSON
+
+# Create a generator and hyper-parameters
+generator_model = ...
+hyperparameters = AdaptiveHyperparameters(samples=100, max_k=5, epochs=10, η=0.001)
+
+# Save the model and hyper-parameters to a file
+save_adaptative_model(generator_model, hyperparameters)
+```
 """
 function save_adaptative_model(gen, hparams)
     function getName(hparams)
@@ -215,7 +287,25 @@ function save_adaptative_model(gen, hparams)
 end
 
 """
-    moving_average(arr, window_size)
+Calculate the moving average of a vector.
+
+This function takes a vector `arr` and a window size `window_size`, and returns a new vector
+containing the moving averages of `arr` with the given window size.
+
+# Arguments
+- `arr::Vector{T}`: The input vector of data.
+- `window_size::Int`: The size of the moving window. Must be a positive integer.
+
+# Returns
+- `ma::Vector{Float64}`: A vector containing the moving averages.
+
+# Examples
+```julia
+data = [1.0, 2.0, 3.0, 4.0, 5.0]
+window_size = 3
+result = moving_average(data, window_size)
+# result is [1.0, 1.5, 2.0, 3.0, 4.0]
+```
 """
 function moving_average(arr::Vector{T}, window_size::Int) where {T}
     if window_size <= 0

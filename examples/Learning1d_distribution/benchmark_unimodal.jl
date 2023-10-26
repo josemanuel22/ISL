@@ -67,7 +67,7 @@ include("../utils.jl")
             auto_adaptative_block_learning(gen, loader, hparams)
 
             plot_global(
-                x -> 2 * cdf(Normal(0, 1), x) .+ 22,
+                x -> quantile.(target_model, cdf(noise_model, x)),
                 noise_model,
                 target_model,
                 gen,
@@ -153,14 +153,6 @@ include("../utils.jl")
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
             auto_adaptative_block_learning(gen, loader, hparams)
-
-            ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
-            mae = MAE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_samples
-            )
-            mse = MSE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_sample
-            )
         end
     end
 
@@ -193,19 +185,6 @@ include("../utils.jl")
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
             adaptative_block_learning(gen, loader, hparams)
-
-            ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
-            mae = min(
-                MAE(noise_model, x -> x .+ 23, n_samples),
-                MAE(noise_model, x -> .-x .+ 23, n_samples),
-            )
-            mse = min(
-                MSE(noise_model, x -> x .+ 23, n_sample),
-                MSE(noise_model, x -> .-x .+ 23, n_sample),
-            )
-
-            #@test js_divergence(hist1.weights, hist2.weights)/hparams.samples < 0.03
-
         end
 
         @test_experiments "Uniform(-1,1) to Uniform(22,24)" begin
@@ -327,19 +306,7 @@ end
 
             auto_adaptative_block_learning(gen, loader, hparams)
 
-            ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
-            mae = min(
-                MAE(noise_model, x -> x .+ 23, n_samples),
-                MAE(noise_model, x -> .-x .+ 23, n_samples),
-            )
-            mse = min(
-                MSE(noise_model, x -> x .+ 23, n_sample),
-                MSE(noise_model, x -> .-x .+ 23, n_sample),
-            )
-
-            save_gan_model(gen, dscr, hparams)
-
-            #@test js_divergence(hist1.weights, hist2.weights)/hparams.samples < 0.03
+            #save_gan_model(gen, dscr, hparams)
 
         end
 
@@ -368,10 +335,6 @@ end
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
             adaptative_block_learning(gen, loader, hparams)
-
-            ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
-            mae = MAE(noise_model, x -> 2 * cdf(Normal(0, 1), x) + 22, n_samples)
-            mse = MSE(noise_model, x -> 2 * cdf(Normal(0, 1), x) + 22, n_sample)
         end
 
         @test_experiments "N(0,1) to Cauchy(23,1)" begin
@@ -399,14 +362,6 @@ end
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
             adaptative_block_learning(gen, loader, hparams)
-
-            ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
-            mae = MAE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_samples
-            )
-            mse = MSE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_sample
-            )
         end
 
         @test_experiments "N(0,1) to Pareto(1,23)" begin
@@ -436,14 +391,6 @@ end
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
             adaptative_block_learning(gen, loader, hparams)
-
-            ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
-            mae = MAE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_samples
-            )
-            mse = MSE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_sample
-            )
         end
     end
 
@@ -476,19 +423,6 @@ end
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
             adaptative_block_learning(gen, loader, hparams)
-
-            ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
-            mae = min(
-                MAE(noise_model, x -> x .+ 23, n_samples),
-                MAE(noise_model, x -> .-x .+ 23, n_samples),
-            )
-            mse = min(
-                MSE(noise_model, x -> x .+ 23, n_sample),
-                MSE(noise_model, x -> .-x .+ 23, n_sample),
-            )
-
-            #@test js_divergence(hist1.weights, hist2.weights)/hparams.samples < 0.03
-
         end
 
         @test_experiments "Uniform(-1,1) to Uniform(22,24)" begin
@@ -516,14 +450,6 @@ end
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
             adaptative_block_learning(gen, loader, hparams)
-
-            ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
-            mae = MAE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_samples
-            )
-            mse = MSE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_sample
-            )
         end
 
         @test_experiments "Uniform(-1,1) to Cauchy(23,1)" begin
@@ -551,16 +477,6 @@ end
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
             adaptative_block_learning(gen, loader, hparams)
-
-            ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
-            mae = MAE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_samples
-            )
-            mse = MSE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_sample
-            )
-
-            save_adaptative_model(gen, hparams)
         end
 
         @test_experiments "Uniform(-1,1) to Pareto(1,23)" begin
@@ -590,14 +506,6 @@ end
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
             adaptative_block_learning(gen, loader, hparams)
-
-            ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
-            mae = MAE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_samples
-            )
-            mse = MSE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_sample
-            )
         end
     end
 end
@@ -645,28 +553,6 @@ end
 
             adaptative_block_learning(gen, loader, hparams)
 
-            ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
-            mae = min(
-                MAE(noise_model, x -> x .+ 23, n_samples),
-                MAE(noise_model, x -> .-x .+ 23, n_samples),
-            )
-            mse = min(
-                MSE(noise_model, x -> x .+ 23, n_sample),
-                MSE(noise_model, x -> .-x .+ 23, n_sample),
-            )
-
-            plot_global(
-                x -> quantile.(target_model, cdf(noise_model, x)),
-                noise_model,
-                target_model,
-                gen,
-                n_samples,
-                (-3:0.1:3),
-                (-5:0.2:10),
-            )
-
-            #@test js_divergence(hist1.weights, hist2.weights)/hparams.samples < 0.03
-
         end
 
         @test_experiments "N(0,1) to Uniform(22,24)" begin
@@ -694,10 +580,6 @@ end
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
             adaptative_block_learning(gen, loader, hparams)
-
-            ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
-            mae = MAE(noise_model, x -> 2 * cdf(Normal(0, 1), x) + 22, n_samples)
-            mse = MSE(noise_model, x -> 2 * cdf(Normal(0, 1), x) + 22, n_sample)
         end
 
         @test_experiments "N(0,1) to Cauchy(23,1)" begin
@@ -725,14 +607,6 @@ end
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
             adaptative_block_learning(gen, loader, hparams)
-
-            ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
-            mae = MAE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_samples
-            )
-            mse = MSE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_sample
-            )
         end
 
         @test_experiments "N(0,1) to Pareto(1,23)" begin
@@ -762,14 +636,6 @@ end
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
             adaptative_block_learning(gen, loader, hparams)
-
-            ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
-            mae = MAE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_samples
-            )
-            mse = MSE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_sample
-            )
         end
     end
 
@@ -802,19 +668,6 @@ end
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
             adaptative_block_learning(gen, loader, hparams)
-
-            ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
-            mae = min(
-                MAE(noise_model, x -> x .+ 23, n_samples),
-                MAE(noise_model, x -> .-x .+ 23, n_samples),
-            )
-            mse = min(
-                MSE(noise_model, x -> x .+ 23, n_sample),
-                MSE(noise_model, x -> .-x .+ 23, n_sample),
-            )
-
-            #@test js_divergence(hist1.weights, hist2.weights)/hparams.samples < 0.03
-
         end
 
         @test_experiments "Uniform(-1,1) to Uniform(22,24)" begin
@@ -842,14 +695,6 @@ end
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
             adaptative_block_learning(gen, loader, hparams)
-
-            ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
-            mae = MAE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_samples
-            )
-            mse = MSE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_sample
-            )
         end
 
         @test_experiments "Uniform(-1,1) to Cauchy(23,1)" begin
@@ -877,14 +722,6 @@ end
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
             adaptative_block_learning(gen, loader, hparams)
-
-            ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
-            mae = MAE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_samples
-            )
-            mse = MSE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_sample
-            )
         end
 
         @test_experiments "Uniform(-1,1) to Pareto(1,23)" begin
@@ -914,14 +751,6 @@ end
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
             adaptative_block_learning(gen, loader, hparams)
-
-            ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
-            mae = MAE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_samples
-            )
-            mse = MSE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_sample
-            )
         end
     end
 end
