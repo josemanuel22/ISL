@@ -1,21 +1,37 @@
 """
 HyperParamsWGAN
 
-Hyper-parameters for the wasserstein GAN:
+Hyper-parameters for the Wasserstein GAN (WGAN).
 
+This structure defines hyper-parameters commonly used in training a Wasserstein GAN model. These hyper-parameters include noise and target models, data size, batch size, latent dimension, number of epochs, number of critic (discriminator) steps, clip value for weight clipping, and learning rates for the discriminator and generator.
+
+# Fields
+- `noise_model::Distribution`: The noise model used for generating noise data.
+- `target_model::Distribution`: The target model representing the real data distribution.
+- `data_size::Int`: The size of the dataset.
+- `batch_size::Int`: The batch size used during training.
+- `latent_dim::Int`: The dimension of the latent space for generating samples.
+- `epochs::Int`: The number of training epochs.
+- `n_critic::Int`: The number of critic (discriminator) steps per generator step.
+- `clip_value::Float32`: The clip value for weight clipping in the critic.
+- `lr_dscr::Float64`: The learning rate for the discriminator.
+- `lr_gen::Float64`: The learning rate for the generator.
+
+# Example
 ```julia
-@with_kw struct HyperParamsWGAN
-    noise_model = Normal(0.0f0, 1.0f0)
-    target_model = Normal(23.0f0, 1.0f0)
-    data_size::Int = 10000
-    batch_size::Int = 100
-    latent_dim::Int = 1
-    epochs::Int = 20
-    n_critic::Int = 5
-    clip_value::Float32 = 0.01
-    lr_dscr::Float64 = 0.00005
-    lr_gen::Float64 = 0.00005
-end
+# Define hyper-parameters for Wasserstein GAN
+hyperparameters = HyperParamsWGAN(
+    noise_model = Normal(0.0f0, 1.0f0),
+    target_model = Normal(23.0f0, 1.0f0),
+    data_size = 10000,
+    batch_size = 100,
+    latent_dim = 1,
+    epochs = 20,
+    n_critic = 5,
+    clip_value = 0.01,
+    lr_dscr = 0.00005,
+    lr_gen = 0.00005
+)
 ```
 """
 @with_kw struct HyperParamsWGAN
@@ -30,7 +46,6 @@ end
     lr_dscr::Float64 = 0.00005
     lr_gen::Float64 = 0.00005
 end
-
 
 function wasserstein_loss_discr(real, fake)
     return -mean(real) + mean(fake)
@@ -74,11 +89,28 @@ function train_gan(gen, discr, original_data, opt_gen, opt_discr, hparams::Hyper
 end
 
 """
-    train_wgan(dscr, gen, hparams::HyperParamsVanillaGan)
+Train the Wasserstein GAN (WGAN) using provided discriminator and generator models.
 
-Train the vanilla GAN. `dscr` is the neural-network model for the discriminator,
-`gen` is the neural-network model for the generator,
-and `hparams` is the hyper-parameters for the training.
+This function trains a Wasserstein GAN model with a provided discriminator neural network (`dscr`), generator neural network (`gen`), and hyper-parameters (`hparams`). The hyper-parameters include settings for data loading, batch size, learning rates, training epochs, critic (discriminator) steps, clip value for weight clipping, and more.
+
+# Arguments
+- `dscr`: The neural network model for the discriminator.
+- `gen`: The neural network model for the generator.
+- `hparams::HyperParamsWGAN`: The hyper-parameters for training the Wasserstein GAN.
+
+# Returns
+- A tuple of two arrays containing the generator and discriminator losses during training.
+
+# Example
+```julia
+# Define the discriminator, generator, and hyper-parameters
+discriminator_model = ...
+generator_model = ...
+hyperparameters = HyperParamsWGAN(...)
+
+# Train the Wasserstein GAN
+losses = train_wgan(discriminator_model, generator_model, hyperparameters)
+```
 """
 function train_wgan(dscr, gen, hparams::HyperParamsWGAN)
     #hparams = HyperParams()

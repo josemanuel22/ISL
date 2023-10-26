@@ -2,23 +2,38 @@
 """
 HyperParamsVanillaGan
 
-Hyper-parameters for the vanilla GAN.
+Hyper-parameters for the Vanilla GAN (Generative Adversarial Network).
 
+This structure defines hyper-parameters commonly used in training a Vanilla GAN model. These hyper-parameters include noise and target models, data size, batch size, latent dimension, number of epochs, learning rates for the discriminator and generator, and the number of steps for the discriminator and generator updates.
+
+# Fields
+- `noise_model::Distribution`: The noise model used for generating noise data.
+- `target_model::Distribution`: The target model representing the real data distribution.
+- `data_size::Int`: The size of the dataset.
+- `batch_size::Int`: The batch size used during training.
+- `latent_dim::Int`: The dimension of the latent space for generating samples.
+- `epochs::Int`: The number of training epochs.
+- `lr_dscr::Float64`: The learning rate for the discriminator.
+- `lr_gen::Float64`: The learning rate for the generator.
+- `dscr_steps::Int`: The number of discriminator steps per training iteration.
+- `gen_steps::Int`: The number of generator steps per training iteration.
+
+# Example
 ```julia
-@with_kw struct HyperParamsVanillaGan
-    noise_model = Normal(0.0f0, 1.0f0)
-    target_model = Normal(23.0f0, 1.0f0)
-    data_size::Int = 10000
-    batch_size::Int = 100
-    latent_dim::Int = 1
-    epochs::Int = 1000
-    lr_dscr::Float64 = 0.000001
-    lr_gen::Float64 = 0.000002
-    dscr_steps::Int = 5
-    gen_steps::Int = 1
-end
+# Define hyper-parameters for Vanilla GAN
+hyperparameters = HyperParamsVanillaGan(
+    noise_model = Normal(0.0f0, 1.0f0),
+    target_model = Normal(23.0f0, 1.0f0),
+    data_size = 10000,
+    batch_size = 100,
+    latent_dim = 1,
+    epochs = 1000,
+    lr_dscr = 0.000001,
+    lr_gen = 0.000002,
+    dscr_steps = 5,
+    gen_steps = 1
+)
 ```
-
 """
 @with_kw struct HyperParamsVanillaGan
     noise_model = Normal(0.0f0, 1.0f0)
@@ -51,8 +66,9 @@ end
 
 Zygote.@nograd train_discr
 
-
-function train_gan(gen, discr, original_data, opt_gen, opt_discr, hparams::HyperParamsVanillaGan)
+function train_gan(
+    gen, discr, original_data, opt_gen, opt_discr, hparams::HyperParamsVanillaGan
+)
     noise = gpu(
         rand!(
             hparams.noise_model,
@@ -82,13 +98,29 @@ function train_gan(gen, discr, original_data, opt_gen, opt_discr, hparams::Hyper
     return loss
 end
 
-
 """
-    train_vanilla_gan(dscr, gen, hparams::HyperParamsVanillaGan)
+Train the Vanilla GAN (Generative Adversarial Network).
 
-Train the vanilla GAN. `dscr` is the neural-network model for the discriminator,
-`gen` is the neural-network model for the generator,
-and `hparams` is the hyper-parameters for the training.
+This function trains a Vanilla GAN model with a provided discriminator neural network (`dscr`), generator neural network (`gen`), and hyper-parameters (`hparams`). The hyper-parameters include settings for data loading, batch size, learning rates, and training epochs.
+
+# Arguments
+- `dscr`: The neural network model for the discriminator.
+- `gen`: The neural network model for the generator.
+- `hparams::HyperParamsVanillaGan`: The hyper-parameters for training the Vanilla GAN.
+
+# Returns
+- A tuple of two arrays containing the generator and discriminator losses during training.
+
+# Example
+```julia
+# Define the discriminator, generator, and hyper-parameters
+discriminator_model = ...
+generator_model = ...
+hyperparameters = HyperParamsVanillaGan(...)
+
+# Train the Vanilla GAN
+losses = train_vanilla_gan(discriminator_model, generator_model, hyperparameters)
+```
 """
 function train_vanilla_gan(dscr, gen, hparams::HyperParamsVanillaGan)
     #hparams = HyperParamsVanillaGan()
