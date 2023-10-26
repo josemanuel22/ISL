@@ -9,12 +9,34 @@ include("../examples/time_series_predictions/ts_utils.jl")
 DeepAR: Probabilistic Forecasting with Autoregressive Recurrent Networks
 https://arxiv.org/pdf/1704.04110.pdf
 """
+
+"""
+DeepArParams
+
+Hyperparameters for the DeepAR model.
+
+- `η::Float64`: The learning rate for model training. Default is `1e-2`.
+- `epochs::Int`: The number of training epochs. Default is `10`.
+- `n_mean::Int`: The number of samples used for computing the predictive mean. Default is `100`.
+"""
 Base.@kwdef mutable struct DeepArParams
     η = 1e-2
     epochs = 10
     n_mean = 100
 end
 
+"""
+train_DeepAR(model, loaderXtrain, loaderYtrain, hparams)
+
+Train a DeepAR model using the given data loaders and hyperparameters.
+
+- `model`: The DeepAR model to be trained.
+- `loaderXtrain`: DataLoader containing input sequences for training.
+- `loaderYtrain`: DataLoader containing target sequences for training.
+- `hparams`: An instance of `DeepArParams` specifying hyperparameters for training.
+
+Returns a vector of loss values during training.
+"""
 function train_DeepAR(model, loaderXtrain, loaderYtrain, hparams)
     losses = []
     optim = Flux.setup(Flux.Adam(hparams.η), model)
@@ -38,6 +60,19 @@ function train_DeepAR(model, loaderXtrain, loaderYtrain, hparams)
     return losses
 end
 
+"""
+forecasting_DeepAR(model, ts, t₀, τ; n_samples=100)
+
+Generate forecasts using a trained DeepAR model.
+
+- `model`: The trained DeepAR model.
+- `ts`: Time series data used for forecasting.
+- `t₀`: Time step at which forecasting starts.
+- `τ`: Number of time steps to forecast.
+- `n_samples`: Number of samples to draw for each forecast (default is 100).
+
+Returns a vector containing the forecasted values.
+"""
 function forescasting_DeepAR(model, ts, t₀, τ; n_samples=100)
     prediction = []
     Flux.reset!(model)
