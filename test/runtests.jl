@@ -4,9 +4,10 @@ using Flux
 using Distributions
 using Test
 
-
+# Set a tolerance value for approximate comparisons
 tol::Float64 = 1e-5
 
+# Test the '_sigmoid' function
 @testset "sigmoid" begin
     @test all(_sigmoid([2.6 2.3], 2.0) .< [0.5 0.5])
     @test !all(_sigmoid([2.6 2.3], 2.4) .< [0.5 0.5])
@@ -16,6 +17,7 @@ tol::Float64 = 1e-5
     @test all(_sigmoid([2.6f0 2.3f0], 2.7f0) .> [0.5f0, 0.5f0])
 end;
 
+# Test the 'ψₘ' function
 @testset "ψₘ" begin
     @test ψₘ(1.0, 1) == 1.0
     @test ψₘ(1.5, 1) < 1
@@ -24,6 +26,7 @@ end;
     #@test isapprox(ψₘ([1.0, 2.0, 0.0], 1), [1.0, 0.0, 0.0], atol=tol)
 end;
 
+# Test the 'ϕ' function
 @testset "ϕ" begin
     @test ϕ([1.0f0 2.0f0 3.1f0 3.9f0], 2.4f0) > 1.0f0
     @test ϕ([1.0f0 2.0f0 3.1f0 3.9f0], 2.4f0) < 3.0f0
@@ -33,6 +36,7 @@ end;
     @test ϕ([1.0 2.0 3.1 3.9], 3.4) > 2.0
 end;
 
+# Test the 'γ' function
 @testset "γ" begin
     #@test isapprox(γ([1.0, 2.0, 3.1, 3.9], 3.6, 3), [0.0, 0.0, 0.0, 0.9997, 0.0], atol=tol)
     @test isapprox(
@@ -55,6 +59,7 @@ end;
     )
 end;
 
+# Test the 'scalar_diff' function
 @testset "scalar diff" begin
     yₖ = [1.0 2.0 3.0 4.0]
     data = 0.5:0.5:4.5
@@ -65,6 +70,7 @@ end;
     @test isapprox(scalar_diff(aₖ), 3.20004, atol=tol)
 end;
 
+# Test the 'jensen_shannon_divergence' function
 @testset "jensen shannon divergence" begin
     @test jensen_shannon_divergence([1.0, 2.0], [1.0, 2.0]) == 0.0
     @test jensen_shannon_divergence([1.0, 2.0], [1.0, 3.0]) > 0.0
@@ -85,6 +91,7 @@ end;
     @test isapprox(jensen_shannon_∇(aₖ ./ sum(aₖ)), 0.0, atol=tol)
 end;
 
+# Test the 'jensen_shannon_∇' function
 @testset "adaptative_block_learning" begin
     @testset "learning Normal(4.0f0, 2.0f0)" begin
         nn = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
@@ -126,6 +133,7 @@ end;
             0.01
     end
 
+    #Testing the Capability of ISL to Learn 1D Distributions
     @testset "learning Cauchy distribution" begin
         nn = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
         hparams = HyperParams(1000, 10, 2000, 1e-2, Normal(0.0f0, 1.0f0))
