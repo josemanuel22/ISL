@@ -109,7 +109,7 @@ Please note that although this function offers improved performance, it cannot b
 
 """
 function γ_fast(yₖ::Matrix{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}
-    eₘ(m) = SVector{length(yₖ) + 1, T}(j == m ? 0.0 : 0.0 for j in 0:length(yₖ))
+    eₘ(m) = SVector{length(yₖ) + 1,T}(j == m ? 0.0 : 0.0 for j in 0:length(yₖ))
     return eₘ(m) * ψₘ(ϕ(yₖ, yₙ), m)
 end;
 
