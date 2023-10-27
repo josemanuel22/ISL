@@ -121,11 +121,23 @@ end;
 """
     generate_aₖ(ŷ, y)
 
-Generate a one step histogram (Vector{Float}) of the given vector `ŷ` of `K` simulted observations and the real data `y`
-`generate_aₖ(ŷ, y) = ∑ₖ γ(ŷ, y, k)`
+Calculate the values of the real observation `y` in each of the components of the approximate histogram with `K` bins.
 
+# Arguments
+- `ŷ::Matrix{T}`: A matrix of simulated observations (each column represents a different simulation).
+- `y::T`: The real data for which the one-step histogram is generated.
+
+# Returns
+- `aₖ::Vector{Float}`: A vector with the values of the real observation `y` in each of the components of the approximate histogram with `K` bins.
+
+# Details
+The `generate_aₖ` function calculates the one-step histogram `aₖ` as the sum of the contribution of the observation to the
+subrogate histogram bins. It uses the function `γ` to calculate the contribution of each observation at each histogram bin. The final
+histogram is the sum of these contributions.
+
+The formula for generating `aₖ` is as follows:
 ```math
-\\vec{aₖ} = ∑_{k=0}^K γ(ŷ, y, k) = ∑_{k=0}^K ∑_{i=1}^N ψₖ \\circ ϕ(ŷ, yᵢ)
+aₖ = ∑_{k=0}^K γ(ŷ, y, k) = ∑_{k=0}^K ∑_{i=1}^N ψₖ(ŷ, yᵢ)
 ```
 """
 function generate_aₖ(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
@@ -133,23 +145,23 @@ function generate_aₖ(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
 end
 
 """
-    scalar_diff(aₖ)
+    scalar_diff(q)
 
-Scalar difference between `aₖ` vector and uniform distribution vector.
+Scalar difference between the vector representing our subrogate histogram and the uniform distribution vector.
 
 ```math
-loss(weights) = \\langle (a₀ - N/(K+1), \\cdots, aₖ - N/(K+1)), (a₀ - N/(K+1), \\cdots, aₖ - N/(K+1))\\rangle = ∑_{k=0}^{K}(a_{k} - (N/(K+1)))^2
+loss = ||q-1/k+1||_{2} = ∑_{k=0}^K (qₖ - 1/K+1)^2
 ```
 """
-scalar_diff(aₖ::Vector{T}) where {T<:AbstractFloat} = sum((aₖ .- (1 ./ length(aₖ))) .^ 2)
+scalar_diff(q::Vector{T}) where {T<:AbstractFloat} = sum((q .- (1 ./ length(q))) .^ 2)
 
 """
     jensen_shannon_∇(aₖ)
 
 Jensen shannon difference between `aₖ` vector and uniform distribution vector.
 """
-function jensen_shannon_∇(aₖ::Vector{T}) where {T<:AbstractFloat}
-    return jensen_shannon_divergence(aₖ, fill(1 / length(aₖ), length(aₖ)))
+function jensen_shannon_∇(q::Vector{T}) where {T<:AbstractFloat}
+    return jensen_shannon_divergence(q, fill(1 / length(q), length(q)))
 end
 
 function jensen_shannon_divergence(p::Vector{T}, q::Vector{T}) where {T<:AbstractFloat}
@@ -158,12 +170,12 @@ function jensen_shannon_divergence(p::Vector{T}, q::Vector{T}) where {T<:Abstrac
 end;
 
 """
-    HyperParams
+ISLParams
 
 Hyperparameters for the method `adaptative_block_learning`
 
 ```julia
-@with_kw struct HyperParams
+@with_kw struct ISLParams
     samples::Int64 = 1000               # number of samples per histogram
     K::Int64 = 2                        # number of simulted observations
     epochs::Int64 = 100                 # number of epochs
@@ -172,7 +184,7 @@ Hyperparameters for the method `adaptative_block_learning`
 end;
 ```
 """
-@with_kw struct HyperParams
+@with_kw struct ISLParams
     samples::Int64 = 1000               # number of samples per histogram
     K::Int64 = 2                        # number of simulted observations
     epochs::Int64 = 100                 # number of epochs
@@ -191,7 +203,7 @@ loader Flux object and hparams is a HyperParams object.
 - data::Flux.DataLoader: is a loader Flux object
 - hparams::HyperParams: is a HyperParams object
 """
-function adaptative_block_learning(nn_model, data, hparams)
+function invariant_statistical_loss(nn_model, data, hparams)
     @assert length(data) == hparams.samples
     losses = []
     optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
@@ -211,7 +223,7 @@ function adaptative_block_learning(nn_model, data, hparams)
     return losses
 end;
 
-function adaptative_block_learning_1(nn_model, loader, hparams)
+function invariant_statistical_loss_1(nn_model, loader, hparams)
     @assert loader.batchsize == hparams.samples
     @assert length(loader) == hparams.epochs
     losses = []
@@ -233,12 +245,12 @@ function adaptative_block_learning_1(nn_model, loader, hparams)
 end;
 
 """
-    AutoAdaptativeHyperParams
+    AutoISLParams
 
-Hyperparameters for the method `adaptative_block_learning`
+Hyperparameters for the method `invariant_statistical_loss`
 
 ```julia
-@with_kw struct AutoAdaptativeHyperParams
+@with_kw struct AutoISLParams
     samples::Int64 = 1000
     epochs::Int64 = 100
     η::Float64 = 1e-3
@@ -247,7 +259,7 @@ Hyperparameters for the method `adaptative_block_learning`
 end;
 ```
 """
-@with_kw struct AutoAdaptativeHyperParams
+@with_kw struct AutoISLParams
     samples::Int64 = 1000
     epochs::Int64 = 100
     η::Float64 = 1e-3
@@ -287,7 +299,7 @@ function get_better_K(nn_model, data, min_K, hparams)
 end;
 
 """
-    auto_adaptative_block_learning(model, data, hparams)
+    auto_invariant_statistical_loss(model, data, hparams)
 
 Custom loss function for the model.
 
@@ -302,7 +314,7 @@ To see the value of `K` used in the test, set the logger level to debug before e
 - `data::Flux.DataLoader`: is a loader Flux object
 - `hparams::AutoAdaptativeHyperParams`: is a AutoAdaptativeHyperParams object
 """
-function auto_adaptative_block_learning(nn_model, data, hparams)
+function auto_invariant_statistical_loss(nn_model, data, hparams)
     @assert length(data) == hparams.samples
 
     K = 2
@@ -330,7 +342,7 @@ function auto_adaptative_block_learning(nn_model, data, hparams)
     return losses
 end;
 
-function auto_adaptative_block_learning_1(nn_model, loader, hparams)
+function auto_invariant_statistical_loss_1(nn_model, loader, hparams)
     @assert loader.batchsize == hparams.samples
     @assert length(loader) == hparams.epochs
 

@@ -5,7 +5,7 @@ include("../utils.jl")
 
 @test_experiments "vanilla_gan" begin
     @test_experiments "Origin N(0,1)" begin
-        noise_model = Uniform(-1.0f0, 1.0f0)
+        noise_model = Normal(0.0f0, 1.0f0)
         n_samples = 10000
 
         @test_experiments "N(0,1) to N(23,1)" begin
@@ -13,7 +13,7 @@ include("../utils.jl")
             dscr = Chain(
                 Dense(1, 11), elu, Dense(11, 29), elu, Dense(29, 11), elu, Dense(11, 1, σ)
             )
-            target_model = Normal(0.0f0, 1.0f0)
+            target_model = Normal(4.0f0, 2.0f0)
             hparams = HyperParamsVanillaGan(;
                 data_size=100,
                 batch_size=1,
@@ -28,14 +28,14 @@ include("../utils.jl")
 
             train_vanilla_gan(dscr, gen, hparams)
 
-            hparams = AutoAdaptativeHyperParams(;
-                max_k=100, samples=2000, epochs=10000, η=1e-2, transform=noise_model
+            hparams = AutoISLParams(;
+                max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
             )
 
             train_set = Float32.(rand(target_model, hparams.samples))
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            auto_adaptative_block_learning(gen, loader, hparams)
+            auto_invariant_statistical_loss(gen, loader, hparams)
         end
 
         @test_experiments "N(0,1) to Uniform(22,24)" begin
@@ -73,7 +73,7 @@ include("../utils.jl")
                 gen,
                 n_samples,
                 (-3:0.1:3),
-                (18:0.1:35),
+                (0:0.1:10),
             )
         end
 

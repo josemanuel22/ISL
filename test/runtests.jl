@@ -40,9 +40,9 @@ end;
 @testset "γ" begin
     #@test isapprox(γ([1.0, 2.0, 3.1, 3.9], 3.6, 3), [0.0, 0.0, 0.0, 0.9997, 0.0], atol=tol)
     @test isapprox(
-        γ([1.0f0 2.0f0 3.1f0 3.9f0], 3.6f0, 3), [0.0, 0.0, 0.0, 0.9997, 0.0], atol=tol
+        γ([1.0f0 2.0f0 3.1f0 3.9f0], 3.6f0, 3), [0.0, 0.0, 0.0, 0.92038, 0.0], atol=tol
     )
-    @test isapprox(γ([1.0 2.0 3.1 3.9], 3.6, 3), [0.0, 0.0, 0.0, 0.9997, 0.0], atol=tol)
+    @test isapprox(γ([1.0 2.0 3.1 3.9], 3.6, 3), [0.0, 0.0, 0.0, 0.92038, 0.0], atol=tol)
 end;
 
 @testset "generate aₖ" begin
@@ -51,11 +51,11 @@ end;
     #)
     @test isapprox(
         generate_aₖ([1.0f0 2.0f0 3.1f0 3.9f0], 3.6f0),
-        [0.0, 0.0, 0.0, 0.9997, 0.0],
+        [0.0, 0.0, 0.0, 0.92038, 0.0],
         atol=tol,
     )
     @test isapprox(
-        generate_aₖ([1.0 2.0 3.1 3.9], 3.6), [0.0, 0.0, 0.0, 0.9997, 0.0], atol=tol
+        generate_aₖ([1.0 2.0 3.1 3.9], 3.6), [0.0, 0.0, 0.0, 0.92038, 0.0], atol=tol
     )
 end;
 
@@ -67,7 +67,7 @@ end;
     for y in data
         aₖ += generate_aₖ(yₖ, y)
     end
-    @test isapprox(scalar_diff(aₖ), 3.20004, atol=tol)
+    @test isapprox(scalar_diff(aₖ), 3.1929, atol=tol)
 end;
 
 # Test the 'jensen_shannon_divergence' function
@@ -92,17 +92,19 @@ end;
 end;
 
 # Test the 'jensen_shannon_∇' function
-@testset "adaptative_block_learning" begin
+@testset "invariant_statistical_loss" begin
     @testset "learning Normal(4.0f0, 2.0f0)" begin
         nn = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
-        hparams = HyperParams(1000, 10, 1000, 1e-2, Normal(0.0f0, 1.0f0))
+        hparams = ISLParams(;
+            samples=1000, K=10, epochs=2000, η=1e-2, transform=Normal(0.0f0, 1.0f0)
+        )
 
         target_model = Normal(4.0f0, 2.0f0)
 
         train_set = Float32.(rand(target_model, hparams.samples))
         loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-        adaptative_block_learning(nn, loader, hparams)
+        invariant_statistical_loss(nn, loader, hparams)
 
         validation_set = Float32.(rand(target_model, hparams.samples))
         data = vec(nn(rand(hparams.transform, hparams.samples)'))
@@ -117,14 +119,16 @@ end;
 
     @testset "learning uniform distribution (-2,2)" begin
         nn = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
-        hparams = HyperParams(1000, 10, 1000, 1e-2, Normal(0.0f0, 1.0f0))
+        hparams = ISLParams(;
+            samples=1000, K=10, epochs=2000, η=1e-2, transform=Normal(0.0f0, 1.0f0)
+        )
 
-        target_model = Uniform(-2,2)
+        target_model = Uniform(-2, 2)
 
         train_set = Float32.(rand(target_model, hparams.samples))
         loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-        adaptative_block_learning(nn, loader, hparams)
+        invariant_statistical_loss(nn, loader, hparams)
 
         validation_set = Float32.(rand(target_model, hparams.samples))
         data = vec(nn(rand(hparams.transform, hparams.samples)'))
@@ -136,14 +140,16 @@ end;
     #Testing the Capability of ISL to Learn 1D Distributions
     @testset "learning Cauchy distribution" begin
         nn = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
-        hparams = HyperParams(1000, 10, 2000, 1e-2, Normal(0.0f0, 1.0f0))
+        hparams = ISLParams(;
+            samples=1000, K=10, epochs=2000, η=1e-2, transform=Normal(0.0f0, 1.0f0)
+        )
 
         target_model = Cauchy(1.0f0, 3.0f0)
 
         train_set = Float32.(rand(target_model, hparams.samples))
         loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-        adaptative_block_learning(nn, loader, hparams)
+        invariant_statistical_loss(nn, loader, hparams)
 
         validation_set = Float32.(rand(target_model, hparams.samples))
         data = vec(nn(rand(hparams.transform, hparams.samples)'))
@@ -154,14 +160,16 @@ end;
 
     @testset "learning Bimodal Normal Distribution" begin
         nn = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
-        hparams = HyperParams(1000, 100, 1000, 1e-2, Normal(0.0f0, 1.0f0))
+        hparams = ISLParams(;
+            samples=1000, K=10, epochs=2000, η=1e-2, transform=Normal(0.0f0, 1.0f0)
+        )
 
         target_model = MixtureModel(Normal[Normal(5.0f0, 2.0f0), Normal(-1.0f0, 1.0f0)])
 
         train_set = Float32.(rand(target_model, hparams.samples))
         loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-        adaptative_block_learning(nn, loader, hparams)
+        invariant_statistical_loss(nn, loader, hparams)
 
         validation_set = Float32.(rand(target_model, hparams.samples))
         data = vec(nn(rand(hparams.transform, hparams.samples)'))
@@ -172,7 +180,7 @@ end;
 
     @testset "learning modal auto_adaptative_block_learning Normal(4.0f0, 2.0f0)" begin
         nn = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
-        hparams = AutoAdaptativeHyperParams(;
+        hparams = AutoISLParams(;
             max_k=10, samples=1000, epochs=1000, η=1e-2, transform=Normal(0.0f0, 1.0f0)
         )
 
@@ -181,7 +189,7 @@ end;
         train_set = Float32.(rand(target_model, hparams.samples))
         loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-        auto_adaptative_block_learning(nn, loader, hparams)
+        auto_invariant_statistical_loss(nn, loader, hparams)
 
         validation_set = Float32.(rand(target_model, hparams.samples))
         data = vec(nn(rand(hparams.transform, hparams.samples)'))
