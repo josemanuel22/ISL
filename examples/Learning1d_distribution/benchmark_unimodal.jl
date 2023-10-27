@@ -58,19 +58,19 @@ include("../utils.jl")
 
             train_vanilla_gan(dscr, gen, hparams)
 
-            hparams = AutoAdaptativeHyperParams(;
-                max_k=10, samples=1000, epochs=400, η=1e-3, transform=noise_model
+            hparams = AutoISLParams(;
+                max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
             )
             train_set = Float32.(rand(target_model, hparams.samples))
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            auto_adaptative_block_learning(gen, loader, hparams)
+            auto_invariant_statistical_loss(gen, loader, hparams)
 
             plot_global(
                 x -> quantile.(target_model, cdf(noise_model, x)),
                 noise_model,
                 target_model,
-                gen,
+                nn,
                 n_samples,
                 (-3:0.1:3),
                 (0:0.1:10),
@@ -99,13 +99,13 @@ include("../utils.jl")
 
             train_vanilla_gan(dscr, gen, hparams)
 
-            hparams = AutoAdaptativeHyperParams(;
+            hparams = AutoISLParams(;
                 max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
             )
             train_set = Float32.(rand(target_model, hparams.samples))
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            auto_adaptative_block_learning(gen, loader, hparams)
+            auto_invariant_statistical_loss(gen, loader, hparams)
 
             # ksd = KSD(noise_model, target_model, n_samples, 18:0.1:25)
             # mae = MAE(
@@ -146,13 +146,13 @@ include("../utils.jl")
 
             train_vanilla_gan(dscr, gen, hparams)
 
-            hparams = AutoAdaptativeHyperParams(;
-                max_k=10, samples=1000, epochs=400, η=1e-2, transform=noise_model
+            hparams = AutoISLParams(;
+                max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
             )
             train_set = Float32.(rand(target_model, hparams.samples))
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            auto_adaptative_block_learning(gen, loader, hparams)
+            auto_invariant_statistical_loss(gen, loader, hparams)
         end
     end
 
@@ -180,11 +180,13 @@ include("../utils.jl")
 
             train_vanilla_gan(dscr, gen, hparams)
 
-            hparams = HyperParams(; samples=100, K=10, epochs=2000, η=1e-3, noise_model)
+            hparams = AutoISLParams(;
+                max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
+            )
             train_set = rand(target_model, hparams.samples)
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            adaptative_block_learning(gen, loader, hparams)
+            auto_invariant_statistical_loss(gen, loader, hparams)
         end
 
         @test_experiments "Uniform(-1,1) to Uniform(22,24)" begin
@@ -207,11 +209,13 @@ include("../utils.jl")
 
             train_vanilla_gan(dscr, gen, hparams)
 
-            hparams = HyperParams(; samples=100, K=10, epochs=2000, η=1e-3, noise_model)
+            hparams = AutoISLParams(;
+                max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
+            )
             train_set = rand(target_model, hparams.samples)
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            adaptative_block_learning(gen, loader, hparams)
+            auto_invariant_statistical_loss(gen, loader, hparams)
         end
 
         @test_experiments "Uniform(-1,1) to Cauchy(23,1)" begin
@@ -234,13 +238,13 @@ include("../utils.jl")
 
             train_vanilla_gan(dscr, gen, hparams)
 
-            hparams = HyperParams(;
-                samples=100, K=10, epochs=2000, η=1e-3, transform=noise_model
+            hparams = AutoISLParams(;
+                max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
             )
             train_set = Float32.(rand(target_model, hparams.samples))
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            adaptative_block_learning(gen, loader, hparams)
+            auto_invariant_statistical_loss(gen, loader, hparams)
         end
 
         @test_experiments "Uniform(-1,1) to Pareto(1,23)" begin
@@ -263,13 +267,13 @@ include("../utils.jl")
 
             train_vanilla_gan(dscr, gen, hparams)
 
-            hparams = HyperParams(;
-                samples=100, K=10, epochs=2000, η=1e-2, transform=noise_model
+            hparams = AutoISLParams(;
+                max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
             )
             train_set = Float32.(rand(target_model, hparams.samples))
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            adaptative_block_learning(gen, loader, hparams)
+            auto_invariant_statistical_loss(gen, loader, hparams)
         end
     end
 end
@@ -300,11 +304,13 @@ end
 
             loss = train_wgan(dscr, gen, hparams)
 
-            hparams = HyperParams(; samples=100, K=10, epochs=1000, η=1e-3, noise_model)
+            hparams = AutoISLParams(;
+                max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
+            )
             train_set = rand(target_model, hparams.samples)
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            auto_adaptative_block_learning(gen, loader, hparams)
+            auto_invariant_statistical_loss(gen, loader, hparams)
 
             #save_gan_model(gen, dscr, hparams)
 
@@ -330,11 +336,13 @@ end
 
             train_vanilla_gan(dscr, gen, hparams)
 
-            hparams = HyperParams(; samples=100, K=10, epochs=2000, η=1e-3, noise_model)
+            hparams = AutoISLParams(;
+                max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
+            )
             train_set = rand(target_model, hparams.samples)
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            adaptative_block_learning(gen, loader, hparams)
+            auto_invariant_statistical_loss(gen, loader, hparams)
         end
 
         @test_experiments "N(0,1) to Cauchy(23,1)" begin
@@ -357,11 +365,13 @@ end
 
             train_vanilla_gan(dscr, gen, hparams)
 
-            hparams = HyperParams(; samples=100, K=10, epochs=2000, η=1e-3, noise_model)
+            hparams = AutoISLParams(;
+                max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
+            )
             train_set = rand(target_model, hparams.samples)
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            adaptative_block_learning(gen, loader, hparams)
+            auto_invariant_statistical_loss(gen, loader, hparams)
         end
 
         @test_experiments "N(0,1) to Pareto(1,23)" begin
@@ -384,13 +394,13 @@ end
 
             train_vanilla_gan(dscr, gen, hparams)
 
-            hparams = HyperParams(;
-                samples=100, K=10, epochs=2000, η=1e-2, transform=noise_model
+            hparams = AutoISLParams(;
+                max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
             )
             train_set = Float32.(rand(target_model, hparams.samples))
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            adaptative_block_learning(gen, loader, hparams)
+            auto_invariant_statistical_loss(gen, loader, hparams)
         end
     end
 
@@ -418,11 +428,13 @@ end
 
             train_vanilla_gan(dscr, gen, hparams)
 
-            hparams = HyperParams(; samples=100, K=10, epochs=2000, η=1e-3, noise_model)
+            hparams = AutoISLParams(;
+                max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
+            )
             train_set = rand(target_model, hparams.samples)
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            adaptative_block_learning(gen, loader, hparams)
+            auto_invariant_statistical_loss(gen, loader, hparams)
         end
 
         @test_experiments "Uniform(-1,1) to Uniform(22,24)" begin
@@ -445,11 +457,13 @@ end
 
             train_vanilla_gan(dscr, gen, hparams)
 
-            hparams = HyperParams(; samples=100, K=10, epochs=2000, η=1e-3, noise_model)
+            hparams = AutoISLParams(;
+                max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
+            )
             train_set = rand(target_model, hparams.samples)
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            adaptative_block_learning(gen, loader, hparams)
+            auto_invariant_statistical_loss(gen, loader, hparams)
         end
 
         @test_experiments "Uniform(-1,1) to Cauchy(23,1)" begin
@@ -472,11 +486,13 @@ end
 
             train_vanilla_gan(dscr, gen, hparams)
 
-            hparams = HyperParams(; samples=100, K=10, epochs=2000, η=1e-3, noise_model)
+            hparams = AutoISLParams(;
+                max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
+            )
             train_set = rand(target_model, hparams.samples)
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            adaptative_block_learning(gen, loader, hparams)
+            auto_invariant_statistical_loss(gen, loader, hparams)
         end
 
         @test_experiments "Uniform(-1,1) to Pareto(1,23)" begin
@@ -499,13 +515,13 @@ end
 
             train_vanilla_gan(dscr, gen, hparams)
 
-            hparams = HyperParams(;
-                samples=100, K=10, epochs=2000, η=1e-2, transform=noise_model
+            hparams = AutoISLParams(;
+                max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
             )
             train_set = Float32.(rand(target_model, hparams.samples))
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            adaptative_block_learning(gen, loader, hparams)
+            auto_invariant_statistical_loss(gen, loader, hparams)
         end
     end
 end
@@ -551,8 +567,7 @@ end
             train_set = rand(target_model, hparams.samples)
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            adaptative_block_learning(gen, loader, hparams)
-
+            auto_invariant_statistical_loss(gen, loader, hparams)
         end
 
         @test_experiments "N(0,1) to Uniform(22,24)" begin
@@ -579,7 +594,7 @@ end
             train_set = rand(target_model, hparams.samples)
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            adaptative_block_learning(gen, loader, hparams)
+            auto_invariant_statistical_loss(gen, loader, hparams)
         end
 
         @test_experiments "N(0,1) to Cauchy(23,1)" begin
@@ -606,7 +621,7 @@ end
             train_set = rand(target_model, hparams.samples)
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            adaptative_block_learning(gen, loader, hparams)
+            auto_invariant_statistical_loss(gen, loader, hparams)
         end
 
         @test_experiments "N(0,1) to Pareto(1,23)" begin
@@ -635,7 +650,7 @@ end
             train_set = Float32.(rand(target_model, hparams.samples))
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            adaptative_block_learning(gen, loader, hparams)
+            auto_invariant_statistical_loss(gen, loader, hparams)
         end
     end
 
@@ -667,7 +682,7 @@ end
             train_set = rand(target_model, hparams.samples)
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            adaptative_block_learning(gen, loader, hparams)
+            auto_invariant_statistical_loss(gen, loader, hparams)
         end
 
         @test_experiments "Uniform(-1,1) to Uniform(22,24)" begin
@@ -694,7 +709,7 @@ end
             train_set = rand(target_model, hparams.samples)
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            adaptative_block_learning(gen, loader, hparams)
+            auto_invariant_statistical_loss(gen, loader, hparams)
         end
 
         @test_experiments "Uniform(-1,1) to Cauchy(23,1)" begin
@@ -721,7 +736,7 @@ end
             train_set = rand(target_model, hparams.samples)
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            adaptative_block_learning(gen, loader, hparams)
+            auto_invariant_statistical_loss(gen, loader, hparams)
         end
 
         @test_experiments "Uniform(-1,1) to Pareto(1,23)" begin
@@ -750,7 +765,7 @@ end
             train_set = Float32.(rand(target_model, hparams.samples))
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            adaptative_block_learning(gen, loader, hparams)
+            auto_invariant_statistical_loss(gen, loader, hparams)
         end
     end
 end
