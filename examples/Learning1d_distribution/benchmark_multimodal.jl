@@ -28,29 +28,13 @@ include("../utils.jl")
 
             train_vanilla_gan(dscr, gen, hparams)
 
-            hparams = HyperParams(;
-                samples=1000, K=10, epochs=1000, η=1e-2, transform=noise_model
+            hparams = AutoISLParams(;
+                max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
             )
-            #hparams = AutoAdaptativeHyperParams(;
-            #    max_k=20, samples=1200, epochs=10000, η=1e-3, transform=noise_model
-            #)
-            train_set = Float32.(rand(target_model, hparams.samples * hparams.epochs))
-            loader = Flux.DataLoader(train_set; batchsize= hparams.samples, shuffle=true, partial=false)
+            train_set = Float32.(rand(target_model, hparams.samples))
+            loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            #save_gan_model(gen, dscr, hparams)
-
-
-            adaptative_block_learning_1(gen, loader, hparams)
-
-            ksd = KSD(noise_model, target_model, n_samples, 18:0.1:28)
-            mae = min(
-                MAE(noise_model, x -> x .+ 23, n_samples),
-                MAE(noise_model, x -> .-x .+ 23, n_samples),
-            )
-            mse = min(
-                MSE(noise_model, x -> x .+ 23, n_samples),
-                MSE(noise_model, x -> .-x .+ 23, n_samples),
-            )
+            auto_invariant_statistical_loss(gen, loader, hparams)
 
             #save_gan_model(gen, dscr, hparams)
             plot_global(
@@ -89,11 +73,13 @@ include("../utils.jl")
 
             train_vanilla_gan(dscr, gen, hparams)
 
-            hparams = HyperParams(; samples=100, K=10, epochs=2000, η=1e-3, noise_model)
-            train_set = rand(target_model, hparams.samples)
+            hparams = AutoISLParams(;
+                max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
+            )
+            train_set = Float32.(rand(target_model, hparams.samples))
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            adaptative_block_learning(gen, loader, hparams)
+            auto_invariant_statistical_loss(gen, loader, hparams)
 
             ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
             mae = MAE(noise_model, x -> 2 * cdf(Normal(0, 1), x) + 22, n_samples)
@@ -120,19 +106,13 @@ include("../utils.jl")
 
             train_vanilla_gan(dscr, gen, hparams)
 
-            hparams = HyperParams(; samples=100, K=10, epochs=2000, η=1e-3, noise_model)
-            train_set = rand(target_model, hparams.samples)
+            hparams = AutoISLParams(;
+                max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
+            )
+            train_set = Float32.(rand(target_model, hparams.samples))
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            adaptative_block_learning(gen, loader, hparams)
-
-            ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
-            mae = MAE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_samples
-            )
-            mse = MSE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_sample
-            )
+            auto_invariant_statistical_loss(gen, loader, hparams)
         end
 
         @test_experiments "N(0,1) to Pareto(1,23)" begin
@@ -157,21 +137,13 @@ include("../utils.jl")
 
             train_vanilla_gan(dscr, gen, hparams)
 
-            hparams = HyperParams(;
-                samples=100, K=10, epochs=2000, η=1e-2, transform=noise_model
+            hparams = AutoISLParams(;
+                max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
             )
             train_set = Float32.(rand(target_model, hparams.samples))
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            adaptative_block_learning(gen, loader, hparams)
-
-            ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
-            mae = MAE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_samples
-            )
-            mse = MSE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_sample
-            )
+            auto_invariant_statistical_loss(gen, loader, hparams)
         end
     end
 
@@ -203,17 +175,13 @@ include("../utils.jl")
             train_set = rand(target_model, hparams.samples)
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            adaptative_block_learning(gen, loader, hparams)
+            hparams = AutoISLParams(;
+                max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
+            )
+            train_set = Float32.(rand(target_model, hparams.samples))
+            loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
-            mae = min(
-                MAE(noise_model, x -> x .+ 23, n_samples),
-                MAE(noise_model, x -> .-x .+ 23, n_samples),
-            )
-            mse = min(
-                MSE(noise_model, x -> x .+ 23, n_sample),
-                MSE(noise_model, x -> .-x .+ 23, n_sample),
-            )
+            auto_invariant_statistical_loss(gen, loader, hparams)
 
             #@test js_divergence(hist1.weights, hist2.weights)/hparams.samples < 0.03
 
@@ -241,19 +209,13 @@ include("../utils.jl")
 
             train_vanilla_gan(dscr, gen, hparams)
 
-            hparams = HyperParams(; samples=100, K=10, epochs=2000, η=1e-3, noise_model)
-            train_set = rand(target_model, hparams.samples)
+            hparams = AutoISLParams(;
+                max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
+            )
+            train_set = Float32.(rand(target_model, hparams.samples))
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            adaptative_block_learning(gen, loader, hparams)
-
-            ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
-            mae = MAE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_samples
-            )
-            mse = MSE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_sample
-            )
+            auto_invariant_statistical_loss(gen, loader, hparams)
         end
 
         @test_experiments "Uniform(-1,1) to Cauchy(23,1)" begin
@@ -276,21 +238,14 @@ include("../utils.jl")
 
             train_vanilla_gan(dscr, gen, hparams)
 
-            hparams = HyperParams(;
-                samples=100, K=10, epochs=2000, η=1e-3, transform=noise_model
+            hparams = AutoISLParams(;
+                max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
             )
             train_set = Float32.(rand(target_model, hparams.samples))
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            adaptative_block_learning(gen, loader, hparams)
+            auto_invariant_statistical_loss(gen, loader, hparams)
 
-            ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
-            mae = MAE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_samples
-            )
-            mse = MSE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_sample
-            )
         end
 
         @test_experiments "Uniform(-1,1) to Pareto(1,23)" begin
@@ -313,21 +268,13 @@ include("../utils.jl")
 
             train_vanilla_gan(dscr, gen, hparams)
 
-            hparams = HyperParams(;
-                samples=100, K=10, epochs=2000, η=1e-2, transform=noise_model
+            hparams = AutoISLParams(;
+                max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
             )
             train_set = Float32.(rand(target_model, hparams.samples))
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            adaptative_block_learning(gen, loader, hparams)
-
-            ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
-            mae = MAE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_samples
-            )
-            mse = MSE(
-                noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_sample
-            )
+            auto_invariant_statistical_loss(gen, loader, hparams)
         end
     end
 end
