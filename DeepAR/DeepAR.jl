@@ -98,10 +98,9 @@ end
         train_ratio=0.8,
     )
 
-    hparams = HyperParamsTS(; seed=1234, η=1e-4, epochs=200, window_size=10, K=10)
-
+    n_series = 200
     loaderXtrain, loaderYtrain, loaderXtest, loaderYtest = generate_batch_train_test_data(
-        hparams, ar_hparams
+        n_series, ar_hparams
     )
 
     model = Chain(

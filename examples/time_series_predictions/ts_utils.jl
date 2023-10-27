@@ -23,6 +23,7 @@ A mutable struct to hold parameters for generating AutoRegressive (AR) processes
 
 """
 Base.@kwdef mutable struct ARParams
+    seed::Int = 1234                            # Seed for reproducibility
     ϕ::Vector{Float32} = [0.4f0, 0.3f0, 0.2f0]  # AR coefficients (=> AR(3))
     proclen::Int = 10000                        # Process length
     x₁::Float32 = 0.0f0                         # Initial value
@@ -72,14 +73,36 @@ function generate_train_test_data(ARParams)
     return (Xtrain, Xtest, ytrain, ytest)
 end
 
-function generate_batch_train_test_data(hparams, arparams)
-    Random.seed!(hparams.seed)
+"""
+    generate_batch_train_test_data(n_series, arparams)
+
+Generate batches of training and testing data for multiple AR(p) processes. Each batch is of the DataLoader returned is a realization of the AR(p) process.
+
+# Arguments
+- `n_series::Int`: Number of AR(p) to generate and create training/testing data for.
+
+- `arparams::NamedTuple`: A structure containing various parameters and settings for data generation. The structure should include the following fields:
+    - `seed::Int`: Seed for random number generation.
+    - `train_ratio::Float64`: The ratio of data to be used for training (between 0 and 1).
+    - `proclen::Int`: Length of each time series.
+
+# Returns
+- `loaderXtrain::Flux.DataLoader`: DataLoader for the training input data (Xtrain).
+
+- `loaderYtrain::Flux.DataLoader`: DataLoader for the training target data (Ytrain).
+
+- `loaderXtest::Flux.DataLoader`: DataLoader for the testing input data (Xtest).
+
+- `loaderYtest::Flux.DataLoader`: DataLoader for the testing target data (Ytest).
+"""
+function generate_batch_train_test_data(n_series, arparams)
+    Random.seed!(arparams.seed)
     # Get data
     Xtrain = []
     Ytrain = []
     Xtest = []
     Ytest = []
-    for _ in 1:(hparams.epochs)
+    for _ in 1:(n_series)
         xtrain, xtest, ytrain, ytest = generate_train_test_data(arparams)
         append!(Xtrain, xtrain)
         append!(Ytrain, ytrain)
