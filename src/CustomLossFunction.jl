@@ -193,7 +193,7 @@ end;
 end;
 
 """
-    adaptative_block_learning(model, data, hparams)
+    invariant_statistical_loss(model, data, hparams)
 
 Custom loss function for the model. model is a Flux neuronal network model, data is a
 loader Flux object and hparams is a HyperParams object.
@@ -383,7 +383,7 @@ Base.@kwdef mutable struct HyperParamsTS
     η::Float64 = 1e-3                           # Learning rate
     epochs::Int = 100                           # Number of epochs
     noise_model = Normal(0.0f0, 1.0f0)          # Noise to add to the data
-    window_size = 100                          # Window size for the histogram
+    window_size = 100                           # Window size for the histogram
     K = 10                                      # Number of simulted observations
 end
 
