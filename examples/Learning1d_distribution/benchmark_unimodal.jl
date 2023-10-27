@@ -70,7 +70,7 @@ include("../utils.jl")
                 x -> quantile.(target_model, cdf(noise_model, x)),
                 noise_model,
                 target_model,
-                nn,
+                gen,
                 n_samples,
                 (-3:0.1:3),
                 (0:0.1:10),
