@@ -243,18 +243,6 @@ function QLρ(xₜ, x̂ₜ; ρ=0.5)
            sum(ρ .* (xₜ .- x̂ₜ) .* (xₜ .> x̂ₜ) .+ (1 - ρ) .* (x̂ₜ .- xₜ) .* (xₜ .<= x̂ₜ))
 end
 
-function get_watson_durbin_test(y, ŷ)
-    e = []
-    for (yₜ, ŷₜ) in zip(y, ŷ)
-        append!(e, yₜ - ŷₜ)
-    end
-    sum = 0
-    for i in 2:2:length(e)
-        sum += (e[i] - e[i - 1])^2
-    end
-    return sum / sum(e .^ 2)
-end
-
 """
     yule_walker(x::Vector{Float32};
                 order::Int64=1,
@@ -348,7 +336,7 @@ function yule_walker(
     end
 end
 
-function ts_forecasting(rec, gen, ts, t₀, τ, n_average)
+function ts_forecasting(rec, gen, ts::Vector{Float32}, t₀::Int64, τ::Int64; n_average=1000)
     prediction = Vector{Float32}()
     stdevss = Vector{Float32}()
     Flux.reset!(rec)
@@ -367,7 +355,13 @@ function ts_forecasting(rec, gen, ts, t₀, τ, n_average)
 end
 
 function ts_forecast(
-    rec, gen, xtrain, xtest, τ; n_average=1000, noise_model=Normal(0.0f0, 1.0f0)
+    rec,
+    gen,
+    xtrai::Vector{Float32},
+    xtest::Vector{Float32},
+    τ::Int64;
+    n_average=1000,
+    noise_model=Normal(0.0f0, 1.0f0),
 )
     prediction = Vector{Float32}()
     stds = Vector{Float32}()
@@ -393,7 +387,12 @@ function ts_forecast(
 end
 
 function ts_forecast(
-    rec, gen, data, τ; n_average=1000, noise_model=Normal(0.0f0, 1.0f0)
+    rec,
+    gen,
+    data::Vector{Float32},
+    τ::Int64;
+    n_average=1000,
+    noise_model=Normal(0.0f0, 1.0f0),
 )
     prediction = Vector{Float32}()
     stds = Vector{Float32}()
