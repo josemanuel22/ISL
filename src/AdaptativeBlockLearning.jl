@@ -33,9 +33,4 @@ export _sigmoid,
     HyperParamsTS,
     ts_invariant_statistical_loss_one_step_prediction,
     ts_invariant_statistical_loss,
-    ts_covariates_adaptative_block_learning,
-    get_proxy_histogram_loss_ts,
-    get_window_of_Aₖ_ts,
-    get_density
-
 end
