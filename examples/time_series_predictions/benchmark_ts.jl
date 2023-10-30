@@ -280,6 +280,88 @@ end
     )
 end
 
+@test_experiments "testing 30 years european wind generation" begin
+    #=
+    https://www.nrel.gov/grid/solar-power-data.html
+    =#
+
+    csv1 = "examples/time_series_predictions/data/30-years-of-european-wind-generation/TS.CF.N2.30yr.csv"
+
+    df1 = CSV.File(csv1; delim=',', header=true, decimal='.', types=Dict("AT11" => Float32))
+
+    hparams = HyperParamsTS(; seed=1234, η=1e-6, epochs=200, window_size=200, K=20)
+
+    rec = Chain(RNN(1 => 32, relu;), RNN(32 => 32, relu;), RNN(32 => 32, relu;), RNN(32 => 32, relu;))
+    gen = Chain(Dense(33, 64, relu;), Dense(64, 1, identity;))
+
+    start = 1
+    num_training_data = 1000
+
+    ts = df1.FR63
+    xtrain = ts[start:(start + num_training_data)]
+    ytrain = ts[(start + 1):(start + num_training_data)]
+
+    start_test = 1000
+    num_test_data = 1000
+    ztrain = ts[(start_test + start + num_training_data):(start_test + start + num_training_data + num_test_data)]
+
+    loaderXtrain = Flux.DataLoader(
+        map(x -> Float32.(x), xtrain);
+        batchsize=round(Int, num_training_data),
+        shuffle=false,
+        partial=false,
+    )
+
+    loaderYtrain = Flux.DataLoader(
+        map(x -> Float32.(x), ytrain);
+        batchsize=round(Int, num_training_data),
+        shuffle=false,
+        partial=false,
+    )
+
+    num_test_data = 10000
+    loaderXtest = Flux.DataLoader(
+        map(
+            x -> Float32.(x),
+            ztrain,
+        );
+        batchsize=round(Int, num_test_data),
+        shuffle=false,
+        partial=false,
+    )
+
+    losses = []
+    @showprogress for _ in 1:1000
+        loss = ts_invariant_statistical_loss(
+            rec, gen, loaderXtrain, loaderYtrain, hparams)
+        append!(losses, loss)
+    end
+
+    τ = 24
+    prediction, stds = ts_forecast(
+        rec, gen, collect(loaderXtrain)[1], collect(loaderXtest)[1], 24; n_average = 1000
+    )
+
+    #plot results
+    ideal_target = Vector{Float32}()
+    append!(ideal_target, collect(loaderXtrain)[1][(end - 12):end])
+    append!(ideal_target, ideal[1:180])
+    t₁ = (1:1:length(ideal_target))
+    plot(t₁, ideal_target; label="Ideal Target", linecolor=:redsblues)
+    t₂ = (14:1:(13 + length(prediction[1:180])))
+    plot!(
+        t₂,
+        prediction[1:length(t₂)];
+        ribbon=stdss[1:length(t₂)],
+        fillalpha=0.1,
+        label="Prediction",
+        color=get(ColorSchemes.rainbow, 0.2),
+    )
+    xlabel!("t")
+    ylabel!("% power plant's maximum output")
+    vline!([length(collect(loaderXtrain)[1][(end - 13):end])]; line=(:dash, :black), label="")
+end
+
 @test_experiments "Mixture time series syntetic 1" begin
 
     # Define a function to generate synthetic data.
