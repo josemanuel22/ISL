@@ -255,7 +255,6 @@ function get_watson_durbin_test(y, ŷ)
     return sum / sum(e .^ 2)
 end
 
-
 """
     yule_walker(x::Vector{Float32};
                 order::Int64=1,
@@ -365,6 +364,55 @@ function ts_forecasting(rec, gen, ts, t₀, τ, n_average)
         append!(stdevss, stdev)
     end
     return prediction, stdevss
+end
+
+function ts_forecast(
+    rec, gen, xtrain, xtest, τ; n_average=1000, noise_model=Normal(0.0f0, 1.0f0)
+)
+    prediction = Vector{Float32}()
+    stds = Vector{Float32}()
+
+    Flux.reset!(rec)
+    s = []
+    for j in (0:(τ):(length(xtrain) - τ))
+        s = rec(xtrain[(j + 1):(j + τ)]')
+    end
+
+    for j in (0:(τ):(length(xtest) - τ))
+        s = rec(xtest[(j + 1):(j + τ)]')
+        for i in 1:(τ)
+            xₖ = rand(noise_model, n_average)
+            y = hcat([gen(vcat(x, s[:, i])) for x in xₖ]...)
+            ȳ = mean(y)
+            σ = std(y)
+            append!(prediction, ȳ)
+            append!(stds, σ)
+        end
+    end
+    return prediction, stds
+end
+
+function ts_forecast(
+    rec, gen, data, τ; n_average=1000, noise_model=Normal(0.0f0, 1.0f0)
+)
+    prediction = Vector{Float32}()
+    stds = Vector{Float32}()
+
+    prediction = Vector{Float32}()
+    Flux.reset!(rec)
+    s = 0
+    for t in (0:τ:(length(data) - τ))
+        s = rec(data[(t + 1):(t + τ)]')
+        for i in 1:τ
+            xₖ = rand(noise_model, n_average)
+            y = hcat([gen(vcat(x, s[:, i])) for x in xₖ]...)
+            ȳ = mean(y)
+            σ = std(y)
+            append!(prediction, ȳ)
+            append!(stds, σ)
+        end
+    end
+    return prediction, stds
 end
 
 function average_prediction(gen, s, n_average)

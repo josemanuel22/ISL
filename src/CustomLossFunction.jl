@@ -389,12 +389,9 @@ end
 
 # Train and output the model according to the chosen hyperparameters `hparams`
 
-"""
-    ts_adaptative_block_learning(nn_model, Xₜ, Xₜ₊₁, hparams)
 
-Custom loss function for the model `nn_model` on time series data `Xₜ` and `Xₜ₊₁`.
-"""
-function ts_adaptative_block_learning(rec, gen, Xₜ, Xₜ₊₁, hparams)
+
+function ts_invariant_statistical_loss_one_step_prediction(rec, gen, Xₜ, Xₜ₊₁, hparams)
     losses = []
     optim_rec = Flux.setup(Flux.Adam(hparams.η), rec)
     optim_gen = Flux.setup(Flux.Adam(hparams.η), gen)
@@ -407,6 +404,57 @@ function ts_adaptative_block_learning(rec, gen, Xₜ, Xₜ₊₁, hparams)
                     s = rec([batch_Xₜ[j + i]])
                     xₖ = rand(hparams.noise_model, hparams.K)
                     yₖ = hcat([gen(vcat(x, s)) for x in xₖ]...)
+                    aₖ += generate_aₖ(yₖ, batch_Xₜ₊₁[j + i])
+                end
+                scalar_diff(aₖ ./ sum(aₖ))
+            end
+            Flux.update!(optim_rec, rec, grads[1])
+            Flux.update!(optim_gen, gen, grads[2])
+            push!(losses, loss)
+        end
+    end
+    return losses
+end
+
+
+"""
+ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams)
+
+Train a model for time series data with statistical invariance loss method.
+
+# Arguments
+- `rec`: The recurrent neural network (RNN) responsible for encoding the time series data.
+- `gen`: The generative model used for generating future time series data.
+- `Xₜ`: An array of input time series data at time `t`.
+- `Xₜ₊₁`: An array of target time series data at time `t+1`.
+- `hparams::NamedTuple`: A structure containing hyperparameters for training. It should include the following fields:
+    - `η::Float64`: Learning rate for optimization.
+    - `window_size::Int`: Size of the sliding window used during training.
+    - `K::Int`: Number of samples in the generative model.
+    - `noise_model`: Noise model used for generating random noise.
+
+# Returns
+- `losses::Vector{Float64}`: A vector containing the training loss values for each iteration.
+
+# Description
+This function train a model for time series data with statistical invariance loss method. It utilizes a recurrent neural network (`rec`) to encode the time series data at time `t` and a generative model (`gen`) to generate future time series data at time `t+1`. The training process involves optimizing both the `rec` and `gen` models.
+
+The function iterates through the provided time series data (`Xₜ` and `Xₜ₊₁`) in batches, with a sliding window of size `window_size`.
+
+"""
+function ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams)
+    losses = []
+    optim_rec = Flux.setup(Flux.Adam(hparams.η), rec)
+    optim_gen = Flux.setup(Flux.Adam(hparams.η), gen)
+    for (batch_Xₜ, batch_Xₜ₊₁) in zip(Xₜ, Xₜ₊₁)
+        Flux.reset!(rec)
+        for j in (0:(hparams.window_size):(length(batch_Xₜ) - hparams.window_size))
+            loss, grads = Flux.withgradient(rec, gen) do rec, gen
+                aₖ = zeros(hparams.K + 1)
+                s = rec(batch_Xₜ[(j + 1):(j + hparams.window_size)]')
+                for i in 1:(hparams.window_size)
+                    xₖ = rand(hparams.noise_model, hparams.K)
+                    yₖ = hcat([gen(vcat(x, s[:, i])) for x in xₖ]...)
                     aₖ += generate_aₖ(yₖ, batch_Xₜ₊₁[j + i])
                 end
                 scalar_diff(aₖ ./ sum(aₖ))

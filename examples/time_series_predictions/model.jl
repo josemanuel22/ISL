@@ -19,16 +19,19 @@ include("ts_utils.jl")
         noise=Normal(0.5f0, 0.1f0),
         train_ratio=0.8,
     )
-    hparams = HyperParamsTS(; seed=1234, η=1e-3, epochs=100, window_size=1000, K=10)
 
     rec = Chain(RNN(1 => 10, relu), RNN(10 => 10, relu))
     gen = Chain(Dense(11, 16, relu), Dense(16, 1, identity))
 
+    n_series = 100
     loaderXtrain, loaderYtrain, loaderXtest, loaderYtest = generate_batch_train_test_data(
-        hparams, ar_hparams
+        n_series, ar_hparams
     )
 
-    loss = ts_adaptative_block_learning(rec, gen, loaderXtrain, loaderYtrain, hparams)
+    hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=n_series, window_size=1000, K=10)
+    loss = ts_invariant_statistical_loss_one_step_prediction(
+        rec, gen, loaderXtrain, loaderYtrain, hparams
+    )
 
     plot_univariate_ts_prediction(
         rec,
@@ -47,16 +50,19 @@ end
         proclen=2000,
         noise=Normal(0.0f0, 0.2f0),
     )
-    hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=1000, window_size=1000, K=10)
 
     rec = Chain(RNN(1 => 10, relu), RNN(10 => 10, relu))
     gen = Chain(Dense(11, 16, relu), Dense(16, 1, identity))
 
+    n_series = 200
     loaderXtrain, loaderYtrain, loaderXtest, loaderYtest = generate_batch_train_test_data(
-        hparams, ar_hparams
+        n_series, ar_hparams
     )
 
-    loss = ts_adaptative_block_learning(rec, gen, loaderXtrain, loaderYtrain, hparams)
+    hparams = HyperParamsTS(; seed=1234, η=1e-3, epochs=n_series, window_size=1000, K=10)
+    loss = ts_invariant_statistical_loss_one_step_prediction(
+        rec, gen, loaderXtrain, loaderYtrain, hparams
+    )
 
     plot_univariate_ts_prediction(
         rec, gen, collect(loaderXtrain)[1], collect(loaderXtest)[1], hparams; n_average=1000
@@ -71,16 +77,18 @@ end
         noise=Normal(0.0f0, 0.2f0),
         train_ratio=0.6,
     )
-    hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=200, window_size=1000, K=5)
 
     rec = Chain(RNN(1 => 10, relu), RNN(10 => 10, relu))
     gen = Chain(Dense(11, 16, relu), Dense(16, 1, identity))
 
+    n_series = 200
     loaderXtrain, loaderYtrain, loaderXtest, loaderYtest = generate_batch_train_test_data(
-        hparams, ar_hparams
+        n_series, ar_hparams
     )
 
-    loss = ts_adaptative_block_learning(rec, gen, loaderXtrain, loaderYtrain, hparams)
+    loss = ts_invariant_statistical_loss_one_step_prediction(
+        rec, gen, loaderXtrain, loaderYtrain, hparams
+    )
 
     plot_univariate_ts_prediction(
         rec, gen, collect(loaderXtrain)[1], collect(loaderXtest)[1], hparams; n_average=1000
@@ -95,16 +103,18 @@ end
         noise=Normal(0.0f0, 0.5f0),
         train_ratio=0.8,
     )
-    hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=500, window_size=1000, K=10)
 
     rec = Chain(RNN(1 => 10, relu), RNN(10 => 10, relu))
     gen = Chain(Dense(11, 16, relu), Dense(16, 1, identity))
 
+    n_series = 500
     loaderXtrain, loaderYtrain, loaderXtest, loaderYtest = generate_batch_train_test_data(
-        hparams, ar_hparams
+        n_series, ar_hparams
     )
 
-    loss = ts_adaptative_block_learning(rec, gen, loaderXtrain, loaderYtrain, hparams)
+    loss = ts_invariant_statistical_loss_one_step_prediction(
+        rec, gen, loaderXtrain, loaderYtrain, hparams
+    )
 
     plot_univariate_ts_prediction(
         rec, gen, collect(loaderXtrain)[2], collect(loaderXtest)[2], hparams; n_average=100
@@ -118,17 +128,19 @@ end
         proclen=2000,
         noise=Normal(0.0f0, 0.2f0),
     )
-    hparams = HyperParamsTS(; seed=1234, η=1e-3, epochs=200, window_size=1000, K=10)
 
     #nn_model = Chain(RNN(1 => 32, relu), RNN(32 => 32, relu), Dense(32 => 1, identity))
     rec = Chain(RNN(1 => 10, relu), RNN(10 => 10, relu))
     gen = Chain(Dense(11, 32, relu), Dense(32, 1, identity))
 
+    n_series = 200
     loaderXtrain, loaderYtrain, loaderXtest, loaderYtest = generate_batch_train_test_data(
-        hparams, ar_hparams
+        n_series, ar_hparams
     )
 
-    loss = ts_adaptative_block_learning(rec, gen, loaderXtrain, loaderYtrain, hparams)
+    loss = ts_invariant_statistical_loss_one_step_prediction(
+        rec, gen, loaderXtrain, loaderYtrain, hparams
+    )
 
     plot_univariate_ts_prediction(
         rec, gen, collect(loaderXtrain)[1], collect(loaderXtest)[1], hparams; n_average=100
@@ -143,16 +155,18 @@ end
         noise=Normal(0.0f0, 0.5f0),
         train_ratio=0.8,
     )
-    hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=100, window_size=1000, K=10)
 
     rec = Chain(RNN(1 => 10, relu), RNN(10 => 10, relu))
     gen = Chain(Dense(11, 32, relu), Dense(32, 1, identity))
 
+    n_series = 100
     loaderXtrain, loaderYtrain, loaderXtest, loaderYtest = generate_batch_train_test_data(
-        hparams, ar_hparams
+        n_series, ar_hparams
     )
 
-    loss = ts_adaptative_block_learning(rec, gen, loaderXtrain, loaderYtrain, hparams)
+    loss = ts_invariant_statistical_loss_one_step_prediction(
+        rec, gen, loaderXtrain, loaderYtrain, hparams
+    )
 
     plot_univariate_ts_prediction(
         rec,
@@ -172,17 +186,19 @@ end
         noise=Normal(0.0f0, 0.5f0),
         train_ratio=0.6,
     )
-    hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=200, window_size=1000, K=10)
 
     #nn_model = Chain(RNN(1 => 32, relu), RNN(32 => 32, relu), Dense(32 => 1, identity))
     rec = Chain(RNN(1 => 10, relu), RNN(10 => 10, relu))
     gen = Chain(Dense(11, 32, relu), Dense(32, 1, identity))
 
+    n_series = 200
     loaderXtrain, loaderYtrain, loaderXtest, loaderYtest = generate_batch_train_test_data(
-        hparams, ar_hparams
+        n_series, ar_hparams
     )
 
-    loss = ts_adaptative_block_learning(rec, gen, loaderXtrain, loaderYtrain, hparams)
+    loss = ts_invariant_statistical_loss_one_step_prediction(
+        rec, gen, loaderXtrain, loaderYtrain, hparams
+    )
 
     plot_univariate_ts_prediction(
         rec, gen, collect(loaderXtrain)[3], collect(loaderXtest)[3], hparams; n_average=1000
@@ -314,6 +330,41 @@ end
     X₁_test = [x[1] for x in X_test]
 end
 
+"""
+Run experiments for testing electricity-f consumption time series forecasting (variant F).
+
+This code block performs experiments to forecast electricity consumption time series data. It loads the data from a CSV file, preprocesses it, trains a recurrent neural network (RNN) model, and makes predictions. This variant specifically tests electricity consumption forecasting.
+
+Parameters:
+- `csv_file_path`: A string representing the file path to the CSV file containing electricity consumption data.
+- `start`: The starting index in the time series data for training and testing.
+- `num_training_data`: The number of data points used for training.
+- `hparams`: An instance of HyperParamsTS with hyperparameters for training the model.
+- `rec`: The recurrent neural network (RNN) model used for encoding.
+- `gen`: The neural network model used for decoding.
+- `predictions`: An array to store the forecasted values.
+- `stds`: An array to store the standard deviations of forecasts.
+
+The function performs the following steps:
+1. Load the electricity consumption data from the CSV file and preprocess it.
+2. Split the data into training and testing sets.
+3. Train the model using training data and hyperparameters.
+4. Make predictions for the test data.
+
+Note: This code assumes a specific data structure for the CSV file, including column names like "MT_005," "MT_006," etc., and specific model architecture for `rec` and `gen`.
+
+Example:
+```julia
+@test_experiments "testing electricity-f" begin
+    csv_file_path = "/Users/jmfrutos/github/AdaptativeBlockLearning/examples/time_series_predictions/data/LD2011_2014.txt"
+    start = 35040
+    num_training_data = 1000
+    hparams = HyperParamsTS(; seed=1234, η=1e-3, epochs=2000, window_size=1000, K=20)
+    rec = ...  # Define the RNN model
+    gen = ...  # Define the neural network model
+    predictions,
+```
+"""
 @test_experiments "testing electricity-f" begin
     csv_file_path = "/Users/jmfrutos/github/AdaptativeBlockLearning/examples/time_series_predictions/data/LD2011_2014.txt"
 
@@ -349,28 +400,27 @@ end
         Dense(16, 1, identity; init=Flux.randn32(MersenneTwister(1))),
     )
 
+    ts = df.MT_005
+
     start = 35040
-    num_training_data = 35040
+    num_training_data = 1000
     loaderXtrain = Flux.DataLoader(
-        [df.MT_333[i] for i in start:(start + num_training_data)];
+        ts[start:(start + num_training_data)];
         batchsize=round(Int, num_training_data),
         shuffle=false,
         partial=false,
     )
 
     loaderYtrain = Flux.DataLoader(
-        [df.MT_333[i] for i in (start + 1):(start + num_training_data + 1)];
+        ts[(start + 1):(start + num_training_data + 1)];
         batchsize=round(Int, num_training_data),
         shuffle=false,
         partial=false,
     )
 
-    num_test = 100
+    num_test = 1000
     loaderXtest = Flux.DataLoader(
-        [
-            df.MT_333[i] for
-            i in (start + num_training_data - 1):(start + num_training_data + num_test)
-        ];
+        ts[(start + num_training_data - 1):(start + num_training_data + num_test)];
         batchsize=round(Int, num_training_data),
         shuffle=false,
         partial=false,
@@ -378,11 +428,55 @@ end
 
     losses = []
     @showprogress for _ in 1:1000
-        loss = ts_adaptative_block_learning_1(rec, gen, loaderx, loadery, hparams)
+        loss = ts_invariant_statistical_loss(rec, gen, loaderXtrain, loaderYtrain, hparams)
         append!(losses, loss)
     end
+
+    τ = 24
+    xtrain = collect(loaderXtrain)[1]
+    xtest = collect(loaderXtest)[1]
+    prediction, stds = ts_forecast(
+        rec, gen, xtrain, xtest, τ; n_average=1000, noise_model=Normal(0.0f0, 1.0f0)
+    )
 end
 
+"""
+Run experiments for testing electricity-c consumption time series forecasting.
+
+This code block performs experiments to forecast electricity consumption time series data. It loads the data from a CSV file, preprocesses it, trains a recurrent neural network (RNN) model, and makes predictions.
+
+Parameters:
+- `csv_file_path`: A string representing the file path to the CSV file containing electricity consumption data.
+- `start`: The starting index in the time series data for training and testing.
+- `num_training_data`: The number of data points used for training.
+- `hparams`: An instance of HyperParamsTS with hyperparameters for training the model.
+- `rec`: The recurrent neural network (RNN) model used for encoding.
+- `gen`: The neural network model used for decoding.
+- `predictions`: An array to store the forecasted values.
+- `stds`: An array to store the standard deviations of forecasts.
+
+The function performs the following steps:
+1. Load the electricity consumption data from the CSV file.
+2. Preprocess the data, including type conversion and aggregation.
+3. Split the data into training and testing sets.
+4. Train the model using training data and hyperparameters.
+5. Make predictions for the test data.
+
+Note: This code assumes a specific data structure for the CSV file, including column names like "MT_005," "MT_006," etc., and specific model architecture for `rec` and `gen`.
+
+Example:
+```julia
+@test_experiments "testing electricity-c" begin
+    csv_file_path = "/Users/jmfrutos/github/AdaptativeBlockLearning/examples/time_series_predictions/data/LD2011_2014.txt"
+    start = 35040
+    num_training_data = 35040
+    hparams = HyperParamsTS(; seed=1234, η=1e-3, epochs=2000, window_size=1000, K=10)
+    rec = ...  # Define the RNN model
+    gen = ...  # Define the neural network model
+    predictions, stds = run_electricity_experiments(csv_file_path, start, num_training_data, hparams, rec, gen)
+end
+```
+"""
 @test_experiments "testing electricity-c" begin
     csv_file_path = "/Users/jmfrutos/github/AdaptativeBlockLearning/examples/time_series_predictions/data/LD2011_2014.txt"
 
@@ -418,46 +512,31 @@ end
         Dense(10, 1, identity; init=Flux.randn32(MersenneTwister(1))),
     )
 
+    # start and finish of the training data
     start = 35040
-    num_training_data = 35040
-    loaderXtrain = Flux.DataLoader(
-        [df.MT_006[i] for i in start:(start + num_training_data)];
-        batchsize=round(Int, num_training_data),
-        shuffle=false,
-        partial=false,
-    )
+    num_training_data = 1000
 
-    loaderYtrain = Flux.DataLoader(
-        [df.MT_006[i] for i in (start + 1):(start + num_training_data + 1)];
-        batchsize=round(Int, num_training_data),
-        shuffle=false,
-        partial=false,
-    )
+    ts = df.MT_006
 
-    #num_test = 40000
-    loaderXtest = Flux.DataLoader(
-        [
-            df.MT_006[i] for i in ((start + num_training_data - 1):length(df.MT_006))#(start + num_training_data + num_test)
-        ];
-        batchsize=round(Int, num_training_data),
-        shuffle=false,
-        partial=false,
-    )
+    loaderXtrain = ts[start:(start + num_training_data)]
+    loaderYtrain = ts[(start + 1):(start + num_training_data + 1)]
+    loaderXtest = ts[(start + num_training_data - 1):length(ts)]
 
+    # coarse grain the data, electricity-c
     aggregated_data_xtrain = Vector{Float32}()
     aggregated_data_ytrain = Vector{Float32}()
     aggregated_data_xtest = Vector{Float32}()
 
-    for i in 1:4:length(collect(loaderXtrain)[1])
-        push!(aggregated_data_xtrain, Float32(sum(x[i:min(i + 3, end)])))
+    for i in 1:4:length(loaderXtrain)
+        push!(aggregated_data_xtrain, Float32(sum(loaderXtrain[i:min(i + 3, end)])))
     end
 
-    for i in 1:4:length(collect(loaderYtrain)[1])
-        push!(aggregated_data_ytrain, Float32(sum(y[i:min(i + 3, end)])))
+    for i in 1:4:length(loaderYtrain)
+        push!(aggregated_data_ytrain, Float32(sum(loaderYtrain[i:min(i + 3, end)])))
     end
 
-    for i in 1:4:length(collect(loaderXtest)[1])
-        push!(aggregated_data_xtest, Float32(sum(z[i:min(i + 3, end)])))
+    for i in 1:4:length(loaderXtest)
+        push!(aggregated_data_xtest, Float32(sum(loaderXtest[i:min(i + 3, end)])))
     end
 
     loader_xtrain = Flux.DataLoader(
@@ -480,24 +559,53 @@ end
         partial=false,
     )
 
+    #train the model
     losses = []
     @showprogress for _ in 1:200
-        loss = ts_adaptative_block_learning_1(
+        loss = ts_invariant_statistical_loss(
             rec, gen, loader_xtrain, loader_ytrain, hparams
         )
         append!(losses, loss)
     end
+
+    predictions, stds = ts_forecast(
+        rec, gen, collect(loader_xtrain)[1], collect(loader_xtest)[1], 24, 1000
+    )
 end
 
-@test_experiments "testing syntetic" begin
+@test_experiments "Mixture time series syntetic 1" begin
+
+    # Define a function to generate synthetic data.
+    """
+    generate_synthetic(range)
+
+    Generate synthetic time series data according to a composite time series model.
+
+    This function generates synthetic time series data based on a composite time series model. The model consists of two underlying functions, y1(t) and y2(t), each of which is selected with equal probability at each time step from a Bernoulli distribution with a parameter of 1/2. The functions y1(t) and y2(t) are defined as follows:
+        - y1(t) = 10 * cos(t - 0.5) + ξ, where ξ follows a standard Gaussian distribution (N(0, 1)).
+        - y2(t) = 10 * sin(t - 0.5) + ξ, where ξ follows a standard Gaussian distribution (N(0, 1)).
+
+    Parameters:
+        - `range`: A range of time values over which the synthetic time series data will be generated.
+
+    Returns:
+        - An array of time-value pairs representing the synthetic time series data.
+
+    Example:
+    ```julia
+        range = -4:0.1:4
+        data = generate_synthetic(range)
+    ```
+    """
     function generate_syntetic(range)
         data = []
         for x in range
-            ϵ = Float32(rand(Normal(0.0f0, 0.2f0)))
+            ϵ = Float32(rand(Normal(0.0f0, 1.0f0)))
+            # Randomly select one of two functions based on a Bernoulli distribution with parameter 1/2.
             if rand(Bernoulli(0.5))
-                y = 10 * cos(x - 0.5) + ϵ
+                y = 10 * cos(x - 0.5) + ϵ # Function y1(t) = 10 cos(t − 0.5) + ξ
             else
-                y = 10 * sin(x - 0.5) + ϵ
+                y = 10 * sin(x - 0.5) + ϵ # Function y2(t) = 10 sin(t − 0.5) + ξ
             end
             push!(data, [x, y])
         end
@@ -515,58 +623,43 @@ end
 
     loaderXtrain = Flux.DataLoader(
         [Float32(y[2]) for y in data[1:(end - 1)]];
-        batchsize=round(Int, 10000),
+        batchsize=round(Int, length(data)),
         shuffle=false,
         partial=false,
     )
 
     loaderYtrain = Flux.DataLoader(
         [Float32(y[2]) for y in data[2:end]];
-        batchsize=round(Int, 10000),
+        batchsize=round(Int, length(data)),
         shuffle=false,
         partial=false,
     )
 
     losses = []
-    @showprogress for i in 1:1000
-        loss = ts_adaptative_block_learning(rec, gen, loaderXtrain, loaderYtrain, hparams)
+    @showprogress for i in 1:2000
+        loss = ts_invariant_statistical_loss(rec, gen, loaderXtrain, loaderYtrain, hparams)
         append!(losses, loss)
     end
 
     #generating test data
     range = -4:0.02:4
     data = generate_syntetic(range)
-    loaderXtest = Flux.DataLoader(
-        [Float32(y[2]) for y in data[1:end-1]];
-        batchsize=round(Int, 10000),
-        shuffle=false,
-        partial=false,
-    )
+    X_test = [Float32(y[2]) for y in data[1:(end - 1)]]
+    Y_test = [Float32(y[2]) for y in data[2:end]]
 
-    loaderYtest = Flux.DataLoader(
-        [Float32(y[2]) for y in data[2:end]];
-        batchsize=round(Int, 10000),
-        shuffle=false,
-        partial=false,
-    )
-
-    n_average = 1000
-    prediction = Vector{Float32}()
-    Flux.reset!(rec)
-    s = 0
-    X_test = collect(loaderXtest)[1]
     τ = 20
-    for t in (0:τ:length(range) - τ)
-        s = rec(X_test[t+1:(t + τ)]')
-        for i in 1:τ
-            xₖ = rand(hparams.noise_model, n_average)
-            y = mean(hcat([gen(vcat(x, s[:,i])) for x in xₖ]...))
-            append!(prediction, y[1])
-        end
-    end
+    prediction, _ = ts_forecast(rec, gen, X_test, τ; n_average=1000)
 
-    scatter(X_test, label="ideal", color=get(ColorSchemes.rainbow, 0.2), legend=:topright, marker=:circle, markersize=3)
-    scatter!(prediction, label="prediction", color=:redsblues, marker=:circle, markersize=3)
+    #plot the results
+    scatter(
+        X_test;
+        label="ideal",
+        color=get(ColorSchemes.rainbow, 0.2),
+        legend=:topright,
+        marker=:circle,
+        markersize=3,
+    )
+    scatter!(prediction; label="prediction", color=:redsblues, marker=:circle, markersize=3)
     xlabel!("t")
     ylabel!("y")
 end
