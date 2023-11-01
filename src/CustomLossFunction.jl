@@ -22,7 +22,7 @@ function _leaky_relu(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
 end;
 
 """
-ψₘ(y::T, m::Int64) where {T<:AbstractFloat}
+`ψₘ(y::T, m::Int64) where {T<:AbstractFloat}``
 
 Calculate the bump function centered at `m`, implemented as a Gaussian function.
 
@@ -65,7 +65,7 @@ function ϕ(yₖ::Matrix{T}, yₙ::T) where {T<:AbstractFloat}
 end;
 
 """
-γ(yₖ::Matrix{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}
+`γ(yₖ::Matrix{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}``
 
 Calculate the contribution of `ψₘ ∘ ϕ(yₖ, yₙ)` to the `m` bin of the histogram as a Vector{Float}.
 
@@ -91,7 +91,7 @@ function γ(yₖ::Matrix{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}
 end;
 
 """
-γ_fast(yₖ::Matrix{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}
+`γ_fast(yₖ::Matrix{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}``
 
 Apply the `γ` function to the given parameters using StaticArrays for improved performance.
 
@@ -119,7 +119,7 @@ function γ_fast(yₖ::Matrix{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}
 end;
 
 """
-    generate_aₖ(ŷ, y)
+    `generate_aₖ(ŷ, y)``
 
 Calculate the values of the real observation `y` in each of the components of the approximate histogram with `K` bins.
 
@@ -145,7 +145,7 @@ function generate_aₖ(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
 end
 
 """
-    scalar_diff(q)
+    `scalar_diff(q)`
 
 Scalar difference between the vector representing our subrogate histogram and the uniform distribution vector.
 
@@ -156,7 +156,7 @@ loss = ||q-1/k+1||_{2} = ∑_{k=0}^K (qₖ - 1/K+1)^2
 scalar_diff(q::Vector{T}) where {T<:AbstractFloat} = sum((q .- (1 ./ length(q))) .^ 2)
 
 """
-    jensen_shannon_∇(aₖ)
+    `jensen_shannon_∇(aₖ)``
 
 Jensen shannon difference between `aₖ` vector and uniform distribution vector.
 """
@@ -193,7 +193,7 @@ end;
 end;
 
 """
-    invariant_statistical_loss(model, data, hparams)
+    `invariant_statistical_loss(model, data, hparams)``
 
 Custom loss function for the model. model is a Flux neuronal network model, data is a
 loader Flux object and hparams is a HyperParams object.
@@ -268,7 +268,7 @@ end;
 end;
 
 """
-    get_window_of_Aₖ(model, target , K, n_samples)
+    `get_window_of_Aₖ(model, target , K, n_samples)``
 
 Generate a window of the rv's `Aₖ` for a given model and target function.
 """
@@ -278,7 +278,7 @@ function get_window_of_Aₖ(transform, model, data, K::Int64)
 end;
 
 """
-    convergence_to_uniform(aₖ)
+    `convergence_to_uniform(aₖ)``
 
 Test the convergence of the distributino of the window of the rv's `Aₖ` to a uniform
 distribution. It is implemented using a Chi-Square test.
@@ -299,7 +299,7 @@ function get_better_K(nn_model, data, min_K, hparams)
 end;
 
 """
-    auto_invariant_statistical_loss(model, data, hparams)
+    `auto_invariant_statistical_loss(model, data, hparams)``
 
 Custom loss function for the model.
 
@@ -418,7 +418,7 @@ end
 
 
 """
-ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams)
+    `ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams)``
 
 Train a model for time series data with statistical invariance loss method.
 
