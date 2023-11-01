@@ -21,4 +21,4 @@ To reproduce the enviroment for compiling the repository:
 (@v1.6) pkg>  activate pathToRepository/ISL
 ````
 
-If you want to use any utility subrepository like GANo DeepAR, make sure it's within your path.
+If you want to use any utility subrepository like GAN or DeepAR, make sure it's within your path.
