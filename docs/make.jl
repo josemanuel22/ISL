@@ -8,7 +8,7 @@ makedocs(;
     format = Documenter.HTML(),
     modules = [ISL],
     pages=[
-        "Home" => "index.md",
+        "home" => "index.md",
         "GAN" => "gan.md",
         "Example" => "example.md",
         "Benchmark" => "benchmark.md",
