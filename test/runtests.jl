@@ -1,4 +1,4 @@
-using AdaptativeBlockLearning
+using ISL
 using HypothesisTests
 using Flux
 using Distributions

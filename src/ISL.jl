@@ -1,5 +1,5 @@
 __precompile__()
-module AdaptativeBlockLearning
+module ISL
 
 using Flux
 using StatsBase
@@ -17,7 +17,6 @@ export _sigmoid,
     ψₘ,
     ϕ,
     γ,
-    CustomLoss,
     generate_aₖ,
     scalar_diff,
     jensen_shannon_∇,

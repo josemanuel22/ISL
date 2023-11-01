@@ -1,4 +1,4 @@
-using AdaptativeBlockLearning
+using ISL
 using GAN
 
 include("../utils.jl")

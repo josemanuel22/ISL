@@ -13,12 +13,12 @@ To install ISL, simply use Julia's package manager. The module is not registered
 
 ````
 julia> push!(LOAD_PATH,pwd()) # You are in the ISL Repository
-julia> using AdaptativeBlockLearning
+julia> using ISL
 ````
 
 To reproduce the enviroment for compiling the repository:
 ````
-(@v1.6) pkg>  activate pathToRepository/AdaptativeBlockLearning
+(@v1.6) pkg>  activate pathToRepository/ISL
 ````
 
 If you want to use any utility subrepository like GANo DeepAR, make sure it's within your path.

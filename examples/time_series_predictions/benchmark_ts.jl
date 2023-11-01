@@ -2,7 +2,7 @@ using Flux
 using Random
 using Statistics
 
-using AdaptativeBlockLearning
+using ISL
 using Distributions
 using DataFrames
 using CSV
@@ -63,7 +63,7 @@ Note: This code assumes a specific data structure for the CSV file, including co
 Example:
 ```julia
 @test_experiments "testing electricity-f" begin
-    csv_file_path = "/Users/jmfrutos/github/AdaptativeBlockLearning/examples/time_series_predictions/data/LD2011_2014.txt"
+    csv_file_path = "examples/time_series_predictions/data/LD2011_2014.txt"
     start = 35040
     num_training_data = 1000
     hparams = HyperParamsTS(; seed=1234, η=1e-3, epochs=2000, window_size=1000, K=20)
@@ -73,7 +73,7 @@ Example:
 ```
 """
 @test_experiments "testing electricity-f" begin
-    csv_file_path = "/Users/jmfrutos/github/AdaptativeBlockLearning/examples/time_series_predictions/data/LD2011_2014.txt"
+    csv_file_path = "examples/time_series_predictions/data/LD2011_2014.txt"
 
     df = CSV.File(
         csv_file_path;
@@ -174,7 +174,7 @@ Note: This code assumes a specific data structure for the CSV file, including co
 Example:
 ```julia
 @test_experiments "testing electricity-c" begin
-    csv_file_path = "/Users/jmfrutos/github/AdaptativeBlockLearning/examples/time_series_predictions/data/LD2011_2014.txt"
+    csv_file_path = "/examples/time_series_predictions/data/LD2011_2014.txt"
     start = 35040
     num_training_data = 35040
     hparams = HyperParamsTS(; seed=1234, η=1e-3, epochs=2000, window_size=1000, K=10)
@@ -185,7 +185,7 @@ end
 ```
 """
 @test_experiments "testing electricity-c" begin
-    csv_file_path = "/Users/jmfrutos/github/AdaptativeBlockLearning/examples/time_series_predictions/data/LD2011_2014.txt"
+    csv_file_path = "examples/time_series_predictions/data/LD2011_2014.txt"
 
     df = CSV.File(
         csv_file_path;
@@ -291,7 +291,12 @@ end
 
     hparams = HyperParamsTS(; seed=1234, η=1e-6, epochs=200, window_size=200, K=20)
 
-    rec = Chain(RNN(1 => 32, relu;), RNN(32 => 32, relu;), RNN(32 => 32, relu;), RNN(32 => 32, relu;))
+    rec = Chain(
+        RNN(1 => 32, relu;),
+        RNN(32 => 32, relu;),
+        RNN(32 => 32, relu;),
+        RNN(32 => 32, relu;),
+    )
     gen = Chain(Dense(33, 64, relu;), Dense(64, 1, identity;))
 
     start = 1
@@ -321,10 +326,7 @@ end
 
     num_test_data = 10000
     loaderXtest = Flux.DataLoader(
-        map(
-            x -> Float32.(x),
-            ztrain,
-        );
+        map(x -> Float32.(x), ztrain);
         batchsize=round(Int, num_test_data),
         shuffle=false,
         partial=false,
@@ -332,14 +334,13 @@ end
 
     losses = []
     @showprogress for _ in 1:1000
-        loss = ts_invariant_statistical_loss(
-            rec, gen, loaderXtrain, loaderYtrain, hparams)
+        loss = ts_invariant_statistical_loss(rec, gen, loaderXtrain, loaderYtrain, hparams)
         append!(losses, loss)
     end
 
     τ = 24
     prediction, stds = ts_forecast(
-        rec, gen, collect(loaderXtrain)[1], collect(loaderXtest)[1], 24; n_average = 1000
+        rec, gen, collect(loaderXtrain)[1], collect(loaderXtest)[1], 24; n_average=1000
     )
 
     #plot results
@@ -359,7 +360,9 @@ end
     )
     xlabel!("t")
     ylabel!("% power plant's maximum output")
-    vline!([length(collect(loaderXtrain)[1][(end - 13):end])]; line=(:dash, :black), label="")
+    vline!(
+        [length(collect(loaderXtrain)[1][(end - 13):end])]; line=(:dash, :black), label=""
+    )
 end
 
 @test_experiments "Mixture time series syntetic 1" begin
@@ -451,4 +454,186 @@ end
     scatter!(prediction; label="prediction", color=:redsblues, marker=:circle, markersize=3)
     xlabel!("t")
     ylabel!("y")
+end
+
+@test_experiments "Exchange TS" begin
+    csv1 = "/Users/jmfrutos/Desktop/EXANCHE_RATE/exchange_rate.txt"
+
+    column_names = [:col1, :col2, :col3, :col4, :col5, :col6, :col7, :col8]
+
+    df1 = CSV.File(csv1; delim=',', header=column_names, decimal='.')
+
+    hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=2000, window_size=1000, K=5)
+
+    rec = Chain(
+        RNN(1 => 32, elu; init=Flux.randn32(MersenneTwister(1))),
+        RNN(32 => 32, elu; init=Flux.randn32(MersenneTwister(1))),
+        RNN(32 => 32, elu; init=Flux.randn32(MersenneTwister(1))),
+    )
+    gen = Chain(
+        Dense(33, 64, elu; init=Flux.randn32(MersenneTwister(1))),
+        Dense(64, 1, identity; init=Flux.randn32(MersenneTwister(1))),
+    )
+
+    ts = df1.col1
+    start = 1
+    num_training_data = 1000
+    loaderXtrain = Flux.DataLoader(
+        Float32.(ts[start:num_training_data]);
+        batchsize=round(Int, num_training_data),
+        shuffle=false,
+        partial=false,
+    )
+
+    loaderYtrain = Flux.DataLoader(
+        Float32.(ts[(start + 1):(num_training_data + 1)]);
+        batchsize=round(Int, num_training_data),
+        shuffle=false,
+        partial=false,
+    )
+
+    num_test = 5000
+    loaderXtest = Flux.DataLoader(
+        Float32.(
+            ts[(start + num_training_data - 1):(start + num_training_data + num_test)]
+        );
+        batchsize=round(Int, num_training_data),
+        shuffle=false,
+        partial=false,
+    )
+
+    losses = []
+    @showprogress for _ in 1:1000
+        loss = ts_invariant_statistical_loss(rec, gen, loaderXtrain, loaderYtrain, hparams)
+        append!(losses, loss)
+    end
+
+    window_size = 100
+    ma_result = moving_average([x[1] for x in losses], window_size)
+    plot(ma_result)
+
+
+
+    τ = 1000
+    predictions, stds = ts_forecast(
+        rec, gen, collect(loaderXtrain)[1], collect(loaderXtest)[1], τ; n_average=100
+    )
+
+end
+
+@test_experiments "PEMS_train" begin
+    """
+    15 months worth of daily data (440 daily records) that describes the occupancy rate,
+    between 0 and 1, of different car lanes of the San Francisco bay area freeways across time.
+
+    We consider each day in this database as a single time series of dimension 963
+    (the number of sensors which functioned consistently throughout the studied period) and
+    length 6 x 24=144.
+    """
+    csv_file_path = "examples/time_series_predictions/data/pems+sf/PEMS_train"
+
+    # Read the lines of the file
+    n_days = 10
+    values = []
+    for _ in 1:n_days
+        first_line = readline(csv_file_path)
+        values_str = replace(first_line, "[" => "", "]" => "", ";" => " ")
+        values_array = split(values_str, ' ')
+        append!(values, map(x -> parse(Float32, x), values_array))
+    end
+    valuesX = values[1:(end - 1)]
+    valuesY = values[2:end]
+
+    sensor = 1
+    total_sensors = 963
+    result_vector = values[sensor:total_sensors:end]
+
+    valuesX = result_vector[1:(end - 1)]
+    valuesY = result_vector[2:end]
+
+    hparams = HyperParamsTS(; seed=1234, η=1e-3, epochs=2000, window_size=1000, K=5)
+
+    #nn_model = Chain(RNN(5 => 32, relu), RNN(32 => 32, relu), Dense(32 => 1, identity))
+    rec = Chain(
+        RNN(1 => 16, relu; init=Flux.randn32(MersenneTwister(1))),
+        RNN(16 => 32, relu; init=Flux.randn32(MersenneTwister(1))),
+        #RNN(16 => 32, elu; init=Flux.randn32(MersenneTwister(1))),
+        RNN(32 => 32, relu; init=Flux.randn32(MersenneTwister(1))),
+    )
+    gen = Chain(
+        Dense(33, 64, elu; init=Flux.randn32(MersenneTwister(1))),
+        Dense(64, 64, elu; init=Flux.randn32(MersenneTwister(1))),
+        Dense(64, 1, sigmoid; init=Flux.randn32(MersenneTwister(1))),
+    )
+
+    start = 1
+    num_training_data = 57780
+    loaderXtrain = Flux.DataLoader(
+        Float32.(valuesX[start:(start + num_training_data)]);
+        batchsize=round(Int, num_training_data),
+        shuffle=false,
+        partial=false,
+    )
+
+    loaderYtrain = Flux.DataLoader(
+        Float32.(valuesY[(start + 1):(start + num_training_data + 1)]);
+        batchsize=round(Int, num_training_data),
+        shuffle=false,
+        partial=false,
+    )
+
+    #num_test = 138672
+    num_test = 80000
+    loaderXtest = Flux.DataLoader(
+        Float32.(
+            valuesX[(start + num_training_data - 1):(start + num_training_data + num_test)]
+        );
+        batchsize=round(Int, num_training_data),
+        shuffle=false,
+        partial=false,
+    )
+
+    losses = []
+    @showprogress for _ in 1:10
+        loss = ts_invariant_statistical_loss(rec, gen, loaderXtrain, loaderYtrain, hparams)
+        append!(losses, loss)
+    end
+
+    window_size = 50
+    ma_result = moving_average([x[1] for x in losses], window_size)
+    plot(ma_result)
+
+    τ = 24
+    predictions, stds = ts_forecast(
+        rec, gen, collect(loaderXtrain)[1], collect(loaderXtest)[1], τ; n_average=100
+    )
+
+    #s = rec(collect(loaderXtrain)[1][1])
+    #ideal = collect(loaderx)[1]
+
+    hparams.window_size = 24
+    Flux.reset!(rec)
+    ideal = collect(loaderXtrain)[1]
+    s = []
+    for j in (0:(hparams.window_size):(length(ideal) - hparams.window_size))
+        s = rec(ideal[(j + 1):(j + hparams.window_size)]')
+    end
+
+    n_average = 100
+    prediction = Vector{Float32}()
+    stdss = Vector{Float32}()
+    #hparams.window_size = 24
+    ideal = collect(loaderXtest)[1]
+    for j in (0:(hparams.window_size):(length(ideal) - hparams.window_size))
+        s = rec(ideal[(j + 1):(j + hparams.window_size)]')
+        for i in 1:(hparams.window_size)
+            xₖ = rand(hparams.noise_model, n_average)
+            yₖ = hcat([gen(vcat(x, s[:, i])) for x in xₖ]...)
+            y = mean(yₖ)
+            #s = rec(ideal[j+1:(j + hparams.window_size)]')
+            append!(prediction, y[1])
+            append!(stdss, std(yₖ))
+        end
+    end
+    QLρ([x[1] for x in ideal][1:800], prediction[1:800]; ρ=0.5)
 end

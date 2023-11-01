@@ -1,12 +1,12 @@
 using Documenter
-using AdaptativeBlockLearning
+using ISL
 
 println("Generating Docs")
 
 makedocs(;
-    sitename = "AdaptativeBlockLearning",
+    sitename = "ISL",
     format = Documenter.HTML(),
-    modules = [AdaptativeBlockLearning],
+    modules = [ISL],
     pages=[
         "Home" => "index.md",
         "GAN" => "gan.md",
@@ -19,7 +19,7 @@ makedocs(;
 # See "Hosting Documentation" and deploydocs() in the Documenter manual
 # for more information.
 deploydocs(
-    repo = "github.com/josemanuel22/AdaptativeBlockLearning.git",
+    repo = "github.com/josemanuel22/ISL.git",
     target="build",
     push_preview = true,
     devbranch="main",

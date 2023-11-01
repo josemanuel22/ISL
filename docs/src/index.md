@@ -1,11 +1,11 @@
 ```@meta
-CurrentModule = AdaptativeBlockLearning
+CurrentModule = ISL
 ```
-# AdaptativeBlockLearning
+# ISL
 
-Documentation for AdaptativeBlockLearning.jl
+Documentation for ISL.jl
 
 ```@autodocs
-Modules = [AdaptativeBlockLearning]
+Modules = [ISL]
 Order   = [:module, :constant, :type, :function]
 ```

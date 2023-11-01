@@ -357,7 +357,7 @@ end
 function ts_forecast(
     rec,
     gen,
-    xtrai::Vector{Float32},
+    xtrain::Vector{Float32},
     xtest::Vector{Float32},
     τ::Int64;
     n_average=1000,
