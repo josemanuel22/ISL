@@ -1,5 +1,5 @@
 """
-_sigmoid(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
+`_sigmoid(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}`
 
 Calculate the sigmoid function centered at `y`.
 
