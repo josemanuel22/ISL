@@ -418,7 +418,7 @@ end
 
 
 """
-    `ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams)`
+    ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams)
 
 Train a model for time series data with statistical invariance loss method.
 
