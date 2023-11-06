@@ -418,11 +418,11 @@ end
 
 
 """
-    `ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams)``
+    `ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams)`
 
 Train a model for time series data with statistical invariance loss method.
 
-# Arguments
+#Arguments
 - `rec`: The recurrent neural network (RNN) responsible for encoding the time series data.
 - `gen`: The generative model used for generating future time series data.
 - `Xₜ`: An array of input time series data at time `t`.
@@ -433,10 +433,10 @@ Train a model for time series data with statistical invariance loss method.
     - `K::Int`: Number of samples in the generative model.
     - `noise_model`: Noise model used for generating random noise.
 
-# Returns
+#Returns
 - `losses::Vector{Float64}`: A vector containing the training loss values for each iteration.
 
-# Description
+#Description
 This function train a model for time series data with statistical invariance loss method. It utilizes a recurrent neural network (`rec`) to encode the time series data at time `t` and a generative model (`gen`) to generate future time series data at time `t+1`. The training process involves optimizing both the `rec` and `gen` models.
 
 The function iterates through the provided time series data (`Xₜ` and `Xₜ₊₁`) in batches, with a sliding window of size `window_size`.
