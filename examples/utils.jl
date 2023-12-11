@@ -82,6 +82,24 @@ function MSE(noise_model, f̂ᵢ, gen, n_sample)
     return mean((fᵢ .- f̂ᵢ(xᵢ)) .^ 2)
 end
 
+function MSE(y::Vector{<:Real}, ŷ::Vector{<:Real})::Real
+    if length(y) != length(ŷ)
+        error("Vectors must be of the same length")
+    end
+
+    mse = sum((y .- ŷ) .^ 2) / length(y)
+    return mse
+end
+
+function MAE(y::Vector{<:Real}, ŷ::Vector{<:Real})::Real
+    if length(y) != length(ŷ)
+        error("Vectors must be of the same length")
+    end
+
+    mae = sum(abs.(y .- ŷ)) / length(y)
+    return mae
+end
+
 function plot_result(noise_model, target_model, model, n_sample, range)
     x = rand(noise_model, n_sample)
     ŷ = model(x')
