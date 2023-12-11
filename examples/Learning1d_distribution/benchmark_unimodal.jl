@@ -13,7 +13,9 @@ include("../utils.jl")
             dscr = Chain(
                 Dense(1, 11), elu, Dense(11, 29), elu, Dense(29, 11), elu, Dense(11, 1, σ)
             )
-            target_model = Normal(4.0f0, 2.0f0)
+            target_model = MixtureModel([
+                Normal(5.0f0, 2.0f0), Pareto(5.0f0,1.0f0),
+            ])
             hparams = HyperParamsVanillaGan(;
                 data_size=100,
                 batch_size=1,
@@ -35,8 +37,66 @@ include("../utils.jl")
             train_set = Float32.(rand(target_model, hparams.samples))
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-            auto_invariant_statistical_loss(gen, loader, hparams)
+            ksd1 = 0.0
+            ranges = (0:0.1:8)
+            @showprogress for i in 1:10
+                target_model =  MixtureModel([
+                    Normal(5.0f0, 2.0f0), Pareto(5.0f0,1.0f0),
+                ])
+                gen = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
+                dscr = Chain(
+                    Dense(1, 11), elu, Dense(11, 29), elu, Dense(29, 11), elu, Dense(11, 1, σ)
+                )
+                    hparams = AutoISLParams(;
+                    max_k=10, samples=1000, epochs=100, η=1e-2, transform=noise_model
+                )
+
+                train_set = Float32.(rand(target_model, hparams.samples))
+                loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
+                loss = auto_invariant_statistical_loss(gen, loader, hparams)
+                ksd1 += KSD(noise_model, target_model, gen, n_samples, ranges)
+            end
+
+            ksd2 = 0.0
+            @showprogress for i in 1:10
+                target_model = MixtureModel([
+                    Normal(5.0f0, 2.0f0), Pareto(5.0f0,1.0f0),
+                ])
+                gen = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
+                dscr = Chain(
+                    Dense(1, 11), elu, Dense(11, 29), elu, Dense(29, 11), elu, Dense(11, 1, σ)
+                )
+                    hparams = AutoISLParams(;
+                    max_k=10, samples=1000, epochs=100, η=1e-2, transform=noise_model
+                )
+
+                train_set = Float32.(rand(target_model, hparams.samples))
+                loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
+                loss = auto_invariant_statistical_loss_2(gen, loader, hparams)
+                ksd2 += KSD(noise_model, target_model, gen, n_samples, ranges)
+            end
+
+            loss = auto_invariant_statistical_loss(gen, loader, hparams)
+
+            K= 10
+            data = loader
+            aₖ = zeros(K + 1)
+            for i in 1:(hparams.samples)
+                x = rand(hparams.transform, K)
+                yₖ = gen(x')
+                aₖ += generate_aₖ(yₖ, data.data[i])
+            end
         end
+
+        function loss_2(x)
+            return scalar_diff(Float32.(x)./sum(Float32.(x)))
+        end
+
+        plot(moving_average([sqrt(l[1]) for l in loss], 10), label="ISL Theoretical Loss", xtickfontsize=10, ytickfontsize=10, legendfontsize=10, color=:red, linewidth=3, yaxis=:log10)
+        plot!(moving_average([loss_2(l[2]) for l in loss], 10), label="ISL Surrogate Loss", color=:blue, linewidth=3, yaxis=:log10)
+        xlabel!("Epochs")
+        ylabel!("Loss")
+        ylims!((0.0,0.4))  # Setting the y-axis limits
 
         @test_experiments "N(0,1) to Uniform(22,24)" begin
             gen = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
@@ -67,7 +127,7 @@ include("../utils.jl")
             auto_invariant_statistical_loss(gen, loader, hparams)
 
             plot_global(
-                x -> quantile.(target_model, cdf(noise_model, x)),
+                x -> -quantile.(-target_model, cdf(noise_model, x)),
                 noise_model,
                 target_model,
                 gen,

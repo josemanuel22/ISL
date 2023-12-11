@@ -65,7 +65,7 @@ function ϕ(yₖ::Matrix{T}, yₙ::T) where {T<:AbstractFloat}
 end;
 
 """
-`γ(yₖ::Matrix{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}``
+    γ(yₖ::Matrix{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}
 
 Calculate the contribution of `ψₘ ∘ ϕ(yₖ, yₙ)` to the `m` bin of the histogram as a Vector{Float}.
 
@@ -320,6 +320,34 @@ function auto_invariant_statistical_loss(nn_model, data, hparams)
     K = 2
     @debug "K value set to $K."
     losses = []
+    optim = Flux.setup(Flux.NAdam(hparams.η), nn_model)
+    @showprogress for epoch in 1:(hparams.epochs)
+        K̂ = get_better_K(nn_model, data, K, hparams)
+        if K < K̂
+            K = K̂
+            @debug "K value set to $K."
+        end
+        loss, grads = Flux.withgradient(nn_model) do nn
+            aₖ = zeros(K + 1)
+            for i in 1:(hparams.samples)
+                x = rand(hparams.transform, K)
+                yₖ = nn(x')
+                aₖ += generate_aₖ(yₖ, data.data[i])
+            end
+            sqrt(scalar_diff(aₖ ./ sum(aₖ)))
+        end
+        Flux.update!(optim, nn_model, grads[1])
+        push!(losses, (loss, get_window_of_Aₖ(hparams.transform, nn_model, data.data[1:hparams.samples], K)))
+    end
+    return losses
+end;
+
+function auto_invariant_statistical_loss_2(nn_model, data, hparams)
+    @assert length(data) == hparams.samples
+
+    K = 2
+    @debug "K value set to $K."
+    losses = []
     optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
     @showprogress for epoch in 1:(hparams.epochs)
         K̂ = get_better_K(nn_model, data, K, hparams)
@@ -418,11 +446,11 @@ end
 
 
 """
-    `ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams)``
+    ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams)
 
 Train a model for time series data with statistical invariance loss method.
 
-# Arguments
+#Arguments
 - `rec`: The recurrent neural network (RNN) responsible for encoding the time series data.
 - `gen`: The generative model used for generating future time series data.
 - `Xₜ`: An array of input time series data at time `t`.
@@ -433,16 +461,96 @@ Train a model for time series data with statistical invariance loss method.
     - `K::Int`: Number of samples in the generative model.
     - `noise_model`: Noise model used for generating random noise.
 
-# Returns
+#Returns
 - `losses::Vector{Float64}`: A vector containing the training loss values for each iteration.
 
-# Description
+#Description
 This function train a model for time series data with statistical invariance loss method. It utilizes a recurrent neural network (`rec`) to encode the time series data at time `t` and a generative model (`gen`) to generate future time series data at time `t+1`. The training process involves optimizing both the `rec` and `gen` models.
 
 The function iterates through the provided time series data (`Xₜ` and `Xₜ₊₁`) in batches, with a sliding window of size `window_size`.
 
 """
-function ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams)
+function QLρ(xₜ, x̂ₜ; ρ=0.5)
+    return 2 *
+           (sum(abs.(xₜ))^-1) *
+           sum(ρ .* (xₜ .- x̂ₜ) .* (xₜ .> x̂ₜ) .+ (1 - ρ) .* (x̂ₜ .- xₜ) .* (xₜ .<= x̂ₜ))
+end
+
+function MAE(y::Vector{<:Real}, ŷ::Vector{<:Real})::Real
+    if length(y) != length(ŷ)
+        error("Vectors must be of the same length")
+    end
+
+    mae = sum(abs.(y .- ŷ)) / length(y)
+    return mae
+end
+
+function ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams, loaderXtest; cond=0.1)
+    losses = []
+    ql5 = []
+    optim_rec = Flux.setup(Flux.Adam(hparams.η), rec)
+    optim_gen = Flux.setup(Flux.Adam(hparams.η), gen)
+    for (batch_Xₜ, batch_Xₜ₊₁) in zip(Xₜ, Xₜ₊₁)
+        Flux.reset!(rec)
+        for j in (0:(hparams.window_size):(length(batch_Xₜ) - hparams.window_size))
+            loss, grads = Flux.withgradient(rec, gen) do rec, gen
+                aₖ = zeros(hparams.K + 1)
+                s = rec(batch_Xₜ[(j + 1):(j + hparams.window_size)]')
+                for i in 1:(hparams.window_size)
+                    xₖ = rand(hparams.noise_model, hparams.K)
+                    yₖ = hcat([gen(vcat(x, s[:, i])) for x in xₖ]...)
+                    aₖ += generate_aₖ(yₖ, batch_Xₜ₊₁[j + i])
+                end
+                scalar_diff(aₖ ./ sum(aₖ))
+            end
+            Flux.update!(optim_rec, rec, grads[1])
+            Flux.update!(optim_gen, gen, grads[2])
+            push!(losses, loss)
+
+            mae = 0.0
+            count = 0.0
+            for i in 1:length(loaderXtest)
+                xtrain = collect(Xₜ)[i]
+                prediction = Vector{Float32}()
+                stds = Vector{Float32}()
+                Flux.reset!(rec)
+                s = []
+                for j in ((length(xtrain) - 96):1:(length(xtrain) - 1))
+                    s = rec([xtrain[j + 1]])
+                end
+
+                τ = 48
+                xtest = collect(loaderXtest)[i]
+                noise_model = Normal(0.0f0, 1.0f0)
+                n_average = 100
+                for j in (0:(τ):(length(xtest) - τ))
+                    #s = rec(xtest[(j + 1):(j + τ)]')
+                    #s = rec([xtest[j + 1]])
+                    for i in 1:(τ)
+                        xₖ = rand(noise_model, n_average)
+                        y = hcat([gen(vcat(x, s)) for x in xₖ]...)
+                        ȳ = mean(y)
+                        σ = std(y)
+                        s = rec([ȳ])
+                        append!(prediction, ȳ)
+                        append!(stds, σ)
+                    end
+                end
+                count += 1
+                mae += MAE([x[1] for x in xtest][1:τ], prediction[1:τ])
+            end
+            push!(ql5, mae/count)
+            if mae/count < cond
+                return losses, ql5
+            end
+
+        end
+    end
+    return losses, ql5
+end
+
+
+function ts_invariant_statistical_loss_multivariate(rec, gen, Xₜ, Xₜ₊₁, hparams)
     losses = []
     optim_rec = Flux.setup(Flux.Adam(hparams.η), rec)
     optim_gen = Flux.setup(Flux.Adam(hparams.η), gen)
@@ -464,5 +572,4 @@ function ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams)
             push!(losses, loss)
         end
     end
-    return losses
 end
