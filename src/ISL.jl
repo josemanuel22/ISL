@@ -6,6 +6,7 @@ using StatsBase
 using Distributions: Normal, rand
 using HypothesisTests: pvalue, ChisqTest
 using MLUtils
+using LinearAlgebra
 using Parameters: @with_kw
 using ProgressMeter
 
@@ -31,5 +32,10 @@ export _sigmoid,
     auto_invariant_statistical_loss_1,
     HyperParamsTS,
     ts_invariant_statistical_loss_one_step_prediction,
-    ts_invariant_statistical_loss
+    ts_invariant_statistical_loss,
+    HyperParamsSlicedISL,
+    sliced_invariant_statistical_loss,
+    sliced_invariant_statistical_loss_2,
+    sliced_invariant_statistical_loss_multithreaded,
+    sliced_invariant_statistical_loss_multithreaded_2
 end
