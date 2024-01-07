@@ -37,5 +37,7 @@ export _sigmoid,
     sliced_invariant_statistical_loss,
     sliced_invariant_statistical_loss_2,
     sliced_invariant_statistical_loss_multithreaded,
-    sliced_invariant_statistical_loss_multithreaded_2
+    sliced_invariant_statistical_loss_multithreaded_2,
+    sliced_invariant_statistical_loss_selected_directions,
+    sliced_ortonormal_invariant_statistical_loss
 end
