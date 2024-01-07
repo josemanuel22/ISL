@@ -389,8 +389,6 @@ end
 
 # Train and output the model according to the chosen hyperparameters `hparams`
 
-
-
 function ts_invariant_statistical_loss_one_step_prediction(rec, gen, Xₜ, Xₜ₊₁, hparams)
     losses = []
     optim_rec = Flux.setup(Flux.Adam(hparams.η), rec)
@@ -415,7 +413,6 @@ function ts_invariant_statistical_loss_one_step_prediction(rec, gen, Xₜ, Xₜ�
     end
     return losses
 end
-
 
 """
     ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams)
@@ -464,5 +461,310 @@ function ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams)
             push!(losses, loss)
         end
     end
+    return losses
+end
+
+Base.@kwdef mutable struct HyperParamsSlicedISL
+    seed::Int = 72                                          # Random seed
+    dev = cpu                                               # Device: cpu or gpu
+    η::Float64 = 1e-3                                       # Learning rate
+    epochs::Int = 100                                       # Number of epochs
+    noise_model = MvNormal([0.0, 0.0], [1.0 0.0; 0.0 1.0])  # Noise to add to the data
+    samples::Int = 1000                                          # Window size for the histogram
+    K::Int = 10                                                  # Number of simulted observations
+    m::Int = 10                                             # Number of random directions
+end
+
+function sample_random_direction(n::Int)::Vector{Float32}
+    # Generate a random vector where each component is from a standard normal distribution
+    random_vector = randn(Float32, n)
+
+    normalized_vector = random_vector / norm(random_vector)
+
+    return normalized_vector
+end
+
+function sample_ornormal_random_direction(n::Int, m::Int)::Vector{Vector{Float32}}
+    @assert m <= n
+
+    matrix = qr(rand(Float32, n, n)).Q
+
+    return [matrix[:, i] for i in 1:m]
+end
+
+function sliced_invariant_statistical_loss(nn_model, loader, hparams::HyperParamsSlicedISL)
+    @assert loader.batchsize == hparams.samples
+    @assert length(loader) == hparams.epochs
+    losses = Vector{Float32}()
+    optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
+    @showprogress for data in loader
+        loss, grads = Flux.withgradient(nn_model) do nn
+            Ω = [sample_random_direction(size(data)[1]) for _ in 1:(hparams.m)]
+            total = 0.0f0
+            for ω in Ω
+                aₖ = zeros(hparams.K + 1)
+                for i in 1:(hparams.samples)
+                    x = Float32.(rand(hparams.noise_model, hparams.K))
+                    yₖ = nn(x)
+                    s = collect(reshape(ω' * yₖ, 1, hparams.K))
+                    aₖ += generate_aₖ(s, ω ⋅ data[:, i])
+                end
+                total += scalar_diff(aₖ ./ sum(aₖ))
+            end
+            total / hparams.m
+        end
+        Flux.update!(optim, nn_model, grads[1])
+        push!(losses, loss)
+    end
+    return losses
+end;
+
+function sliced_ortonormal_invariant_statistical_loss(
+    nn_model, loader, hparams::HyperParamsSlicedISL
+)
+    @assert loader.batchsize == hparams.samples
+    @assert length(loader) == hparams.epochs
+    losses = Vector{Float32}()
+    optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
+    @showprogress for data in loader
+        Ω = sample_ornormal_random_direction(size(data)[1], hparams.m)
+        loss, grads = Flux.withgradient(nn_model) do nn
+            total = 0.0f0
+            for ω in Ω
+                aₖ = zeros(hparams.K + 1)
+                for i in 1:(hparams.samples)
+                    x = Float32.(rand(hparams.noise_model, hparams.K))
+                    yₖ = nn(x)
+                    s = collect(reshape(ω' * yₖ, 1, hparams.K))
+                    aₖ += generate_aₖ(s, ω ⋅ data[:, i])
+                end
+                total += scalar_diff(aₖ ./ sum(aₖ))
+            end
+            total / hparams.m
+        end
+        Flux.update!(optim, nn_model, grads[1])
+        push!(losses, loss)
+    end
+    return losses
+end;
+
+function convergence_to_uniform_2(aₖ::Vector{T}) where {T<:Int}
+    return pvalue(ChisqTest(aₖ, fill(1 / length(aₖ), length(aₖ))))
+end;
+
+function sliced_invariant_statistical_loss_selected_directions(
+    nn_model, loader, hparams::HyperParamsSlicedISL
+)
+    @assert loader.batchsize == hparams.samples
+    @assert length(loader) == hparams.epochs
+    losses = Vector{Float32}()
+    optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
+    @showprogress for data in loader
+        loss, grads = Flux.withgradient(nn_model) do nn
+            Ω = [sample_random_direction(size(data)[1]) for _ in 1:1000]
+            p_values = [
+                convergence_to_uniform(
+                    get_window_of_Aₖ(hparams.noise_model, nn, ω .⋅ data, hparams.K)
+                ) for ω in Ω
+            ]
+            direction_pvalues = zip(Ω, p_values)
+            sorted_directions = sort(direction_pvalues; by=x -> x[2])
+            sorted_Ω = [direction for (direction, pvalue) in sorted_directions]
+            total = 0.0f0
+            for ω in sorted_Ω
+                aₖ = zeros(hparams.K + 1)
+                for i in 1:(hparams.samples)
+                    x = Float32.(rand(hparams.noise_model, hparams.K))
+                    yₖ = nn(x)
+                    s = collect(reshape(ω' * yₖ, 1, hparams.K))
+                    aₖ += generate_aₖ(s, ω ⋅ data[:, i])
+                end
+                total += scalar_diff(aₖ ./ sum(aₖ))
+            end
+            total / hparams.m
+        end
+        Flux.update!(optim, nn_model, grads[1])
+        push!(losses, loss)
+    end
+    return losses
+end;
+
+function sliced_auto_invariant_statistical_loss(
+    nn_model, loader, hparams::HyperParamsSlicedISL
+)
+    @assert loader.batchsize == hparams.samples
+    @assert length(loader) == hparams.epochs
+    losses = Vector{Float32}()
+    optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
+
+    @showprogress for data in loader
+        loss, grads = Flux.withgradient(nn_model) do nn
+            Ω = [sample_random_direction(size(data)[1]) for _ in 1:(hparams.m)]
+            total = 0.0f0
+            for ω in Ω
+                K = 2
+                K̂ = get_better_K(nn_model, ω ⋅ data, K, hparams)
+                if K < K̂
+                    K = K̂
+                    @debug "K value set to $K."
+                end
+                aₖ = zeros(K + 1)
+                for i in 1:(hparams.samples)
+                    x = Float32.(rand(hparams.noise_model, K))
+                    yₖ = nn(x)
+                    s = collect(reshape(ω' * yₖ, 1, K))
+                    aₖ += generate_aₖ(s, ω ⋅ data[:, i])
+                end
+                total += scalar_diff(aₖ ./ sum(aₖ))
+            end
+            total / hparams.m
+        end
+        Flux.update!(optim, nn_model, grads[1])
+        push!(losses, loss)
+    end
+    return losses
+end;
+
+function sliced_invariant_statistical_loss_2(
+    nn_model, loader, hparams::HyperParamsSlicedISL
+)
+    @assert loader.batchsize == hparams.samples
+    @assert length(loader) == hparams.epochs
+    losses = Vector{Float32}()
+    optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
+
+    @showprogress for data in loader
+        loss, grads = Flux.withgradient(nn_model) do nn
+            Ω = [sample_random_direction(size(data)[1]) for _ in 1:(hparams.m)]
+            total = 0.0f0
+            # Vectorized operations
+            X = broadcast(
+                vec -> Float32.(vec),
+                rand(hparams.noise_model, hparams.K, hparams.samples),
+            )  # All random numbers at once
+            Yₖ = nn.(X)  # Apply nn to the entire batch
+            for ω in Ω
+                S = broadcast(x -> dot(ω, x), Yₖ) # Vectorized computation
+                reshaped_S = [reshape(S[:, i], :, 1) for i in 1:size(S, 2)]
+                aₖ = sum(generate_aₖ.(reshaped_S, ω' * data))  # Sum over samples
+                total += scalar_diff(aₖ ./ sum(aₖ))
+            end
+
+            total / hparams.m
+        end
+
+        Flux.update!(optim, nn_model, grads[1])
+        push!(losses, loss)
+    end
+
+    return losses
+end;
+
+using Zygote
+using Zygote: bufferfrom
+using Base.Threads: @spawn
+
+using Base.Threads
+
+# Set batch size based on the number of threads
+const BATCH_SIZE = Threads.nthreads()  # Or a multiple of Threads.nthreads()
+
+function compute_loss_for_single_ω(nn, ω, data, hparams, preallocated_aₖ)
+    # Clear the preallocated array
+    fill!(preallocated_aₖ, 0)
+
+    for i in 1:(hparams.samples)
+        x = Float32.(rand(hparams.noise_model, hparams.K))
+        yₖ = nn(x)
+        s = collect(reshape(ω' * yₖ, 1, hparams.K))
+        preallocated_aₖ += generate_aₖ(s, ω ⋅ data[:, i])
+    end
+    return scalar_diff(preallocated_aₖ ./ sum(preallocated_aₖ))
+end
+
+function process_batch(batch, nn, data, hparams, preallocated_aₖ)
+    batch_results = Float32[]
+    for ω in batch
+        result = compute_loss_for_single_ω(nn, ω, data, hparams, preallocated_aₖ)
+        push!(batch_results, result)
+    end
+    return batch_results
+end
+
+function sliced_invariant_statistical_loss_multithreaded(
+    nn_model, loader, hparams::HyperParamsSlicedISL
+)
+    @assert loader.batchsize == hparams.samples
+    @assert length(loader) == hparams.epochs
+    losses = Vector{Float32}()
+    optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
+
+    @showprogress for data in loader
+        loss, grads = Flux.withgradient(nn_model) do nn
+            Ω = [sample_random_direction(size(data)[1]) for _ in 1:(hparams.m)]
+
+            # Split Ω into batches
+            batches = [Ω[i:min(i + BATCH_SIZE - 1, end)] for i in 1:BATCH_SIZE:length(Ω)]
+            preallocated_aₖ = zeros(hparams.K + 1)
+
+            # Process each batch in parallel
+            batch_tasks = [
+                Threads.@spawn process_batch(batch, nn, data, hparams, preallocated_aₖ)
+                for batch in batches
+            ]
+
+            # Collect and sum up the results
+            loss_components = vcat(fetch.(batch_tasks)...)
+            sum(loss_components) / hparams.m
+        end
+
+        Flux.update!(optim, nn_model, grads[1])
+        push!(losses, loss)
+    end
+
+    return losses
+end
+
+function compute_forward_pass(nn, ω, data, hparams)
+    aₖ = zeros(hparams.K + 1)
+    for i in 1:(hparams.samples)
+        x = Float32.(rand(hparams.noise_model, hparams.K))
+        yₖ = nn(x)
+        s = Matrix(reshape(ω' * yₖ, 1, hparams.K))  # Convert to Matrix
+        aₖ += generate_aₖ(s, ω ⋅ data[:, i])
+    end
+    return aₖ
+end
+
+function sliced_invariant_statistical_loss_multithreaded_2(
+    nn_model, loader, hparams::HyperParamsSlicedISL
+)
+    @assert loader.batchsize == hparams.samples
+    @assert length(loader) == hparams.epochs
+    losses = Vector{Float32}()
+    optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
+
+    @showprogress for data in loader
+        Ω = [sample_random_direction(size(data)[1]) for _ in 1:(hparams.m)]
+
+        # Perform the forward pass in parallel
+        forward_pass_results = [
+            Threads.@spawn compute_forward_pass(nn_model, ω, data, hparams) for ω in Ω
+        ]
+        aₖ_results = fetch.(forward_pass_results)
+
+        # Compute gradients sequentially
+        loss, grads = Flux.withgradient(nn_model) do nn
+            total_loss =
+                sum([
+                    scalar_diff(aₖ_result ./ sum(aₖ_result)) for aₖ_result in aₖ_results
+                ]) / hparams.m
+            total_loss
+        end
+
+        Flux.update!(optim, nn_model, grads[1])
+        push!(losses, loss)
+    end
+
     return losses
 end
