@@ -477,12 +477,11 @@ end
 
 function sample_random_direction(n::Int)::Vector{Float32}
     # Generate a random vector where each component is from a standard normal distribution
-    random_vector = rand(Float32, n)
+    random_vector = randn(Float32, n)
 
     normalized_vector = random_vector / norm(random_vector)
 
     return normalized_vector
-
 end
 
 function sliced_invariant_statistical_loss(nn_model, loader, hparams::HyperParamsSlicedISL)
@@ -512,6 +511,36 @@ function sliced_invariant_statistical_loss(nn_model, loader, hparams::HyperParam
     return losses
 end;
 
+function sliced_invariant_statistical_loss_10_images(
+    nn_model, loader, hparams::HyperParamsSlicedISL
+)
+    @assert loader.batchsize == hparams.samples
+    @assert length(loader) == hparams.epochs
+    losses = Vector{Float32}()
+    optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
+    @showprogress for data in loader
+        loss, grads = Flux.withgradient(nn_model) do nn
+            Ω = [sample_random_direction(size(data)[1]) for _ in 1:(hparams.m)]
+            total = 0.0f0
+            for ω in Ω
+                aₖ = zeros(hparams.K + 1)
+                for i in 1:(hparams.samples)
+                    x = Float32.(rand(hparams.noise_model, hparams.K))
+                    yₖ = nn(x)
+                    s = reshape(broadcast(x -> dot.(ω, x), yₖ), 28 * 28, :)
+                    aₖ += generate_aₖ(s, ω ⋅ data[:, i])
+                end
+                collect(train_loader)[1]
+                total += scalar_diff(aₖ ./ sum(aₖ))
+            end
+            total / hparams.m
+        end
+        Flux.update!(optim, nn_model, grads[1])
+        push!(losses, loss)
+    end
+    return losses
+end;
+
 function sliced_invariant_statistical_loss_2(
     nn_model, loader, hparams::HyperParamsSlicedISL
 )
@@ -525,7 +554,10 @@ function sliced_invariant_statistical_loss_2(
             Ω = [sample_random_direction(size(data)[1]) for _ in 1:(hparams.m)]
             total = 0.0f0
             # Vectorized operations
-            X = broadcast(vec -> Float32.(vec), rand(hparams.noise_model, hparams.K, hparams.samples))  # All random numbers at once
+            X = broadcast(
+                vec -> Float32.(vec),
+                rand(hparams.noise_model, hparams.K, hparams.samples),
+            )  # All random numbers at once
             Yₖ = nn.(X)  # Apply nn to the entire batch
             for ω in Ω
                 S = broadcast(x -> dot(ω, x), Yₖ) # Vectorized computation
@@ -609,10 +641,9 @@ function sliced_invariant_statistical_loss_multithreaded(
     return losses
 end
 
-
 function compute_forward_pass(nn, ω, data, hparams)
     aₖ = zeros(hparams.K + 1)
-    for i in 1:hparams.samples
+    for i in 1:(hparams.samples)
         x = Float32.(rand(hparams.noise_model, hparams.K))
         yₖ = nn(x)
         s = Matrix(reshape(ω' * yₖ, 1, hparams.K))  # Convert to Matrix
@@ -621,22 +652,29 @@ function compute_forward_pass(nn, ω, data, hparams)
     return aₖ
 end
 
-function sliced_invariant_statistical_loss_multithreaded_2(nn_model, loader, hparams::HyperParamsSlicedISL)
+function sliced_invariant_statistical_loss_multithreaded_2(
+    nn_model, loader, hparams::HyperParamsSlicedISL
+)
     @assert loader.batchsize == hparams.samples
     @assert length(loader) == hparams.epochs
     losses = Vector{Float32}()
     optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
 
     @showprogress for data in loader
-        Ω = [sample_random_direction(size(data)[1]) for _ in 1:hparams.m]
+        Ω = [sample_random_direction(size(data)[1]) for _ in 1:(hparams.m)]
 
         # Perform the forward pass in parallel
-        forward_pass_results = [Threads.@spawn compute_forward_pass(nn_model, ω, data, hparams) for ω in Ω]
+        forward_pass_results = [
+            Threads.@spawn compute_forward_pass(nn_model, ω, data, hparams) for ω in Ω
+        ]
         aₖ_results = fetch.(forward_pass_results)
 
         # Compute gradients sequentially
         loss, grads = Flux.withgradient(nn_model) do nn
-            total_loss = sum([scalar_diff(aₖ_result ./ sum(aₖ_result)) for aₖ_result in aₖ_results]) / hparams.m
+            total_loss =
+                sum([
+                    scalar_diff(aₖ_result ./ sum(aₖ_result)) for aₖ_result in aₖ_results
+                ]) / hparams.m
             total_loss
         end
 
