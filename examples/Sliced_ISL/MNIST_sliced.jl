@@ -5,6 +5,14 @@ using Images
 using ImageTransformations  # For resizing images if necessary
 using LinearAlgebra
 
+function load_mnist()
+    # Load MNIST data
+    train_x, train_y = MLDatasets.MNIST.traindata()
+    test_x, test_y = MLDatasets.MNIST.testdata()
+
+    return (reshape(Float32.(train_x), 28 * 28, :), train_y)#, (test_x, test_y)
+end
+
 function load_mnist(digit::Int)
     # Load MNIST data
     train_x, train_y = MLDatasets.MNIST.traindata()
@@ -41,14 +49,14 @@ function load_mnist_normalized(digit::Int, max::Int)
 
     image_tensor = reshape(@.(2.0f0 * selected_images - 1.0f0), 28, 28, :)
 
-    train_data = reshape(image_tensor, 28 * 28, :)
-
-    return (train_data, train_y)
+    return (reshape(Float32.(image_tensor), 28 * 28, :), train_y)
 end
 
+(train_x, train_y) = load_mnist()
+(train_x, train_y) = (train_x[:, 1:5000], train_y[1:5000])
 (train_x, train_y) = load_mnist(0)
 (train_x, train_y) = load_mnist(9, 100)
-(train_x, train_y) = load_mnist_normalized(9, 100)
+(train_x, train_y) = load_mnist_normalized(8, 100)
 
 # Dimension
 dims = 100
@@ -103,6 +111,9 @@ function Discriminator()
     )
 end
 
+latent_dim = 100
+# weight initialization as given in the paper https://arxiv.org/abs/1511.06434
+dcgan_init(shape...) = randn(Float32, shape...) * 0.02f0
 function Generator(latent_dim::Int)
     return Chain(
         Dense(latent_dim, 7 * 7 * 256),
@@ -113,11 +124,12 @@ function Generator(latent_dim::Int)
         ConvTranspose((4, 4), 128 => 64; stride=2, pad=1, init=dcgan_init),
         BatchNorm(64, relu),
         ConvTranspose((4, 4), 64 => 1; stride=2, pad=1, init=dcgan_init),
+        Flux.flatten,
         x -> tanh.(x),
     )
 end
 
-model = Generator(dims)
+model = Generator(latent_dim)
 #model = Chain( ConvTranspose((7, 7), 100 => 256, stride=1, padding=0), BatchNorm(256, relu), ConvTranspose((4, 4), 256 => 128, stride=2, padding=1), BatchNorm(128, relu), ConvTranspose((4, 4), 128 => 1, stride=2, padding=1), tanh ))
 
 # Mean vector (zero vector of length dim)
@@ -132,16 +144,16 @@ noise_model = MvNormal(mean_vector, cov_matrix)
 n_samples = 10000
 
 hparams = HyperParamsSlicedISL(;
-    K=10, samples=100, epochs=1, η=1e-2, noise_model=noise_model, m=200
+    K=10, samples=100, epochs=1, η=1e-2, noise_model=noise_model, m=10
 )
 
 # Create a data loader for training
 batch_size = 100
-train_loader = DataLoader(train_x; batchsize=batch_size, shuffle=false, partial=false)
+train_loader = DataLoader(train_x; batchsize=batch_size, shuffle=true, partial=false)
 
 total_loss = []
-@showprogress for _ in 1:20
-    append!(total_loss, sliced_invariant_statistical_loss(model, train_loader, hparams))
+@showprogress for _ in 1:200
+    append!(total_loss, optimized_loss(model, train_loader, hparams))
 end
 
 img = model(Float32.(rand(hparams.noise_model, 1)))

@@ -86,7 +86,7 @@ The contribution is computed according to the formula:
 ```
 """
 function γ(yₖ::Matrix{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}
-    eₘ(m) = [j == m ? 1.0 : 0.0 for j in 0:length(yₖ)]
+    eₘ(m) = [j == m ? T(1.0) : T(0.0) for j in 0:length(yₖ)]
     return eₘ(m) * ψₘ(ϕ(yₖ, yₙ), m)
 end;
 
@@ -140,7 +140,7 @@ The formula for generating `aₖ` is as follows:
 aₖ = ∑_{k=0}^K γ(ŷ, y, k) = ∑_{k=0}^K ∑_{i=1}^N ψₖ(ŷ, yᵢ)
 ```
 """
-function generate_aₖ(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
+@inline function generate_aₖ(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
     return sum([γ(ŷ, y, k) for k in 0:length(ŷ)])
 end
 
@@ -153,7 +153,8 @@ Scalar difference between the vector representing our subrogate histogram and th
 loss = ||q-1/k+1||_{2} = ∑_{k=0}^K (qₖ - 1/K+1)^2
 ```
 """
-scalar_diff(q::Vector{T}) where {T<:AbstractFloat} = sum((q .- (1 ./ length(q))) .^ 2)
+@inline scalar_diff(q::Vector{T}) where {T<:AbstractFloat} =
+    sum((q .- (T(1.0f0) ./ T(length(q)))) .^ 2)
 
 """
     `jensen_shannon_∇(aₖ)``
@@ -274,6 +275,13 @@ Generate a window of the rv's `Aₖ` for a given model and target function.
 """
 function get_window_of_Aₖ(transform, model, data, K::Int64)
     window = count.([model(rand(transform, K)') .< d for d in data])
+    return [count(x -> x == i, window) for i in 0:K]
+end;
+
+@inline function get_window_of_Aₖ(transform, model, ω, data, K::Int64)
+    ŷₖ = model(Float32.(rand(transform, K)))
+    ŷₖ_proj = [dot(ω, ŷₖ[:, i]) for i in 1:size(ŷₖ, 2)]
+    window = count.([ŷₖ_proj .< d for d in data])
     return [count(x -> x == i, window) for i in 0:K]
 end;
 
@@ -475,7 +483,7 @@ Base.@kwdef mutable struct HyperParamsSlicedISL
     m::Int = 10                                             # Number of random directions
 end
 
-function sample_random_direction(n::Int)::Vector{Float32}
+@inline function sample_random_direction(n::Int)::Vector{Float32}
     # Generate a random vector where each component is from a standard normal distribution
     random_vector = randn(Float32, n)
 
@@ -492,21 +500,22 @@ function sample_ornormal_random_direction(n::Int, m::Int)::Vector{Vector{Float32
     return [matrix[:, i] for i in 1:m]
 end
 
+using ThreadsX
 function sliced_invariant_statistical_loss(nn_model, loader, hparams::HyperParamsSlicedISL)
     @assert loader.batchsize == hparams.samples
     @assert length(loader) == hparams.epochs
     losses = Vector{Float32}()
     optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
     @showprogress for data in loader
+        Ω = ThreadsX.map(_ -> sample_random_direction(size(data)[1]), 1:(hparams.m))
         loss, grads = Flux.withgradient(nn_model) do nn
-            Ω = [sample_random_direction(size(data)[1]) for _ in 1:(hparams.m)]
             total = 0.0f0
             for ω in Ω
                 aₖ = zeros(hparams.K + 1)
                 for i in 1:(hparams.samples)
                     x = Float32.(rand(hparams.noise_model, hparams.K))
                     yₖ = nn(x)
-                    s = collect(reshape(ω' * yₖ, 1, hparams.K))
+                    s = Matrix(ω' * yₖ)
                     aₖ += generate_aₖ(s, ω ⋅ data[:, i])
                 end
                 total += scalar_diff(aₖ ./ sum(aₖ))
@@ -518,6 +527,46 @@ function sliced_invariant_statistical_loss(nn_model, loader, hparams::HyperParam
     end
     return losses
 end;
+
+function sliced_invariant_statistical_loss_optimized(nn_model, loader, hparams)
+    @assert loader.batchsize == hparams.samples
+    @assert length(loader) == hparams.epochs
+    losses = Vector{Float32}()
+    optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
+
+    @showprogress for data in loader
+        Ω = ThreadsX.map(_ -> sample_random_direction(size(data)[1]), 1:(hparams.m))
+        loss, grads = Flux.withgradient(nn_model) do nn
+            total = 0.0f0
+            for ω in Ω
+                aₖ = zeros(Float32, hparams.K + 1)  # Reset aₖ for each new ω
+
+                # Generate all random numbers in one go
+                x_batch = rand(hparams.noise_model, hparams.samples * hparams.K)
+
+                # Process batch through nn_model
+                yₖ_batch = nn(Float32.(x_batch))
+
+                s = Matrix(ω' * yₖ_batch)
+
+                @inbounds for i in 2:(hparams.samples)
+                    start_col = hparams.K * (i - 1)
+                    end_col = hparams.K * i
+
+                    aₖ_slice = s[:, start_col:(end_col - 1)]
+                    ω_data_dot_product = ω ⋅ data[:, i]
+
+                    aₖ += generate_aₖ(aₖ_slice, ω_data_dot_product)
+                end
+                total += scalar_diff(aₖ ./ sum(aₖ))
+            end
+            total / hparams.m
+        end
+        Flux.update!(optim, nn_model, grads[1])
+        push!(losses, loss)
+    end
+    return losses
+end
 
 function sliced_ortonormal_invariant_statistical_loss(
     nn_model, loader, hparams::HyperParamsSlicedISL
@@ -559,17 +608,23 @@ function sliced_invariant_statistical_loss_selected_directions(
     @assert length(loader) == hparams.epochs
     losses = Vector{Float32}()
     optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
+
+    function compute_p_value(nn, data, hparams)
+        ω = sample_random_direction(size(data)[1])
+        return (
+            ω,
+            convergence_to_uniform(
+                get_window_of_Aₖ(hparams.noise_model, nn, ω, data, hparams.K)
+            ),
+        )
+    end
+
     @showprogress for data in loader
+        values = ThreadsX.map(_ -> compute_p_value(nn_model, data, hparams), 1:1000)
+
+        sorted_Ω = [direction for (direction, _) in sort(values; by=x -> x[2], rev=true)][1:(hparams.m)]
+
         loss, grads = Flux.withgradient(nn_model) do nn
-            Ω = [sample_random_direction(size(data)[1]) for _ in 1:1000]
-            p_values = [
-                convergence_to_uniform(
-                    get_window_of_Aₖ(hparams.noise_model, nn, ω .⋅ data, hparams.K)
-                ) for ω in Ω
-            ]
-            direction_pvalues = zip(Ω, p_values)
-            sorted_directions = sort(direction_pvalues; by=x -> x[2])
-            sorted_Ω = [direction for (direction, pvalue) in sorted_directions]
             total = 0.0f0
             for ω in sorted_Ω
                 aₖ = zeros(hparams.K + 1)

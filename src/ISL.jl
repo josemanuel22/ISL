@@ -9,6 +9,7 @@ using MLUtils
 using LinearAlgebra
 using Parameters: @with_kw
 using ProgressMeter
+using Random
 
 using StaticArrays
 
@@ -39,5 +40,6 @@ export _sigmoid,
     sliced_invariant_statistical_loss_multithreaded,
     sliced_invariant_statistical_loss_multithreaded_2,
     sliced_invariant_statistical_loss_selected_directions,
-    sliced_ortonormal_invariant_statistical_loss
+    sliced_ortonormal_invariant_statistical_loss,
+    sliced_invariant_statistical_loss_optimized
 end
