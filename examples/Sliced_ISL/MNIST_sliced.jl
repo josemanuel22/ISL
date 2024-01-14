@@ -144,16 +144,19 @@ noise_model = MvNormal(mean_vector, cov_matrix)
 n_samples = 10000
 
 hparams = HyperParamsSlicedISL(;
-    K=10, samples=100, epochs=1, η=1e-2, noise_model=noise_model, m=10
+    K=10, samples=100, epochs=1, η=1e-2, noise_model=noise_model, m=100
 )
 
 # Create a data loader for training
 batch_size = 100
-train_loader = DataLoader(train_x; batchsize=batch_size, shuffle=true, partial=false)
+train_loader = DataLoader(train_x; batchsize=batch_size, shuffle=false, partial=false)
 
 total_loss = []
-@showprogress for _ in 1:200
-    append!(total_loss, optimized_loss(model, train_loader, hparams))
+@showprogress for _ in 1:10
+    append!(
+        total_loss,
+        sliced_invariant_statistical_loss_optimized_3(model, train_loader, hparams),
+    )
 end
 
 img = model(Float32.(rand(hparams.noise_model, 1)))
