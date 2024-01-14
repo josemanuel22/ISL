@@ -10,7 +10,7 @@ function load_mnist()
     train_x, train_y = MLDatasets.MNIST.traindata()
     test_x, test_y = MLDatasets.MNIST.testdata()
 
-    return (reshape(Float32.(train_x), 28 * 28, :), train_y)#, (test_x, test_y)
+    return (reshape(Float32.(train_x), 28 * 28, :)[:, 1:5000], train_y[1:5000])#, (test_x, test_y)
 end
 
 function load_mnist(digit::Int)
@@ -129,7 +129,7 @@ function Generator(latent_dim::Int)
     )
 end
 
-model = Generator(latent_dim)
+model = gpu(Generator(latent_dim))
 #model = Chain( ConvTranspose((7, 7), 100 => 256, stride=1, padding=0), BatchNorm(256, relu), ConvTranspose((4, 4), 256 => 128, stride=2, padding=1), BatchNorm(128, relu), ConvTranspose((4, 4), 128 => 1, stride=2, padding=1), tanh ))
 
 # Mean vector (zero vector of length dim)
@@ -143,17 +143,22 @@ noise_model = MvNormal(mean_vector, cov_matrix)
 
 n_samples = 10000
 
-hparams = HyperParamsSlicedISL(;
-    K=10, samples=100, epochs=1, η=1e-2, noise_model=noise_model, m=10
+hparams = gpu(
+    HyperParamsSlicedISL(;
+        K=10, samples=100, epochs=50, η=1e-2, noise_model=noise_model, m=10
+    ),
 )
 
 # Create a data loader for training
 batch_size = 100
-train_loader = DataLoader(train_x; batchsize=batch_size, shuffle=true, partial=false)
+train_loader = gpu(DataLoader(train_x; batchsize=batch_size, shuffle=false, partial=false))
 
 total_loss = []
-@showprogress for _ in 1:200
-    append!(total_loss, optimized_loss(model, train_loader, hparams))
+@showprogress for _ in 1:1
+    append!(
+        total_loss,
+        sliced_invariant_statistical_loss_optimized(model, train_loader, hparams),
+    )
 end
 
 img = model(Float32.(rand(hparams.noise_model, 1)))
