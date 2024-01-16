@@ -158,7 +158,7 @@ total_loss = []
 @showprogress for _ in 1:1
     append!(
         total_loss,
-        sliced_invariant_statistical_loss_optimized(model, train_loader, hparams),
+        sliced_invariant_statistical_loss_optimized_4(model, train_loader, hparams),
     )
 end
 
