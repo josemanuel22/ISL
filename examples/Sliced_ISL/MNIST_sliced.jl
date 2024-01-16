@@ -144,7 +144,7 @@ noise_model = MvNormal(mean_vector, cov_matrix)
 n_samples = 10000
 
 hparams = HyperParamsSlicedISL(;
-    K=10, samples=100, epochs=1, η=1e-2, noise_model=noise_model, m=100
+    K=10, samples=100, epochs=1, η=1e-2, noise_model=noise_model, m=10
 )
 
 # Create a data loader for training
@@ -152,10 +152,10 @@ batch_size = 100
 train_loader = DataLoader(train_x; batchsize=batch_size, shuffle=false, partial=false)
 
 total_loss = []
-@showprogress for _ in 1:10
+@showprogress for _ in 1:100
     append!(
         total_loss,
-        sliced_invariant_statistical_loss_optimized_3(model, train_loader, hparams),
+        sliced_invariant_statistical_loss_optimized_2(model, train_loader, hparams),
     )
 end
 

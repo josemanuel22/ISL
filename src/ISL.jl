@@ -43,5 +43,7 @@ export _sigmoid,
     sliced_ortonormal_invariant_statistical_loss,
     sliced_invariant_statistical_loss_optimized,
     sliced_invariant_statistical_loss_optimized_2,
-    sliced_invariant_statistical_loss_optimized_3
+    sliced_invariant_statistical_loss_optimized_3,
+    sliced_auto_invariant_statistical_loss_optimized,
+    sliced_invariant_statistical_loss_optimized_4
 end
