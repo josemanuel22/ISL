@@ -145,12 +145,13 @@ n_samples = 10000
 
 hparams = gpu(
     HyperParamsSlicedISL(;
-        K=10, samples=100, epochs=50, η=1e-2, noise_model=noise_model, m=10
+        K=10, samples=100, epochs=50, η=1e-2, noise_model=noise_model, m=100
     ),
 )
 
 # Create a data loader for training
 batch_size = 100
+train_loader = DataLoader(train_x; batchsize=batch_size, shuffle=false, partial=false)
 train_loader = gpu(DataLoader(train_x; batchsize=batch_size, shuffle=false, partial=false))
 
 total_loss = []
@@ -163,7 +164,8 @@ end
 
 img = model(Float32.(rand(hparams.noise_model, 1)))
 img2 = reshape(img, 28, 28)
-display(Gray.(img2))
+#display(Gray.(img2))
+MLDatasets.MNIST.convert2image(Gray.(img2))
 transformed_matrix = Float32.(img2 .> 0.4)
 display(Gray.(transformed_matrix))
 
