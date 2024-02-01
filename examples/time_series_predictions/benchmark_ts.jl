@@ -77,7 +77,6 @@ Example:
 @test_experiments "testing electricity-f" begin
     csv_file_path = "examples/time_series_predictions/data/LD2011_2014.txt"
 
-
     cols = [
         "MT_005",
         "MT_006",
@@ -117,9 +116,7 @@ Example:
 
     #nn_model = Chain(RNN(5 => 32, relu), RNN(32 => 32, relu), Dense(32 => 1, identity))
     rec = Chain(LSTM(1 => 16), LayerNorm(16))
-    gen = Chain(Dense(17, 32, elu),
-    Dropout(0.05),
-    Dense(32, 1, identity))
+    gen = Chain(Dense(17, 32, elu), Dropout(0.05), Dense(32, 1, identity))
 
     start = 35040
     num_training_data = 1000
@@ -158,7 +155,6 @@ Example:
     v_std = std(aggregated_data_xtest)
     aggregated_data_xtest = (aggregated_data_xtest .- v_mean) ./ v_std
 
-
     loaderXtrain = Flux.DataLoader(
         aggregated_data_xtrain;
         batchsize=round(Int, num_training_data),
@@ -191,7 +187,6 @@ Example:
         append!(losses, loss)
         append!(ql5, ql5_)
     end
-
 
     mse = 0.0
     mae = 0.0
@@ -591,9 +586,7 @@ end
     hparams = HyperParamsTS(; seed=1234, η=1e-3, epochs=2000, window_size=2000, K=10)
 
     rec = Chain(LSTM(1 => 16), LayerNorm(16))
-    gen = Chain(Dense(17, 32, elu),
-    Dropout(0.05),
-    Dense(32, 1, identity))
+    gen = Chain(Dense(17, 32, elu), Dropout(0.05), Dense(32, 1, identity))
 
     # start and finish of the training data
     start = 35040
@@ -752,12 +745,12 @@ end
 
     rec = Chain(
         RNN(1 => 32, relu;),
-        RNN(32 => 32, relu;),
-        RNN(32 => 32, relu;),
+        RNN(32 => 64, relu;),
+        RNN(64 => 32, relu;),
         RNN(32 => 32, relu;),
         RNN(32 => 32, relu;),
     )
-    gen = Chain(Dense(33, 64, relu;), Dense(64, 1, identity;))
+    gen = Chain(Dense(33, 128, relu;), Dense(128, 1, identity;))
 
     ts = df1.FR22
 
@@ -1468,7 +1461,7 @@ end
 
     df1 = CSV.File(csv1; delim=',', header=true, decimal='.')
 
-    hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=2000, window_size=2000, K=20)
+    hparams = HyperParamsTS(; seed=1234, η=1e-3, epochs=2000, window_size=2000, K=50)
 
     rec = Chain(RNN(1 => 3, relu), LayerNorm(3), Dropout(0.1))
     gen = Chain(Dense(4, 10, relu), Dropout(0.1), Dense(10, 1, identity))
@@ -1556,19 +1549,65 @@ end
 
     losses = []
     ql5 = []
-    @showprogress for _ in 1:10
+    mses = []
+    maes = []
+    @showprogress for _ in 1:5
         loss, _ql5 = ts_invariant_statistical_loss(
             rec, gen, loaderXtrain, loaderYtrain, hparams, loaderXtest; cond=0.3
         )
         append!(losses, loss)
         append!(ql5, _ql5)
+
+        τ = 96
+        predictions, stds = ts_forecast(
+            rec, gen, collect(loaderXtrain)[1], collect(loaderXtest)[1], τ; n_average=1000
+        )
+
+        mse = 0.0
+        mae = 0.0
+        for ts in (1:(length(names(df)) - 1))
+            prediction = Vector{Float32}()
+            stds = Vector{Float32}()
+            xtrain = collect(loaderXtrain)[ts]
+            Flux.reset!(rec)
+            s = []
+            for j in ((length(xtrain) - 96):1:(length(xtrain) - 1))
+                s = rec([xtrain[j + 1]])
+            end
+
+            τ = 336
+            xtest = collect(loaderXtest)[ts]
+            noise_model = Normal(0.0f0, 1.0f0)
+            n_average = 1000
+            for j in (0:(τ):(length(xtest) - τ))
+                #s = rec(xtest[(j + 1):(j + τ)]')
+                #s = rec([xtest[j + 1]])
+                for i in 1:(τ)
+                    xₖ = rand(noise_model, n_average)
+                    y = hcat([gen(vcat(x, s)) for x in xₖ]...)
+                    ȳ = mean(y)
+                    σ = std(y)
+                    s = rec([ȳ])
+                    append!(prediction, ȳ)
+                    append!(stds, σ)
+                end
+            end
+            ideal = collect(loaderXtest)[ts]
+            QLρ([x[1] for x in ideal][1:τ], prediction[1:τ]; ρ=0.5)
+            println(MSE([x[1] for x in ideal][1:τ], prediction[1:τ]))
+            println(MAE([x[1] for x in ideal][1:τ], prediction[1:τ]))
+            mse += MSE([x[1] for x in ideal][1:τ], prediction[1:τ])
+            mae += MAE([x[1] for x in ideal][1:τ], prediction[1:τ])
+        end
+        append!(mses, mse / 7.0)
+        append!(maes, mae / 7.0)
     end
 
     window_size = 50
     ma_result = moving_average([x[1] for x in ql5], window_size)
     plot(ma_result)
 
-    τ = 30
+    τ = 96
     predictions, stds = ts_forecast(
         rec, gen, collect(loaderXtrain)[1], collect(loaderXtest)[1], τ; n_average=1000
     )
@@ -1585,7 +1624,7 @@ end
             s = rec([xtrain[j + 1]])
         end
 
-        τ = 720
+        τ = 336
         xtest = collect(loaderXtest)[ts]
         noise_model = Normal(0.0f0, 1.0f0)
         n_average = 1000
@@ -2076,16 +2115,16 @@ end
 end
 
 @test_experiments "ETDataset" begin
-    csv1 = "/Users/jmfrutos/github/ETDataset/ETT-small/ETTm1.csv"
+    csv1 = "/Users/jmfrutos/github/ETDataset/ETT-small/ETTh2.csv"
 
     #column_names = [:col1, :col2, :col3, :col4, :col5, :col6, :col7, :col8]
 
     df1 = CSV.File(csv1; delim=',', header=true, decimal='.')
 
-    hparams = HyperParamsTS(; seed=1234, η=1e-4, epochs=2000, window_size=2000, K=10)
+    hparams = HyperParamsTS(; seed=1234, η=1e-3, epochs=2000, window_size=1000, K=40)
 
-    rec = Chain(RNN(7 => 5, relu), LayerNorm(5))
-    gen = Chain(Dense(6, 10, relu), Dropout(0.05), Dense(10, 7, identity))
+    rec = Chain(RNN(7 => 10, relu), LayerNorm(10))
+    gen = Chain(Dense(11, 15, relu), Dropout(0.05), Dense(15, 7, identity))
 
     df = DataFrame(df1)
     df = select(df, Not(:date))
@@ -2149,8 +2188,8 @@ end
     v_std = std(ztrain)
     ztrain = (ztrain .- v_mean) ./ v_std
 
-    mean_vals = mean(matriz, dims=1)
-    std_vals = std(matriz, dims=1)
+    mean_vals = mean(matriz; dims=1)
+    std_vals = std(matriz; dims=1)
     matriz = (matriz .- mean_vals) ./ std_vals
 
     dataX = [matriz[i, :] for i in 1:size(matriz, 1)]
@@ -2160,22 +2199,23 @@ end
     batch_size = 4000
 
     # Create the DataLoader
-    loaderXtrain = DataLoader(dataX, batchsize=batch_size, shuffle=false, partial = false)
-    loaderYtrain = DataLoader(dataY, batchsize=batch_size, shuffle=false, partial = false)
+    loaderXtrain = DataLoader(dataX; batchsize=batch_size, shuffle=false, partial=false)
+    loaderYtrain = DataLoader(dataY; batchsize=batch_size, shuffle=false, partial=false)
 
     maes = []
     mses = []
     losses = []
     @showprogress for i in 1:1000
-        loss = ts_invariant_statistical_loss_multivariate(rec, gen, loaderXtrain, loaderYtrain, hparams)
+        loss = ts_invariant_statistical_loss_multivariate(
+            rec, gen, loaderXtrain, loaderYtrain, hparams
+        )
         append!(losses, loss)
-
 
         mse = 0.0
         mae = 0.0
         count = 0
-        τ = 96
-        for ts in (1: length(collect(loaderXtrain)[1][1]))
+        τ = 336
+        for ts in (1:length(collect(loaderXtrain)[1][1]))
             #τ = 96
             s = 0
             Flux.reset!(rec)
@@ -2187,7 +2227,7 @@ end
                 #ŷ = mean([gen(vcat(x, s)) for x in xₖ])
                 #push!(prediction, ŷ)
             end
-            for i in (96:(96+τ))
+            for i in (96:(96 + τ))
                 xₖ = rand(Normal(0.0f0, 1.0f0), 100)
                 y = mean([gen(vcat(x, s)) for x in xₖ])
                 #y = mean([gen(vcat(x, s)) for x in xₖ])
@@ -2201,8 +2241,8 @@ end
             #l = moving_average(primeraColumnaY, 10)
             #println(MSE(primeraColumna[96:96+τ], primeraColumnaY))
             #println(MAE(primeraColumna[96:96+τ], primeraColumnaY))
-            mse += MSE(primeraColumna[96:96+τ], primeraColumnaY)
-            mae += MAE(primeraColumna[96:96+τ], primeraColumnaY)
+            mse += MSE(primeraColumna[96:(96 + τ)], primeraColumnaY)
+            mae += MAE(primeraColumna[96:(96 + τ)], primeraColumnaY)
         end
         append!(mses, mse / count)
         append!(maes, mae / count)
@@ -2260,8 +2300,8 @@ end
     mae = 0.0
     count = 0
     τ = 720
-    s=0
-    for ts in (1: length(collect(loaderXtrain)[1][1]))
+    s = 0
+    for ts in (1:length(collect(loaderXtrain)[1][1]))
         #τ = 96
         Flux.reset!(rec)
         xtrain = collect(loaderXtrain)[1]
@@ -2272,7 +2312,7 @@ end
             ŷ = mean([gen(vcat(x, s)) for x in xₖ])
             push!(prediction, ŷ)
         end
-        for i in (96:(96+τ))
+        for i in (96:(96 + τ))
             xₖ = rand(Normal(0.0f0, 1.0f0), 1000)
             ŷ = mean([gen(vcat(x, s)) for x in xₖ])
             #println(ŷ)
@@ -2283,10 +2323,10 @@ end
         primeraColumna = [fila[ts] for fila in collect(loaderXtrain)[1]]
         count += 1
         l = moving_average(primeraColumnaY, 10)
-        println(MSE(primeraColumna[96:96+τ], primeraColumnaY))
-        println(MAE(primeraColumna[96:96+τ], primeraColumnaY))
-        mse += MSE(primeraColumna[96:96+τ], primeraColumnaY)
-        mae += MAE(primeraColumna[96:96+τ], primeraColumnaY)
+        println(MSE(primeraColumna[96:(96 + τ)], primeraColumnaY))
+        println(MAE(primeraColumna[96:(96 + τ)], primeraColumnaY))
+        mse += MSE(primeraColumna[96:(96 + τ)], primeraColumnaY)
+        mae += MAE(primeraColumna[96:(96 + τ)], primeraColumnaY)
     end
     mse / count
     mae / count
@@ -2295,7 +2335,6 @@ end
     plot!(l)
 
     MSE(primeraColumna[1:145], l)
-
 
     mse = 0.0
     mae = 0.0
@@ -2333,30 +2372,4 @@ end
         mse += MSE([x[1] for x in ideal][1:τ], prediction[1:τ])
         mae += MAE([x[1] for x in ideal][1:τ], prediction[1:τ])
     end
-
-end
-
-function ts_invariant_statistical_loss_multivariate(rec, gen, Xₜ, Xₜ₊₁, hparams)
-    losses = []
-    optim_rec = Flux.setup(Flux.Adam(hparams.η), rec)
-    optim_gen = Flux.setup(Flux.Adam(hparams.η), gen)
-    Flux.reset!(rec)
-    @showprogress for (batch_Xₜ, batch_Xₜ₊₁) in zip(Xₜ, Xₜ₊₁)
-        loss, grads = Flux.withgradient(rec, gen) do rec, gen
-            aₖ = zeros(hparams.K + 1)
-            for j in (1:(hparams.window_size):length(batch_Xₜ))
-                s = rec(batch_Xₜ[j])
-                xₖ = rand(hparams.noise_model, hparams.K)
-                yₖ = hcat([gen(vcat(x, s)) for x in xₖ]...)
-                for i in 1:length(batch_Xₜ₊₁[j])
-                    aₖ += generate_aₖ(yₖ[i:i, :], batch_Xₜ₊₁[j][i])
-                end
-            end
-            scalar_diff(aₖ ./ sum(aₖ))
-        end
-        Flux.update!(optim_rec, rec, grads[1])
-        Flux.update!(optim_gen, gen, grads[2])
-        push!(losses, loss)
-    end
-    return losses
 end

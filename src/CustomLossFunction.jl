@@ -337,7 +337,15 @@ function auto_invariant_statistical_loss(nn_model, data, hparams)
             sqrt(scalar_diff(aₖ ./ sum(aₖ)))
         end
         Flux.update!(optim, nn_model, grads[1])
-        push!(losses, (loss, get_window_of_Aₖ(hparams.transform, nn_model, data.data[1:hparams.samples], K)))
+        push!(
+            losses,
+            (
+                loss,
+                get_window_of_Aₖ(
+                    hparams.transform, nn_model, data.data[1:(hparams.samples)], K
+                ),
+            ),
+        )
     end
     return losses
 end;
@@ -417,8 +425,6 @@ end
 
 # Train and output the model according to the chosen hyperparameters `hparams`
 
-
-
 function ts_invariant_statistical_loss_one_step_prediction(rec, gen, Xₜ, Xₜ₊₁, hparams)
     losses = []
     optim_rec = Flux.setup(Flux.Adam(hparams.η), rec)
@@ -443,7 +449,6 @@ function ts_invariant_statistical_loss_one_step_prediction(rec, gen, Xₜ, Xₜ�
     end
     return losses
 end
-
 
 """
     ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams)
@@ -506,70 +511,32 @@ function ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams, load
             Flux.update!(optim_rec, rec, grads[1])
             Flux.update!(optim_gen, gen, grads[2])
             push!(losses, loss)
-
-            mae = 0.0
-            count = 0.0
-            for i in 1:length(loaderXtest)
-                xtrain = collect(Xₜ)[i]
-                prediction = Vector{Float32}()
-                stds = Vector{Float32}()
-                Flux.reset!(rec)
-                s = []
-                for j in ((length(xtrain) - 96):1:(length(xtrain) - 1))
-                    s = rec([xtrain[j + 1]])
-                end
-
-                τ = 48
-                xtest = collect(loaderXtest)[i]
-                noise_model = Normal(0.0f0, 1.0f0)
-                n_average = 100
-                for j in (0:(τ):(length(xtest) - τ))
-                    #s = rec(xtest[(j + 1):(j + τ)]')
-                    #s = rec([xtest[j + 1]])
-                    for i in 1:(τ)
-                        xₖ = rand(noise_model, n_average)
-                        y = hcat([gen(vcat(x, s)) for x in xₖ]...)
-                        ȳ = mean(y)
-                        σ = std(y)
-                        s = rec([ȳ])
-                        append!(prediction, ȳ)
-                        append!(stds, σ)
-                    end
-                end
-                count += 1
-                mae += MAE([x[1] for x in xtest][1:τ], prediction[1:τ])
-            end
-            push!(ql5, mae/count)
-            if mae/count < cond
-                return losses, ql5
-            end
-
         end
     end
     return losses, ql5
 end
 
-
 function ts_invariant_statistical_loss_multivariate(rec, gen, Xₜ, Xₜ₊₁, hparams)
     losses = []
     optim_rec = Flux.setup(Flux.Adam(hparams.η), rec)
     optim_gen = Flux.setup(Flux.Adam(hparams.η), gen)
-    for (batch_Xₜ, batch_Xₜ₊₁) in zip(Xₜ, Xₜ₊₁)
-        Flux.reset!(rec)
-        for j in (0:(hparams.window_size):(length(batch_Xₜ) - hparams.window_size))
-            loss, grads = Flux.withgradient(rec, gen) do rec, gen
-                aₖ = zeros(hparams.K + 1)
-                s = rec(batch_Xₜ[(j + 1):(j + hparams.window_size)]')
-                for i in 1:(hparams.window_size)
-                    xₖ = rand(hparams.noise_model, hparams.K)
-                    yₖ = hcat([gen(vcat(x, s[:, i])) for x in xₖ]...)
-                    aₖ += generate_aₖ(yₖ, batch_Xₜ₊₁[j + i])
+    Flux.reset!(rec)
+    @showprogress for (batch_Xₜ, batch_Xₜ₊₁) in zip(Xₜ, Xₜ₊₁)
+        loss, grads = Flux.withgradient(rec, gen) do rec, gen
+            aₖ = zeros(hparams.K + 1)
+            for j in (1:(hparams.window_size):length(batch_Xₜ))
+                s = rec(batch_Xₜ[j])
+                xₖ = rand(hparams.noise_model, hparams.K)
+                yₖ = hcat([gen(vcat(x, s)) for x in xₖ]...)
+                for i in 1:length(batch_Xₜ₊₁[j])
+                    aₖ += generate_aₖ(yₖ[i:i, :], batch_Xₜ₊₁[j][i])
                 end
-                scalar_diff(aₖ ./ sum(aₖ))
             end
-            Flux.update!(optim_rec, rec, grads[1])
-            Flux.update!(optim_gen, gen, grads[2])
-            push!(losses, loss)
+            scalar_diff(aₖ ./ sum(aₖ))
         end
+        Flux.update!(optim_rec, rec, grads[1])
+        Flux.update!(optim_gen, gen, grads[2])
+        push!(losses, loss)
     end
+    return losses
 end
