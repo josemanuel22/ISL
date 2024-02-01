@@ -14,28 +14,40 @@ include("../utils.jl")
 include("ts_utils.jl")
 
 @test_experiments "testing AutoRegressive Model 1" begin
+    # Define AR model parameters
     ar_hparams = ARParams(;
-        ϕ=[0.5f0, 0.3f0, 0.2f0],
-        x₁=rand(Normal(0.0f0, 1.0f0)),
-        proclen=2000,
-        noise=Normal(0.0f0, 0.2f0),
+        ϕ=[0.5f0, 0.3f0, 0.2f0],  # Autoregressive coefficients
+        x₁=rand(Normal(0.0f0, 1.0f0)),  # Initial value from a Normal distribution
+        proclen=2000,  # Length of the process
+        noise=Normal(0.0f0, 0.2f0),  # Noise in the AR process
     )
 
-    rec = Chain(RNN(1 => 10, relu), RNN(10 => 10, relu))
-    gen = Chain(Dense(11, 16, relu), Dense(16, 1, identity))
+    # Define the recurrent and generative models
+    recurrent_model = Chain(RNN(1 => 10, relu), RNN(10 => 10, relu))
+    generative_model = Chain(Dense(11, 16, relu), Dense(16, 1, identity))
 
+    # Generate training and testing data
     n_series = 200
     loaderXtrain, loaderYtrain, loaderXtest, loaderYtest = generate_batch_train_test_data(
         n_series, ar_hparams
     )
 
-    hparams = HyperParamsTS(; seed=1234, η=1e-3, epochs=n_series, window_size=1000, K=10)
+    # Define hyperparameters for time series prediction
+    ts_hparams = HyperParamsTS(; seed=1234, η=1e-3, epochs=n_series, window_size=1000, K=10)
+
+    # Train model and calculate loss
     loss = ts_invariant_statistical_loss_one_step_prediction(
-        rec, gen, loaderXtrain, loaderYtrain, hparams
+        recurrent_model, generative_model, loaderXtrain, loaderYtrain, ts_hparams
     )
 
+    # Plotting the time series prediction
     plot_univariate_ts_prediction(
-        rec, gen, collect(loaderXtrain)[1], collect(loaderXtest)[1], hparams; n_average=1000
+        recurrent_model,
+        generative_model,
+        collect(loaderXtrain)[1],
+        collect(loaderXtest)[1],
+        ts_hparams;
+        n_average=1000,
     )
 end
 
@@ -75,23 +87,8 @@ Example:
 ```
 """
 @test_experiments "testing electricity-f" begin
+    # Load dataset
     csv_file_path = "examples/time_series_predictions/data/LD2011_2014.txt"
-
-    cols = [
-        "MT_005",
-        "MT_006",
-        "MT_007",
-        "MT_008",
-        "MT_168",
-        #"MT_331",
-        #"MT_332",
-        "MT_333",
-        "MT_334",
-        "MT_335",
-        "MT_336",
-        "MT_338",
-    ]
-
     df = CSV.File(
         csv_file_path;
         delim=';',
@@ -112,78 +109,65 @@ Example:
         ),
     )
 
+    # Model setup
     hparams = HyperParamsTS(; seed=1234, η=1e-3, epochs=2000, window_size=1000, K=20)
-
-    #nn_model = Chain(RNN(5 => 32, relu), RNN(32 => 32, relu), Dense(32 => 1, identity))
     rec = Chain(LSTM(1 => 16), LayerNorm(16))
     gen = Chain(Dense(17, 32, elu), Dropout(0.05), Dense(32, 1, identity))
 
-    start = 35040
-    num_training_data = 1000
-    num_test = 1000
+    # Data preprocessing
+    cols = [
+        "MT_005",
+        "MT_006",
+        "MT_007",
+        "MT_008",
+        "MT_168",
+        "MT_333",
+        "MT_334",
+        "MT_335",
+        "MT_336",
+        "MT_338",
+    ]
+    start, num_training_data, num_test = 35040, 1000, 1000
 
-    # coarse grain the data, electricity-c
-    aggregated_data_xtrain = Vector{Float32}()
-    aggregated_data_ytrain = Vector{Float32}()
-    aggregated_data_xtest = Vector{Float32}()
-    for name in select_names
-        if name != "Column1"
-            println(name)
-            ts = getproperty(df, Symbol(name))
-
-            loaderXtrain = ts[start:(start + num_training_data)]
-            loaderYtrain = ts[(start + 1):(start + num_training_data + 1)]
-            loaderXtest = ts[(start + num_training_data - 1):(start + +num_training_data + num_test_data)]
-
-            append!(aggregated_data_xtrain, loaderXtrain)
-
-            append!(aggregated_data_ytrain, loaderYtrain)
-
-            append!(aggregated_data_xtest, loaderXtest)
-        end
+    aggregated_data_xtrain, aggregated_data_ytrain, aggregated_data_xtest = Vector{
+        Float32
+    }(),
+    Vector{Float32}(),
+    Vector{Float32}()
+    for name in cols
+        ts = getproperty(df, Symbol(name))
+        append!(aggregated_data_xtrain, ts[start:(start + num_training_data)])
+        append!(aggregated_data_ytrain, ts[(start + 1):(start + num_training_data + 1)])
+        append!(
+            aggregated_data_xtest,
+            ts[(start + num_training_data - 1):(start + num_training_data + num_test)],
+        )
     end
 
-    v_mean = mean(aggregated_data_xtrain)
-    v_std = std(aggregated_data_xtrain)
-    aggregated_data_xtrain = (aggregated_data_xtrain .- v_mean) ./ v_std
+    # Standardize data
+    standardize!(data) = (data .- mean(data)) ./ std(data)
+    aggregated_data_xtrain = standardize!(aggregated_data_xtrain)
+    aggregated_data_ytrain = standardize!(aggregated_data_ytrain)
+    aggregated_data_xtest = standardize!(aggregated_data_xtest)
 
-    v_mean = mean(aggregated_data_ytrain)
-    v_std = std(aggregated_data_ytrain)
-    aggregated_data_ytrain = (aggregated_data_ytrain .- v_mean) ./ v_std
-
-    v_mean = mean(aggregated_data_xtest)
-    v_std = std(aggregated_data_xtest)
-    aggregated_data_xtest = (aggregated_data_xtest .- v_mean) ./ v_std
-
-    loaderXtrain = Flux.DataLoader(
-        aggregated_data_xtrain;
-        batchsize=round(Int, num_training_data),
-        shuffle=false,
-        partial=false,
+    # DataLoader setup
+    batch_size = round(Int, num_training_data)
+    loaderXtrain = DataLoader(
+        aggregated_data_xtrain; batchsize=batch_size, shuffle=false, partial=false
+    )
+    loaderYtrain = DataLoader(
+        aggregated_data_ytrain; batchsize=batch_size, shuffle=false, partial=false
+    )
+    loaderXtest = DataLoader(
+        aggregated_data_xtest; batchsize=batch_size, shuffle=false, partial=false
     )
 
-    loaderYtrain = Flux.DataLoader(
-        aggregated_data_ytrain;
-        batchsize=round(Int, num_training_data),
-        shuffle=false,
-        partial=false,
-    )
-
-    num_test = 1000
-    loaderXtest = Flux.DataLoader(
-        aggregated_data_xtest;
-        batchsize=round(Int, num_training_data),
-        shuffle=false,
-        partial=false,
-    )
-
-    ql5 = []
-    losses = []
+    # Model training
+    losses, ql5 = [], []
     @showprogress for _ in 1:10
         loss, ql5_ = ts_invariant_statistical_loss(
             rec, gen, loaderXtrain, loaderYtrain, hparams, loaderXtest
         )
-        #loss, ql5_ = ts_invariant_statistical_loss(rec, gen, loaderXtrain, loaderYtrain, hparams)
         append!(losses, loss)
         append!(ql5, ql5_)
     end
@@ -2114,7 +2098,7 @@ end
     mae / 7.0
 end
 
-@test_experiments "ETDataset" begin
+@test_experiments "ETDataset multivariated" begin
     # Load CSV file
     csv_file = "/Users/jmfrutos/github/ETDataset/ETT-small/ETTh2.csv"
     df = DataFrame(CSV.File(csv_file; delim=',', header=true, decimal='.'))
