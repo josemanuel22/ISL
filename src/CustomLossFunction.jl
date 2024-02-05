@@ -492,7 +492,6 @@ end
 
 function ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams, loaderXtest; cond=0.1)
     losses = []
-    ql5 = []
     optim_rec = Flux.setup(Flux.Adam(hparams.η), rec)
     optim_gen = Flux.setup(Flux.Adam(hparams.η), gen)
     for (batch_Xₜ, batch_Xₜ₊₁) in zip(Xₜ, Xₜ₊₁)
@@ -513,7 +512,7 @@ function ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams, load
             push!(losses, loss)
         end
     end
-    return losses, ql5
+    return losses
 end
 
 function ts_invariant_statistical_loss_multivariate(rec, gen, Xₜ, Xₜ₊₁, hparams)
