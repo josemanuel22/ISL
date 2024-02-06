@@ -285,6 +285,16 @@ Example:
         )
         append!(losses, loss)
     end
+
+    # Forecasting
+    τ = 24
+    xtrain = collect(loaderXtrain)[1]
+    xtest = collect(loaderXtest)[1]
+    prediction, stds = ts_forecast(
+        rec, gen, xtrain, xtest, τ; n_average=1000, noise_model=Normal(0.0f0, 1.0f0)
+    )
+    plot(prediction[1:24])
+    plot!(xtest[1:24])
 end
 
 """
