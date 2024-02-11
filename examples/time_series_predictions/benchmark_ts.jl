@@ -767,7 +767,7 @@ end
 
     df1 = CSV.File(csv1; delim=',', header=true, decimal='.')
 
-    hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=2000, window_size=2000, K=20)
+    hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=2000, window_size=2000, K=40)
 
     rec = Chain(RNN(1 => 3, relu), LayerNorm(3))
     gen = Chain(Dense(4, 10, relu), Dropout(0.1), Dense(10, 1, identity))
@@ -844,7 +844,7 @@ end
     losses = []
     mses = []
     maes = []
-    @showprogress for _ in 1:20
+    @showprogress for _ in 1:10
         loss = ts_invariant_statistical_loss(
             rec, gen, loaderXtrain, loaderYtrain, hparams, loaderXtest; cond=0.5
         )
@@ -861,7 +861,7 @@ end
                 s = rec([xtrain[j + 1]])
             end
 
-            τ = 336
+            τ = 720
             xtest = collect(loaderXtest)[ts]
             noise_model = Normal(0.0f0, 1.0f0)
             n_average = 1000
@@ -1119,9 +1119,9 @@ end
     dataY = [matrix[i, :] for i in 2:size(matrix, 1)]
 
     # Model hyperparameters and architecture
-    hparams = HyperParamsTS(; seed=1234, η=1e-4, epochs=2000, window_size=2000, K=30)
-    rec = Chain(RNN(7 => 20, relu), LayerNorm(20), Dropout(0.10))
-    gen = Chain(Dense(21, 15, relu), Dropout(0.10), Dense(15, 7, identity), Dropout(0.10))
+    hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=2000, window_size=2000, K=40)
+    rec = Chain(RNN(7 => 3, relu), LayerNorm(3))
+    gen = Chain(Dense(4, 10, relu), Dropout(0.05), Dense(10, 7, identity))
 
     # DataLoader setup
     batch_size = 2000
@@ -1129,7 +1129,7 @@ end
     loaderYtrain = DataLoader(dataY; batchsize=batch_size, shuffle=false, partial=false)
 
     losses = []
-    @showprogress for i in 1:1000
+    @showprogress for i in 1:100
         loss = ts_invariant_statistical_loss_multivariate(
             rec, gen, loaderXtrain, loaderYtrain, hparams
         )
@@ -1139,7 +1139,7 @@ end
     maes = []
     mses = []
     losses = []
-    @showprogress for i in 1:10000
+    @showprogress for i in 1:1000
         loss = ts_invariant_statistical_loss_multivariate(
             rec, gen, loaderXtrain, loaderYtrain, hparams
         )
@@ -1148,7 +1148,7 @@ end
         mse = 0.0
         mae = 0.0
         count = 0
-        τ = 336
+        τ = 720
         for ts in (1:length(collect(loaderXtrain)[1][1]))
             #τ = 96
             s = 0
