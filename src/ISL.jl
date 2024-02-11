@@ -27,9 +27,11 @@ export _sigmoid,
     AutoISLParams,
     invariant_statistical_loss,
     invariant_statistical_loss_1,
+    auto_invariant_statistical_loss_2,
     auto_invariant_statistical_loss,
     auto_invariant_statistical_loss_1,
     HyperParamsTS,
     ts_invariant_statistical_loss_one_step_prediction,
-    ts_invariant_statistical_loss
+    ts_invariant_statistical_loss,
+    ts_invariant_statistical_loss_multivariate
 end

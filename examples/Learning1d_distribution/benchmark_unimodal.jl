@@ -3,17 +3,33 @@ using GAN
 
 include("../utils.jl")
 
+"""
+We showcase its qualitative advantage over classical generative models for independent time
+settings, capturing multimodal and heavy-tailed distributions. ISL outperforms vanilla-GAN,
+Wasserstein-GAN, and MMD-GAN baselines. Our experimental settings for this section are
+grounded in the study by https://chunliangli.github.io/docs/dltp17gan.pdf
+"""
 @test_experiments "vanilla_gan" begin
+
+    # Define an experiment test with noise model N(0,1)
     @test_experiments "Origin N(0,1)" begin
+        # Initialize the noise model as a normal distribution N(0,1)
         noise_model = Normal(0.0f0, 1.0f0)
         n_samples = 10000
 
+        # Define an experiment to transform N(0,1) to N(23,1)
         @test_experiments "N(0,1) to N(23,1)" begin
+            # Generator: a neural network with ELU activation
             gen = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
+
+            # Discriminator: a neural network with ELU activation and σ activation function in the last layer
             dscr = Chain(
                 Dense(1, 11), elu, Dense(11, 29), elu, Dense(29, 11), elu, Dense(11, 1, σ)
             )
-            target_model = Normal(4.0f0, 2.0f0)
+            # Target model composed of a mixture of models
+            target_model = Normal(23.0f0, 1.0f0)
+
+            # Parameters for GAN training
             hparams = HyperParamsVanillaGan(;
                 data_size=100,
                 batch_size=1,
@@ -26,15 +42,19 @@ include("../utils.jl")
                 target_model=target_model,
             )
 
+            # Training the GAN
             train_vanilla_gan(dscr, gen, hparams)
 
+            # Parameters for automatic invariant statistical loss
             hparams = AutoISLParams(;
                 max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
             )
 
+            # Preparing the training set and data loader
             train_set = Float32.(rand(target_model, hparams.samples))
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
+            # Training using the automatic invariant statistical loss
             auto_invariant_statistical_loss(gen, loader, hparams)
         end
 
@@ -67,7 +87,7 @@ include("../utils.jl")
             auto_invariant_statistical_loss(gen, loader, hparams)
 
             plot_global(
-                x -> quantile.(target_model, cdf(noise_model, x)),
+                x -> -quantile.(-target_model, cdf(noise_model, x)),
                 noise_model,
                 target_model,
                 gen,
@@ -82,9 +102,7 @@ include("../utils.jl")
             dscr = Chain(
                 Dense(1, 11), elu, Dense(11, 29), elu, Dense(29, 11), elu, Dense(11, 1, σ)
             )
-            target_model = MixtureModel([
-                Normal(-10.0, 1.0), Uniform(-5.0, 5.0), Pareto(3.0, 10.0)
-            ])
+            target_model = Cauchy(23.0f0, 1.0f0)
             hparams = HyperParamsVanillaGan(;
                 data_size=100,
                 batch_size=1,
@@ -106,14 +124,6 @@ include("../utils.jl")
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
             auto_invariant_statistical_loss(gen, loader, hparams)
-
-            # ksd = KSD(noise_model, target_model, n_samples, 18:0.1:25)
-            # mae = MAE(
-            #     noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_samples
-            # )
-            # mse = MSE(
-            #     noise_model, x -> quantile.(target_model, cdf(noise_model, x)), n_samples
-            # )
 
             plot_global(
                 x -> quantile.(target_model, cdf(noise_model, x)),
@@ -311,9 +321,6 @@ end
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
             auto_invariant_statistical_loss(gen, loader, hparams)
-
-            #save_gan_model(gen, dscr, hparams)
-
         end
 
         @test_experiments "N(0,1) to Uniform(22,24)" begin

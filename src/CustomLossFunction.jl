@@ -65,7 +65,7 @@ function ϕ(yₖ::Matrix{T}, yₙ::T) where {T<:AbstractFloat}
 end;
 
 """
-`γ(yₖ::Matrix{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}``
+    γ(yₖ::Matrix{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}
 
 Calculate the contribution of `ψₘ ∘ ϕ(yₖ, yₙ)` to the `m` bin of the histogram as a Vector{Float}.
 
@@ -320,6 +320,34 @@ function auto_invariant_statistical_loss(nn_model, data, hparams)
     K = 2
     @debug "K value set to $K."
     losses = []
+    optim = Flux.setup(Flux.NAdam(hparams.η), nn_model)
+    @showprogress for epoch in 1:(hparams.epochs)
+        K̂ = get_better_K(nn_model, data, K, hparams)
+        if K < K̂
+            K = K̂
+            @debug "K value set to $K."
+        end
+        loss, grads = Flux.withgradient(nn_model) do nn
+            aₖ = zeros(K + 1)
+            for i in 1:(hparams.samples)
+                x = rand(hparams.transform, K)
+                yₖ = nn(x')
+                aₖ += generate_aₖ(yₖ, data.data[i])
+            end
+            sqrt(scalar_diff(aₖ ./ sum(aₖ)))
+        end
+        Flux.update!(optim, nn_model, grads[1])
+        push!(losses, loss)
+    end
+    return losses
+end;
+
+function auto_invariant_statistical_loss_2(nn_model, data, hparams)
+    @assert length(data) == hparams.samples
+
+    K = 2
+    @debug "K value set to $K."
+    losses = []
     optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
     @showprogress for epoch in 1:(hparams.epochs)
         K̂ = get_better_K(nn_model, data, K, hparams)
@@ -389,8 +417,6 @@ end
 
 # Train and output the model according to the chosen hyperparameters `hparams`
 
-
-
 function ts_invariant_statistical_loss_one_step_prediction(rec, gen, Xₜ, Xₜ₊₁, hparams)
     losses = []
     optim_rec = Flux.setup(Flux.Adam(hparams.η), rec)
@@ -416,6 +442,20 @@ function ts_invariant_statistical_loss_one_step_prediction(rec, gen, Xₜ, Xₜ�
     return losses
 end
 
+function QLρ(xₜ, x̂ₜ; ρ=0.5)
+    return 2 *
+           (sum(abs.(xₜ))^-1) *
+           sum(ρ .* (xₜ .- x̂ₜ) .* (xₜ .> x̂ₜ) .+ (1 - ρ) .* (x̂ₜ .- xₜ) .* (xₜ .<= x̂ₜ))
+end
+
+function MAE(y::Vector{<:Real}, ŷ::Vector{<:Real})::Real
+    if length(y) != length(ŷ)
+        error("Vectors must be of the same length")
+    end
+
+    mae = sum(abs.(y .- ŷ)) / length(y)
+    return mae
+end
 
 """
     ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams)
@@ -463,6 +503,31 @@ function ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams)
             Flux.update!(optim_gen, gen, grads[2])
             push!(losses, loss)
         end
+    end
+    return losses
+end
+
+function ts_invariant_statistical_loss_multivariate(rec, gen, Xₜ, Xₜ₊₁, hparams)
+    losses = []
+    optim_rec = Flux.setup(Flux.Adam(hparams.η), rec)
+    optim_gen = Flux.setup(Flux.Adam(hparams.η), gen)
+    Flux.reset!(rec)
+    @showprogress for (batch_Xₜ, batch_Xₜ₊₁) in zip(Xₜ, Xₜ₊₁)
+        loss, grads = Flux.withgradient(rec, gen) do rec, gen
+            aₖ = zeros(hparams.K + 1)
+            for j in (1:(hparams.window_size):length(batch_Xₜ))
+                s = rec(batch_Xₜ[j])
+                xₖ = rand(hparams.noise_model, hparams.K)
+                yₖ = hcat([gen(vcat(x, s)) for x in xₖ]...)
+                for i in 1:length(batch_Xₜ₊₁[j])
+                    aₖ += generate_aₖ(yₖ[i:i, :], batch_Xₜ₊₁[j][i])
+                end
+            end
+            scalar_diff(aₖ ./ sum(aₖ))
+        end
+        Flux.update!(optim_rec, rec, grads[1])
+        Flux.update!(optim_gen, gen, grads[2])
+        push!(losses, loss)
     end
     return losses
 end

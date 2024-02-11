@@ -285,7 +285,7 @@ rho, sigma = yule_walker(data, order=order, method="mle")
 ```
 """
 function yule_walker(
-    x::Vector{Float32};
+    x::Vector{<:Real};
     order::Int64=1,
     method="adjusted",
     df::Union{Nothing,Int64}=nothing,
@@ -407,6 +407,39 @@ function ts_forecast(
             y = hcat([gen(vcat(x, s[:, i])) for x in xₖ]...)
             ȳ = mean(y)
             σ = std(y)
+            append!(prediction, ȳ)
+            append!(stds, σ)
+        end
+    end
+    return prediction, stds
+end
+
+
+function ts_forecast_multistep(
+    rec,
+    gen,
+    xtrain::Vector{Float32},
+    xtest::Vector{Float32},
+    τ::Int64;
+    n_average=1000,
+    noise_model=Normal(0.0f0, 1.0f0),
+)
+
+    prediction = Vector{Float32}()
+    stds = Vector{Float32}()
+    Flux.reset!(rec)
+    s = []
+    for j in (0:1:(length(xtrain) - 1))
+        s = rec([xtrain[j + 1]])
+    end
+
+    for j in (0:(τ):(length(xtest) - τ))
+        for i in 1:(τ)
+            xₖ = rand(noise_model, n_average)
+            y = hcat([gen(vcat(x, s)) for x in xₖ]...)
+            ȳ = mean(y)
+            σ = std(y)
+            s = rec([ȳ])
             append!(prediction, ȳ)
             append!(stds, σ)
         end
