@@ -4,16 +4,26 @@ using GAN
 include("../utils.jl")
 
 @test_experiments "vanilla_gan" begin
+
+    # Define an experiment test with noise model N(0,1)
     @test_experiments "Origin N(0,1)" begin
+        # Initialize the noise model as a normal distribution N(0,1)
         noise_model = Normal(0.0f0, 1.0f0)
         n_samples = 10000
 
+        # Define an experiment to transform N(0,1) to N(23,1)
         @test_experiments "N(0,1) to N(23,1)" begin
+            # Generator: a neural network with ELU activation
             gen = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
+
+            # Discriminator: a neural network with ELU activation and σ activation function in the last layer
             dscr = Chain(
                 Dense(1, 11), elu, Dense(11, 29), elu, Dense(29, 11), elu, Dense(11, 1, σ)
             )
-            target_model = MixtureModel([Normal(5.0f0, 2.0f0), Pareto(5.0f0, 1.0f0)])
+            # Target model composed of a mixture of models
+            target_model = Normal(23.0f0, 1.0f0)
+
+            # Parameters for GAN training
             hparams = HyperParamsVanillaGan(;
                 data_size=100,
                 batch_size=1,
@@ -26,14 +36,19 @@ include("../utils.jl")
                 target_model=target_model,
             )
 
+            # Training the GAN
             train_vanilla_gan(dscr, gen, hparams)
 
+            # Parameters for automatic invariant statistical loss
             hparams = AutoISLParams(;
                 max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
             )
 
+            # Preparing the training set and data loader
             train_set = Float32.(rand(target_model, hparams.samples))
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
+
+            # Training using the automatic invariant statistical loss
             auto_invariant_statistical_loss(gen, loader, hparams)
         end
 
@@ -81,9 +96,7 @@ include("../utils.jl")
             dscr = Chain(
                 Dense(1, 11), elu, Dense(11, 29), elu, Dense(29, 11), elu, Dense(11, 1, σ)
             )
-            target_model = MixtureModel([
-                Normal(-10.0, 1.0), Uniform(-5.0, 5.0), Pareto(3.0, 10.0)
-            ])
+            target_model = Cauchy(23.0f0, 1.0f0)
             hparams = HyperParamsVanillaGan(;
                 data_size=100,
                 batch_size=1,
