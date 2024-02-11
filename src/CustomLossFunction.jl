@@ -337,15 +337,7 @@ function auto_invariant_statistical_loss(nn_model, data, hparams)
             sqrt(scalar_diff(aₖ ./ sum(aₖ)))
         end
         Flux.update!(optim, nn_model, grads[1])
-        push!(
-            losses,
-            (
-                loss,
-                get_window_of_Aₖ(
-                    hparams.transform, nn_model, data.data[1:(hparams.samples)], K
-                ),
-            ),
-        )
+        push!(losses, loss)
     end
     return losses
 end;
@@ -450,6 +442,21 @@ function ts_invariant_statistical_loss_one_step_prediction(rec, gen, Xₜ, Xₜ�
     return losses
 end
 
+function QLρ(xₜ, x̂ₜ; ρ=0.5)
+    return 2 *
+           (sum(abs.(xₜ))^-1) *
+           sum(ρ .* (xₜ .- x̂ₜ) .* (xₜ .> x̂ₜ) .+ (1 - ρ) .* (x̂ₜ .- xₜ) .* (xₜ .<= x̂ₜ))
+end
+
+function MAE(y::Vector{<:Real}, ŷ::Vector{<:Real})::Real
+    if length(y) != length(ŷ)
+        error("Vectors must be of the same length")
+    end
+
+    mae = sum(abs.(y .- ŷ)) / length(y)
+    return mae
+end
+
 """
     ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams)
 
@@ -475,22 +482,7 @@ This function train a model for time series data with statistical invariance los
 The function iterates through the provided time series data (`Xₜ` and `Xₜ₊₁`) in batches, with a sliding window of size `window_size`.
 
 """
-function QLρ(xₜ, x̂ₜ; ρ=0.5)
-    return 2 *
-           (sum(abs.(xₜ))^-1) *
-           sum(ρ .* (xₜ .- x̂ₜ) .* (xₜ .> x̂ₜ) .+ (1 - ρ) .* (x̂ₜ .- xₜ) .* (xₜ .<= x̂ₜ))
-end
-
-function MAE(y::Vector{<:Real}, ŷ::Vector{<:Real})::Real
-    if length(y) != length(ŷ)
-        error("Vectors must be of the same length")
-    end
-
-    mae = sum(abs.(y .- ŷ)) / length(y)
-    return mae
-end
-
-function ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams, loaderXtest; cond=0.1)
+function ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams)
     losses = []
     optim_rec = Flux.setup(Flux.Adam(hparams.η), rec)
     optim_gen = Flux.setup(Flux.Adam(hparams.η), gen)
