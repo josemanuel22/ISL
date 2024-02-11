@@ -3,6 +3,12 @@ using GAN
 
 include("../utils.jl")
 
+"""
+We showcase its qualitative advantage over classical generative models for independent time
+settings, capturing multimodal and heavy-tailed distributions. ISL outperforms vanilla-GAN,
+Wasserstein-GAN, and MMD-GAN baselines. Our experimental settings for this section are
+grounded in the study by https://chunliangli.github.io/docs/dltp17gan.pdf
+"""
 @test_experiments "vanilla_gan" begin
 
     # Define an experiment test with noise model N(0,1)
