@@ -13,9 +13,7 @@ include("../utils.jl")
             dscr = Chain(
                 Dense(1, 11), elu, Dense(11, 29), elu, Dense(29, 11), elu, Dense(11, 1, σ)
             )
-            target_model = MixtureModel([
-                Normal(5.0f0, 2.0f0), Normal(-1.0f0, 1.0f0), Normal(-10.0f0, 3.0f0)
-            ])
+            target_model = MixtureModel([Normal(5.0f0, 2.0f0), Normal(-1.0f0, 1.0f0)])
             hparams = HyperParamsVanillaGan(;
                 data_size=100,
                 batch_size=1,
@@ -79,10 +77,6 @@ include("../utils.jl")
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
             auto_invariant_statistical_loss(gen, loader, hparams)
-
-            ksd = KSD(noise_model, target_model, n_samples, 20:0.1:25)
-            mae = MAE(noise_model, x -> 2 * cdf(Normal(0, 1), x) + 22, n_samples)
-            mse = MSE(noise_model, x -> 2 * cdf(Normal(0, 1), x) + 22, n_sample)
 
             plot_global(
                 x -> quantile.(target_model, cdf(noise_model, x)),
@@ -191,9 +185,6 @@ include("../utils.jl")
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
             auto_invariant_statistical_loss(gen, loader, hparams)
-
-            #@test js_divergence(hist1.weights, hist2.weights)/hparams.samples < 0.03
-
         end
 
         @test_experiments "Uniform(-1,1) to Uniform(22,24)" begin
