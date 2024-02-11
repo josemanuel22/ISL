@@ -2,6 +2,35 @@ using ThreadsX
 using Plots
 
 """
+This script defines two Julia functions, `proxi_cost_function` and `real_cost_function`,
+intended for computing the cost function of a model in relation to a target function.
+Both functions calculate the cost for varying parameters `m` (slope) and `b` (intercept)
+across a grid defined by a mesh of these parameters.
+
+- `proxi_cost_function` takes a meshgrid, a model function, a target function, a number of
+parameter combinations (`K`), and a number of samples for Monte Carlo integration
+(`n_samples`). It returns a vector of losses for each combination of mesh parameters.
+The function estimates the loss by generating samples, applying the model and target
+functions to these samples, and then computing a loss based on the divergence of the
+model's output from the target's output.
+
+- `real_cost_function` is similar to `proxi_cost_function` but calculates the cost based on
+a direct comparison of the model's output against the target function over the specified
+mesh. It also involves counting occurrences within a specified window to compute the loss.
+
+Both functions illustrate a method for evaluating the performance of a model function
+against a target, useful in optimization and machine learning contexts to adjust model
+parameters (`m` and `b`) to minimize the loss.
+
+Additionally, the script includes a demonstration of how to use these functions with a
+simple linear model (`model(x; m, b) = m * x + b`) and a predefined `real_model`. It
+prepares a mesh of parameters around an initial guess for `m` and `b`, computes losses
+using both the proxy and real cost functions, and plots the resulting cost function
+landscape to visualize areas of minimum loss, facilitating the understanding of how well
+the model approximates the target function across different parameter combinations.
+"""
+
+"""
 proxi_cost_function(mesh, model, target, K, n_samples)
 
 This function computes the cost function of a model with respect to a target function.
