@@ -767,7 +767,7 @@ end
 
     df1 = CSV.File(csv1; delim=',', header=true, decimal='.')
 
-    hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=2000, window_size=2000, K=40)
+    hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=2000, window_size=2000, K=20)
 
     rec = Chain(RNN(1 => 3, relu), LayerNorm(3))
     gen = Chain(Dense(4, 10, relu), Dropout(0.1), Dense(10, 1, identity))
@@ -844,11 +844,12 @@ end
     losses = []
     mses = []
     maes = []
+
+    model = CondTimeGenModel(rec, gen, nothing, Normal(0.0f0, 1.0f0))
     @showprogress for _ in 1:10
-        loss = ts_invariant_statistical_loss(
-            rec, gen, loaderXtrain, loaderYtrain, hparams, loaderXtest; cond=0.5
-        )
+        loss = ts_invariant_statistical_loss(model, loaderXtrain, loaderYtrain, hparams)
         append!(losses, loss)
+    end
         mse = 0.0
         mae = 0.0
         for ts in (1:(length(names(df)) - 1))
@@ -950,7 +951,7 @@ end
     hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=2000, window_size=10000, K=10)
 
     rec = Chain(
-        LSTM(1 => 10),
+        L(1 => 10),
         #Dropout(0.05),
         LayerNorm(10),
     )
@@ -1097,7 +1098,7 @@ end
 end
 
 @test_experiments "ETDataset multivariated" begin
-    url = "https://github.com/zhouhaoyi/ETDataset/blob/main/ETT-small/ETTh1.csv?raw=true"
+    url = "https://github.com/zhouhaoyi/ETDataset/blob/main/ETT-small/ETTh2.csv?raw=true"
 
     # Download the CSV file
     csv1 = HTTP.download(url)
@@ -1119,7 +1120,7 @@ end
     dataY = [matrix[i, :] for i in 2:size(matrix, 1)]
 
     # Model hyperparameters and architecture
-    hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=2000, window_size=2000, K=40)
+    hparams = HyperParamsTS(; seed=1234, η=5e-4, epochs=2000, window_size=2000, K=25)
     rec = Chain(RNN(7 => 3, relu), LayerNorm(3))
     gen = Chain(Dense(4, 10, relu), Dropout(0.05), Dense(10, 7, identity))
 
@@ -1148,7 +1149,7 @@ end
         mse = 0.0
         mae = 0.0
         count = 0
-        τ = 720
+        τ = 336
         for ts in (1:length(collect(loaderXtrain)[1][1]))
             #τ = 96
             s = 0
