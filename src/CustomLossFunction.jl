@@ -22,7 +22,7 @@ function _leaky_relu(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
 end;
 
 """
-`ψₘ(y::T, m::Int64) where {T<:AbstractFloat}``
+`ψₘ(y::T, m::Int64) where {T<:AbstractFloat}`
 
 Calculate the bump function centered at `m`, implemented as a Gaussian function.
 
@@ -193,7 +193,7 @@ end;
 end;
 
 """
-    `invariant_statistical_loss(model, data, hparams)``
+    `invariant_statistical_loss(model, data, hparams)`
 
 Custom loss function for the model. model is a Flux neuronal network model, data is a
 loader Flux object and hparams is a HyperParams object.
@@ -299,7 +299,7 @@ function get_better_K(nn_model, data, min_K, hparams)
 end;
 
 """
-    `auto_invariant_statistical_loss(model, data, hparams)``
+    `auto_invariant_statistical_loss(model, data, hparams)`
 
 Custom loss function for the model.
 
@@ -457,6 +457,63 @@ function MAE(y::Vector{<:Real}, ŷ::Vector{<:Real})::Real
     return mae
 end
 
+# Define a combined model that incorporates both RNN and Generative models
+mutable struct CondTimeGenModel
+    seq_model::Chain
+    gen_model::Chain
+    state
+    noise
+end
+
+# Forward pass for the combined model
+function (m::CondTimeGenModel)(x)
+    m.state = m.seq_model(x)
+    batch_size = size(x, 2)
+    noise = Float32.(rand(m.noise, (1, batch_size)))
+    gen_input = vcat(noise, m.state)
+    return m.gen_model(gen_input)
+end
+
+function (m::CondTimeGenModel)(s, x, K)
+    batch_size = size(x, 2)
+    noise = Float32.(rand(hparams.noise_model, K, batch_size))
+    gen_input = [[vcat(noise[i, j], s[:, j]) for i in 1:K] for j in 1:batch_size]
+    return [m.gen_model(gen_input[i]) for i in 1:batch_size]
+end
+
+function (m::CondTimeGenModel)(s, x, K)
+    batch_size = size(x, 2)
+    noise = Float32.(rand(hparams.noise_model, K, batch_size))
+    # Prepare s for each K and batch_size
+    s_repeated = repeat(s; inner=(1, K))  # Repeat s K times along the second dimension
+
+    # Reshape noise to match s's repeated structure and concatenate
+    noise_reshaped = reshape(noise, (:, batch_size * K))  # Reshape noise for concatenation
+    gen_input = vcat(noise_reshaped, s_repeated)  # Concatenate along the first dimension
+
+    # Assuming m.gen_model can process the concatenated input in one call
+    # This part might need adjustment based on the actual implementation of m.gen_model
+    return m.gen_model(gen_input)
+end
+
+function generated_fictitious(m::CondTimeGenModel, x, K)
+    m.state = m.seq_model(x)
+    batch_size = size(x, 2)
+    noise = Float32.(rand(m.noise, K, batch_size))
+    # Prepare s for each K and batch_size
+    s_repeated = repeat(m.state; inner=(1, K))  # Repeat s K times along the second dimension
+
+    # Reshape noise to match s's repeated structure and concatenate
+    noise_reshaped = reshape(noise, (:, batch_size * K))  # Reshape noise for concatenation
+    gen_input = vcat(noise_reshaped, s_repeated)  # Concatenate along the first dimension
+
+    # Assuming m.gen_model can process the concatenated input in one call
+    # This part might need adjustment based on the actual implementation of m.gen_model
+    return m.gen_model(gen_input)
+end
+
+Flux.@functor CondTimeGenModel
+
 """
     ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams)
 
@@ -482,25 +539,24 @@ This function train a model for time series data with statistical invariance los
 The function iterates through the provided time series data (`Xₜ` and `Xₜ₊₁`) in batches, with a sliding window of size `window_size`.
 
 """
-function ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams)
+function ts_invariant_statistical_loss(model::CondTimeGenModel, Xₜ, Xₜ₊₁, hparams)
     losses = []
-    optim_rec = Flux.setup(Flux.Adam(hparams.η), rec)
-    optim_gen = Flux.setup(Flux.Adam(hparams.η), gen)
+    optim = Flux.setup(Flux.Adam(hparams.η), model)
     for (batch_Xₜ, batch_Xₜ₊₁) in zip(Xₜ, Xₜ₊₁)
-        Flux.reset!(rec)
+        Flux.reset!(model)
         for j in (0:(hparams.window_size):(length(batch_Xₜ) - hparams.window_size))
-            loss, grads = Flux.withgradient(rec, gen) do rec, gen
+            loss, grads = Flux.withgradient(model) do model
                 aₖ = zeros(hparams.K + 1)
-                s = rec(batch_Xₜ[(j + 1):(j + hparams.window_size)]')
-                for i in 1:(hparams.window_size)
-                    xₖ = rand(hparams.noise_model, hparams.K)
-                    yₖ = hcat([gen(vcat(x, s[:, i])) for x in xₖ]...)
-                    aₖ += generate_aₖ(yₖ, batch_Xₜ₊₁[j + i])
-                end
+                yₖ = generated_fictitious(
+                    model, batch_Xₜ[(j + 1):(j + hparams.window_size)]', hparams.K
+                )
+                aₖ = sum([
+                    generate_aₖ(yₖ[:, i:(i + hparams.K)], batch_Xₜ₊₁[i]) for
+                    i in 1:(hparams.K):(hparams.window_size)
+                ])
                 scalar_diff(aₖ ./ sum(aₖ))
             end
-            Flux.update!(optim_rec, rec, grads[1])
-            Flux.update!(optim_gen, gen, grads[2])
+            Flux.update!(optim, model, grads[1])
             push!(losses, loss)
         end
     end

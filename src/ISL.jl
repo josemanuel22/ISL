@@ -33,5 +33,6 @@ export _sigmoid,
     HyperParamsTS,
     ts_invariant_statistical_loss_one_step_prediction,
     ts_invariant_statistical_loss,
-    ts_invariant_statistical_loss_multivariate
+    ts_invariant_statistical_loss_multivariate,
+    CondTimeGenModel
 end
