@@ -414,7 +414,6 @@ function ts_forecast(
     return prediction, stds
 end
 
-
 function ts_forecast_multistep(
     rec,
     gen,
@@ -424,7 +423,6 @@ function ts_forecast_multistep(
     n_average=1000,
     noise_model=Normal(0.0f0, 1.0f0),
 )
-
     prediction = Vector{Float32}()
     stds = Vector{Float32}()
     Flux.reset!(rec)
