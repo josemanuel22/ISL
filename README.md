@@ -98,6 +98,6 @@ end
 
 # Contributors
 
-[José Manuel de Frutos] (https://josemanuel22.github.io/)
+[José Manuel de Frutos](https://josemanuel22.github.io/)
 
 For further information: jofrutos@ing.uc3m.es
