@@ -2,7 +2,7 @@
 
 [![Documenter: stable](https://img.shields.io/badge/docs-dev-blue.svg)](https://josemanuel22.github.io/ISL/dev/) [![codecov](https://codecov.io/gh/josemanuel22/AdaptativeBlockLearning/graph/badge.svg?token=DDQPSJ9KWQ)](https://app.codecov.io/gh/josemanuel22/ISL)
 
-This repository contains the Julia Flux implementation of the Invariant Statistical Loss (ISL) proposed in the paper 'Training Implicit Generative Models via an Invariant Statistical Loss', published in the AISTATS 2024 conference.
+This repository contains the Julia Flux implementation of the Invariant Statistical Loss (ISL) proposed in the paper [Training Implicit Generative Models via an Invariant Statistical Loss](), published in the AISTATS 2024 conference.
 
 Please, if you use this code, cite the [article]().
 
@@ -26,9 +26,6 @@ The `ISL` repository is organized into several directories that encapsulate diff
 
 - **`runtests.jl`**: This script is responsible for running automated tests against the `ISL.jl` module.
 
-## Abstract
-
-
 ## How to install
 
 To install ISL, simply use Julia's package manager. The module is not registered so you need to clone the repository and follow the following steps:
@@ -40,7 +37,7 @@ julia> using ISL
 
 To reproduce the enviroment for compiling the repository:
 ````
-(@v1.6) pkg>  activate pathToRepository/ISL
+(@v1.9) pkg>  activate pathToRepository/ISL
 ````
 
 If you want to use any utility subrepository like GAN or DeepAR, make sure it's within your path.
@@ -94,7 +91,7 @@ include("../utils.jl")
     )
 end
 ```
-![Example Image](./example_1.png)
+![Example Image](./readme_images_1.png)
 
 # Contributors
 
