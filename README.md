@@ -94,7 +94,7 @@ include("../utils.jl")
     )
 end
 ```
-![Example Image](/Users/jmfrutos/github/ISL/example_1.pdf)
+![Example Image](/Users/jmfrutos/github/ISL/example_1.png)
 
 # Contributors
 
