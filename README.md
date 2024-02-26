@@ -68,7 +68,7 @@ include("../utils.jl")
     noise_model = Normal(0.0f0, 1.0f0)
     n_samples = 10000   
     # Target model composed of a mixture of models
-    target_model = Normal(23.0f0, 1.0f0)
+    target_model = Normal(4.0f0, 2.0f0)
 
     # Parameters for automatic invariant statistical loss
     hparams = AutoISLParams(;
@@ -90,7 +90,7 @@ include("../utils.jl")
         gen,
         n_samples,
         (-3:0.1:3),
-        (20:0.1:30),
+        (-2:0.1:10),
     )
 end
 ```
