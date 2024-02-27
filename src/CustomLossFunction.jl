@@ -340,7 +340,7 @@ function auto_invariant_statistical_loss(nn_model, data, hparams)
                 yₖ = nn(x')
                 aₖ += generate_aₖ(yₖ, data.data[i])
             end
-            sqrt(scalar_diff(aₖ ./ sum(aₖ)))
+            scalar_diff(aₖ ./ sum(aₖ))
         end
         Flux.update!(optim, nn_model, grads[1])
         push!(losses, loss)
