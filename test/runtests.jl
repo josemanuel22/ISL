@@ -87,6 +87,23 @@ end;
     @test scalar_diff(q3) ≈ expected3
 end;
 
+@testset "Jensen-Shannon Divergence Tests" begin
+    # Test 1: Identical distributions
+    p1 = [0.25, 0.25, 0.25, 0.25]
+    q1 = [0.25, 0.25, 0.25, 0.25]
+    @test jensen_shannon_divergence(p1, q1) ≈ 0.0 atol = 1e-3
+
+    # Test 2: Symmetry
+    p2 = [0.1, 0.4, 0.5]
+    q2 = [0.3, 0.4, 0.3]
+    @test jensen_shannon_divergence(p2, q2) ≈ jensen_shannon_divergence(q2, p2) atol = 1e-3
+
+    # Test 3: Non-identical distributions
+    p3 = [0.1, 0.9]
+    q3 = [0.9, 0.1]
+    @test jensen_shannon_divergence(p3, q3) > 0.0
+end
+
 # Test the 'jensen_shannon_divergence' function
 @testset "jensen shannon divergence" begin
     @test jensen_shannon_divergence([1.0, 2.0], [1.0, 2.0]) == 0.0
