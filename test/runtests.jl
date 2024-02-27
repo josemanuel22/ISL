@@ -60,7 +60,7 @@ end;
 end;
 
 # Test the 'scalar_diff' function
-@testset "scalar diff" begin
+@testset "testset scalar_diff 1" begin
     yₖ = [1.0 2.0 3.0 4.0]
     data = 0.5:0.5:4.5
     aₖ = zeros(5)
@@ -68,6 +68,23 @@ end;
         aₖ += generate_aₖ(yₖ, y)
     end
     @test isapprox(scalar_diff(aₖ), 3.1929, atol=tol)
+end;
+
+@testset "testset scalar_diff 2" begin
+    # Test Case 1: A vector with identical elements
+    q1 = [1.0, 1.0, 1.0]
+    expected1 = sum((q1 .- (1.0 / length(q1))) .^ 2)
+    @test scalar_diff(q1) ≈ expected1
+
+    # Test Case 2: A vector with increasing elements
+    q2 = [0.5, 1.0, 1.5]
+    expected2 = sum((q2 .- (1.0 / length(q2))) .^ 2)
+    @test scalar_diff(q2) ≈ expected2
+
+    # Test Case 3: A vector with random elements
+    q3 = [0.1, 0.2, 0.3, 0.4]
+    expected3 = sum((q3 .- (1.0 / length(q3))) .^ 2)
+    @test scalar_diff(q3) ≈ expected3
 end;
 
 # Test the 'jensen_shannon_divergence' function
