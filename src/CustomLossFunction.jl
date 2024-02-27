@@ -157,7 +157,8 @@ Scalar difference between the vector representing our subrogate histogram and th
 loss = ||q-1/k+1||_{2} = ∑_{k=0}^K (qₖ - 1/K+1)^2
 ```
 """
-scalar_diff(q::Vector{T}) where {T<:AbstractFloat} = sum((q .- (1 ./ length(q))) .^ 2)
+@inline scalar_diff(q::Vector{T}) where {T<:AbstractFloat} =
+    sum((q .- (1 ./ length(q))) .^ 2)
 
 """
     jensen_shannon_∇(aₖ)
