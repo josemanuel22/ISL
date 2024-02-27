@@ -446,21 +446,6 @@ function ts_invariant_statistical_loss_one_step_prediction(rec, gen, Xₜ, Xₜ�
     return losses
 end
 
-function QLρ(xₜ, x̂ₜ; ρ=0.5)
-    return 2 *
-           (sum(abs.(xₜ))^-1) *
-           sum(ρ .* (xₜ .- x̂ₜ) .* (xₜ .> x̂ₜ) .+ (1 - ρ) .* (x̂ₜ .- xₜ) .* (xₜ .<= x̂ₜ))
-end
-
-function MAE(y::Vector{<:Real}, ŷ::Vector{<:Real})::Real
-    if length(y) != length(ŷ)
-        error("Vectors must be of the same length")
-    end
-
-    mae = sum(abs.(y .- ŷ)) / length(y)
-    return mae
-end
-
 """
     ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams)
 
