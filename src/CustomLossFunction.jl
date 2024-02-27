@@ -227,6 +227,7 @@ function invariant_statistical_loss(nn_model, data, hparams)
     return losses
 end;
 
+#=
 function invariant_statistical_loss_1(nn_model, loader, hparams)
     @assert loader.batchsize == hparams.samples
     @assert length(loader) == hparams.epochs
@@ -247,6 +248,7 @@ function invariant_statistical_loss_1(nn_model, loader, hparams)
     end
     return losses
 end;
+=#
 
 """
     AutoISLParams
@@ -346,6 +348,7 @@ function auto_invariant_statistical_loss(nn_model, data, hparams)
     return losses
 end;
 
+#=
 function auto_invariant_statistical_loss_2(nn_model, data, hparams)
     @assert length(data) == hparams.samples
 
@@ -373,7 +376,9 @@ function auto_invariant_statistical_loss_2(nn_model, data, hparams)
     end
     return losses
 end;
+=#
 
+#=
 function auto_invariant_statistical_loss_1(nn_model, loader, hparams)
     @assert loader.batchsize == hparams.samples
     @assert length(loader) == hparams.epochs
@@ -402,6 +407,7 @@ function auto_invariant_statistical_loss_1(nn_model, loader, hparams)
     end
     return losses
 end;
+=#
 
 # Hyperparameters for the method `ts_adaptative_block_learning`
 """
