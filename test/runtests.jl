@@ -197,4 +197,58 @@ end;
         @test pvalue(HypothesisTests.ApproximateTwoSampleKSTest(validation_set, data)) >
             0.01
     end
+
+    @testset "testing get_window_of_Aₖ" begin
+        # Mock model function in Julia
+        function mock_model(x)
+            # This mock model is adjusted to return predictable values
+            return x * 2
+        end
+
+        mock_data = [100.0, 100.0, 100.0]
+        K = 2
+        transform = Normal(0.0f0, 1.0f0)
+        result = get_window_of_Aₖ(transform, mock_model, mock_data, K::Int64)
+        expected = [0, 0, 3]
+        @test result == expected
+    end
+
+    @testset "test_convergence_to_uniform" begin
+        # Distributions
+        uniform_distribution = [25, 25, 25, 25]  # Uniform
+        non_uniform_distribution = [5, 5, 20, 70]  # Non-uniform
+        approx_uniform_distribution = [20, 30, 20, 30]  # Approx-uniform
+        limit_uniform_distribution_negative = [15, 35, 20, 30]  # Limit-uniform negative
+        limit_uniform_distribution_positive = [17, 33, 20, 30]  # Limit-uniform positive
+
+        # Test assertions
+        @test convergence_to_uniform(uniform_distribution)
+        @test !convergence_to_uniform(non_uniform_distribution)
+        @test convergence_to_uniform(approx_uniform_distribution)
+        @test !convergence_to_uniform(limit_uniform_distribution_negative)
+        @test convergence_to_uniform(limit_uniform_distribution_positive)
+    end
+
+    @testset "test_get_better_K" begin
+        function mock_model_1(x)
+            # This mock model is adjusted to return predictable values
+            return 2 * x
+        end
+
+        mock_data = [100.0, 100.0, 100.0]
+
+        hparams = AutoISLParams(;
+            max_k=100, samples=1000, epochs=1000, η=1e-2, transform=noise_model
+        )
+        expected_K = 2  # Expected K value for these inputs
+
+        # Call to get_better_K with the mock model, mock data, starting K value, and hyperparameters
+        result_K = ISL.get_better_K(mock_model_1, mock_data, 2, hparams)
+
+        @test result_K == expected_K
+
+        result_K = ISL.get_better_K(mock_model_1, mock_data, 10, hparams)
+        expected_K = 10  # Expected K value for these inputs
+        @test result_K == expected_K
+    end
 end;
