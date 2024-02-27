@@ -353,7 +353,7 @@ function auto_invariant_statistical_loss_2(nn_model, data, hparams)
     @debug "K value set to $K."
     losses = []
     optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
-    @showprogress for epoch in 1:(hparams.epochs)
+    @showprogress for _ in 1:(hparams.epochs)
         K̂ = get_better_K(nn_model, data, K, hparams)
         if K < K̂
             K = K̂
