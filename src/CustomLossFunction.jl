@@ -502,7 +502,7 @@ function ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams)
     end
     return losses
 end
-
+#=
 function ts_invariant_statistical_loss_multivariate(rec, gen, Xₜ, Xₜ₊₁, hparams)
     losses = []
     optim_rec = Flux.setup(Flux.Adam(hparams.η), rec)
@@ -527,3 +527,4 @@ function ts_invariant_statistical_loss_multivariate(rec, gen, Xₜ, Xₜ₊₁, 
     end
     return losses
 end
+=#
