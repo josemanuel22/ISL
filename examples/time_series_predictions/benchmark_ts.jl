@@ -266,7 +266,7 @@ Example:
 
     # Model setup
     hparams = HyperParamsTS(; seed=1234, η=1e-3, epochs=2000, window_size=1000, K=20)
-    rec = Chain(LSTM(1 => 16), LayerNorm(16))
+    rec = Chain(RNN(1 => 16), LayerNorm(16))
     gen = Chain(Dense(17, 32, elu), Dropout(0.05), Dense(32, 1, identity))
 
     # Data preprocessing
@@ -291,9 +291,7 @@ Example:
     # Model training
     losses = []
     @showprogress for _ in 1:10
-        loss = ts_invariant_statistical_loss(
-            rec, gen, loaderXtrain, loaderYtrain, hparams, loaderXtest
-        )
+        loss = ts_invariant_statistical_loss(rec, gen, loaderXtrain, loaderYtrain, hparams)
         append!(losses, loss)
     end
 
@@ -304,9 +302,8 @@ Example:
     prediction, stds = ts_forecast(
         rec, gen, xtrain, xtest, τ; n_average=1000, noise_model=Normal(0.0f0, 1.0f0)
     )
-    plot(prediction[1:24])
-    plot!(xtest[1:24])
-end
+    plot(prediction[1:τ])
+    plot!(xtest[1:τ])
 
 """
 Run experiments for testing electricity-c consumption time series forecasting.
