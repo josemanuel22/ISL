@@ -417,7 +417,7 @@ end;
 Hyperparameters for the method `ts_adaptative_block_learning`
 """
 Base.@kwdef mutable struct HyperParamsTS
-    seed::Int = 72                              # Random seed
+    seed::Int = 42                              # Random seed
     dev = cpu                                   # Device: cpu or gpu
     η::Float64 = 1e-3                           # Learning rate
     epochs::Int = 100                           # Number of epochs
