@@ -48,7 +48,7 @@ end;
     @test isapprox(γ([1.0 2.0 3.1 3.9], 3.6, 3), [0.0, 0.0, 0.0, 0.92038, 0.0], atol=tol)
 end;
 
-@testset "generate aₖ" begin
+@testset "generate_aₖ" begin
     #@test isapprox(
     #    generate_aₖ([1.0, 2.0, 3.1, 3.9], 3.6), [0.0, 0.0, 0.0, 0.9997, 0.0], atol=tol
     #)
@@ -63,7 +63,7 @@ end;
 end;
 
 # Test the 'scalar_diff' function
-@testset "testset scalar_diff 1" begin
+@testset "scalar_diff 1" begin
     yₖ = [1.0 2.0 3.0 4.0]
     data = 0.5:0.5:4.5
     aₖ = zeros(5)
@@ -73,7 +73,7 @@ end;
     @test isapprox(scalar_diff(aₖ), 3.1929, atol=tol)
 end;
 
-@testset "testset scalar_diff 2" begin
+@testset "scalar_diff 2" begin
     # Test Case 1: A vector with identical elements
     q1 = [1.0, 1.0, 1.0]
     expected1 = sum((q1 .- (1.0 / length(q1))) .^ 2)
