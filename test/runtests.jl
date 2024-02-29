@@ -2,6 +2,7 @@ using ISL
 using HypothesisTests
 using Flux
 using Distributions
+using LinearAlgebra
 using Random
 using Test
 
@@ -108,7 +109,7 @@ end;
 end
 
 # Test the 'jensen_shannon_divergence' function
-@testset "jensen shannon divergence" begin
+@testset "jensen_shannon_divergence" begin
     @test jensen_shannon_divergence([1.0, 2.0], [1.0, 2.0]) == 0.0
     @test jensen_shannon_divergence([1.0, 2.0], [1.0, 3.0]) > 0.0
     @test jensen_shannon_divergence([1.0, 2.0], [1.0, 3.0]) <
