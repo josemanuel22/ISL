@@ -95,7 +95,7 @@ include("../utils.jl")
 
     #We plot the results
     plot_global(
-        x -> quantile.(-target_model, cdf(noise_model, x)),
+        x -> quantile.(target_model, cdf(noise_model, x)),
         noise_model,
         target_model,
         gen,
