@@ -180,8 +180,10 @@ end
 end
 ```
 `Prediction τ = 24 (1 day)`
-    ![Example Image](./docs/src/imgs/user008c-1.png)
+
+![Example Image](./docs/src/imgs/user008c-1.png)
 
 `Prediction τ = 168 (7 days)`
-    ![Example Image](./docs/src/imgs/user008long-1.png)
+
+![Example Image](./docs/src/imgs/user008long-1.png)
 
