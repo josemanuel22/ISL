@@ -190,8 +190,8 @@ end
     plot_univariate_ts_prediction(
         recurrent_model,
         generative_model,
-        collect(loaderXtrain)[1],  # Extract the first batch for plotting
-        collect(loaderXtest)[1],  # Extract the first batch for plotting
+        collect(loaderXtrain)[2],  # Extract the first batch for plotting
+        collect(loaderXtest)[2],  # Extract the first batch for plotting
         ts_hparams;
         n_average=1000,  # Number of predictions to average
     )
@@ -304,6 +304,7 @@ Example:
     )
     plot(prediction[1:τ])
     plot!(xtest[1:τ])
+end
 
 """
 Run experiments for testing electricity-c consumption time series forecasting.
