@@ -46,4 +46,4 @@ include("../utils.jl")
 end
 ```
 
-![Example Image](./../../readme_images_1.png)
+![Example Image](./imgs/readme_images_1.png)
