@@ -105,7 +105,7 @@ include("../utils.jl")
     )
 end
 ```
-![Example Image](./readme_images_1.png)
+![Example Image](./docs/src/imgs/readme_images_1.png)
 
 # Contributors
 
