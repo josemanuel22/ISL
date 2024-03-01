@@ -107,3 +107,81 @@ end
 
 ![Example Image](./imgs/readme_images_2.png)
 
+
+```julia
+@test_experiments "testing electricity-c" begin
+     # Data loading and preprocessing
+    csv_file_path = "examples/time_series_predictions/data/LD2011_2014.txt"
+
+    # Specify custom types for certain columns to ensure proper data handling
+    column_types = Dict(
+        "MT_005" => Float32,
+        "MT_006" => Float32,
+        "MT_007" => Float32,
+        "MT_008" => Float32,
+        "MT_168" => Float32,
+        "MT_333" => Float32,
+        "MT_334" => Float32,
+        "MT_335" => Float32,
+        "MT_336" => Float32,
+        "MT_338" => Float32,
+    )
+
+    df = DataFrame(
+        CSV.File(csv_file_path; delim=';', header=true, decimal=',', types=column_types)
+    )
+
+    # Hyperparameters setup
+    hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=2000, window_size=1000, K=10)
+
+    # Model definition
+    rec = Chain(RNN(1 => 3, relu), RNN(3 => 3, relu))
+    gen = Chain(Dense(4, 10, identity), Dense(10, 1, identity))
+
+    # Training and testing data setup
+    start, num_training_data, num_test_data = 35040, 35040, 1000
+
+    # Aggregate time series data for training and testing
+    selected_columns = [
+        "MT_005",
+        "MT_006",
+        "MT_007",
+        "MT_008",
+        "MT_168",
+        "MT_333",
+        "MT_334",
+        "MT_335",
+        "MT_336",
+        "MT_338",
+    ]
+
+    loader_xtrain, loader_ytrain, loader_xtest = aggregate_time_series_data(
+        df, selected_columns, start, num_training_data, num_test_data
+    )
+
+    # Model training
+    losses = []
+    @showprogress for _ in 1:100
+        loss = ts_invariant_statistical_loss(
+            rec, gen, loader_xtrain, loader_ytrain, hparams
+        )
+        append!(losses, loss)
+    end
+
+    # Forecasting
+    τ = 24
+    xtrain = collect(loaderXtrain)[1]
+    xtest = collect(loaderXtest)[1]
+    prediction, stds = ts_forecast(
+        rec, gen, xtrain, xtest, τ; n_average=1000, noise_model=Normal(0.0f0, 1.0f0)
+    )
+    plot(prediction[1:τ])
+    plot!(xtest[1:τ])
+end
+```
+Prediction τ = 24 (1 day)
+![Example Image](./docs/src/imgs/user008c-1.png)
+
+Prediction τ = 168 (7 days)
+![Example Image](./docs/src/imgs/user008long-1.png)
+
