@@ -53,7 +53,7 @@ end
 
 # Time Series
 
-```
+```julia
 @test_experiments "testing AutoRegressive Model 1" begin
     # --- Model Parameters and Data Generation ---
 
