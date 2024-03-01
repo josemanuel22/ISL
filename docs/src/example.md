@@ -1,4 +1,4 @@
-To make simple use, once the package is installed, just run the examples.
+To make simple use, once the package is installed, just run the examples in `examples/` directory.
 
 # Learning 1-D distributions
 
