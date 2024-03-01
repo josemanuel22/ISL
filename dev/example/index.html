@@ -89,4 +89,72 @@ end</code></pre><p><img src="../imgs/readme_images_1.png" alt="Example Image"/><
         ts_hparams;
         n_average=1000,  # Number of predictions to average
     )
-end</code></pre><p><img src="../imgs/readme_images_2.png" alt="Example Image"/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../gan/">« GAN</a><a class="docs-footer-nextpage" href="../benchmark/">Benchmark »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Friday 1 March 2024 22:23">Friday 1 March 2024</span>. Using Julia version 1.10.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+end</code></pre><pre><code class="nohighlight hljs">![Example Image](./imgs/readme_images_2.png)</code></pre><pre><code class="language-julia hljs">@test_experiments &quot;testing electricity-c&quot; begin
+     # Data loading and preprocessing
+    csv_file_path = &quot;examples/time_series_predictions/data/LD2011_2014.txt&quot;
+
+    # Specify custom types for certain columns to ensure proper data handling
+    column_types = Dict(
+        &quot;MT_005&quot; =&gt; Float32,
+        &quot;MT_006&quot; =&gt; Float32,
+        &quot;MT_007&quot; =&gt; Float32,
+        &quot;MT_008&quot; =&gt; Float32,
+        &quot;MT_168&quot; =&gt; Float32,
+        &quot;MT_333&quot; =&gt; Float32,
+        &quot;MT_334&quot; =&gt; Float32,
+        &quot;MT_335&quot; =&gt; Float32,
+        &quot;MT_336&quot; =&gt; Float32,
+        &quot;MT_338&quot; =&gt; Float32,
+    )
+
+    df = DataFrame(
+        CSV.File(csv_file_path; delim=&#39;;&#39;, header=true, decimal=&#39;,&#39;, types=column_types)
+    )
+
+    # Hyperparameters setup
+    hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=2000, window_size=1000, K=10)
+
+    # Model definition
+    rec = Chain(RNN(1 =&gt; 3, relu), RNN(3 =&gt; 3, relu))
+    gen = Chain(Dense(4, 10, identity), Dense(10, 1, identity))
+
+    # Training and testing data setup
+    start, num_training_data, num_test_data = 35040, 35040, 1000
+
+    # Aggregate time series data for training and testing
+    selected_columns = [
+        &quot;MT_005&quot;,
+        &quot;MT_006&quot;,
+        &quot;MT_007&quot;,
+        &quot;MT_008&quot;,
+        &quot;MT_168&quot;,
+        &quot;MT_333&quot;,
+        &quot;MT_334&quot;,
+        &quot;MT_335&quot;,
+        &quot;MT_336&quot;,
+        &quot;MT_338&quot;,
+    ]
+
+    loader_xtrain, loader_ytrain, loader_xtest = aggregate_time_series_data(
+        df, selected_columns, start, num_training_data, num_test_data
+    )
+
+    # Model training
+    losses = []
+    @showprogress for _ in 1:100
+        loss = ts_invariant_statistical_loss(
+            rec, gen, loader_xtrain, loader_ytrain, hparams
+        )
+        append!(losses, loss)
+    end
+
+    # Forecasting
+    τ = 24
+    xtrain = collect(loaderXtrain)[1]
+    xtest = collect(loaderXtest)[1]
+    prediction, stds = ts_forecast(
+        rec, gen, xtrain, xtest, τ; n_average=1000, noise_model=Normal(0.0f0, 1.0f0)
+    )
+    plot(prediction[1:τ])
+    plot!(xtest[1:τ])
+end</code></pre><p><code>Prediction τ = 24 (1 day)</code></p><p><img src="../imgs/user008c-1.png" alt="Example Image"/></p><p><code>Prediction τ = 168 (7 days)</code></p><p><img src="../imgs/user008long-1.png" alt="Example Image"/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../gan/">« GAN</a><a class="docs-footer-nextpage" href="../benchmark/">Benchmark »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Friday 1 March 2024 23:02">Friday 1 March 2024</span>. Using Julia version 1.10.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
