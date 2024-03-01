@@ -476,7 +476,7 @@ end
 
     # Define a function to generate synthetic data.
     """
-    generate_synthetic(range)
+        generate_synthetic(range)
 
     Generate synthetic time series data according to a composite time series model.
 
