@@ -58,7 +58,9 @@ If you want to use any utility subrepository like GAN or DeepAR, make sure it's 
 
 # Usage
 
-To make simple use, once the package is installed, just run the examples. For instance, execute,
+To make simple use, once the package is installed, just run the examples in `examples/` directory.
+
+## Learning 1-D distributions
 
 ```julia
 # This example is from examples/Learning1d_distribution/benchmark_unimodal.jl
@@ -106,6 +108,62 @@ include("../utils.jl")
 end
 ```
 ![Example Image](./docs/src/imgs/readme_images_1.png)
+
+## Time Series
+
+```julia
+@test_experiments "testing AutoRegressive Model 1" begin
+    # --- Model Parameters and Data Generation ---
+
+    # Define AR model parameters
+    ar_hparams = ARParams(;
+        ϕ=[0.5f0, 0.3f0, 0.2f0],  # Autoregressive coefficients
+        x₁=rand(Normal(0.0f0, 1.0f0)),  # Initial value from a Normal distribution
+        proclen=2000,  # Length of the process
+        noise=Normal(0.0f0, 0.2f0),  # Noise in the AR process
+    )
+
+    # Define the recurrent and generative models
+    recurrent_model = Chain(RNN(1 => 10, relu), RNN(10 => 10, relu))
+    generative_model = Chain(Dense(11, 16, relu), Dense(16, 1, identity))
+
+    # Generate training and testing data
+    n_series = 200  # Number of series to generate
+    loaderXtrain, loaderYtrain, loaderXtest, loaderYtest = generate_batch_train_test_data(
+        n_series, ar_hparams
+    )
+
+    # --- Training Configuration ---
+
+    # Define hyperparameters for time series prediction
+    ts_hparams = HyperParamsTS(;
+        seed=1234,
+        η=1e-3,  # Learning rate
+        epochs=n_series,
+        window_size=1000,  # Size of the window for prediction
+        K=10,  # Hyperparameter K (if it has a specific use, add a comment)
+    )
+
+    # Train model and calculate loss
+    loss = ts_invariant_statistical_loss_one_step_prediction(
+        recurrent_model, generative_model, loaderXtrain, loaderYtrain, ts_hparams
+    )
+
+    # --- Visualization ---
+
+    # Plotting the time series prediction
+    plot_univariate_ts_prediction(
+        recurrent_model,
+        generative_model,
+        collect(loaderXtrain)[2],  # Extract the first batch for plotting
+        collect(loaderXtest)[2],  # Extract the first batch for plotting
+        ts_hparams;
+        n_average=1000,  # Number of predictions to average
+    )
+end
+```
+
+![Example Image](./docs/src/imgs/readme_images_2.png)
 
 # Contributors
 
