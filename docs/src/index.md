@@ -13,7 +13,6 @@ Order   = [:module, :constant, :type]
 ```@docs
 invariant_statistical_loss
 auto_invariant_statistical_loss
-ts_invariant_statistical_loss_one_step_prediction
 ts_invariant_statistical_loss
 ts_invariant_statistical_loss_multivariate
 ```
