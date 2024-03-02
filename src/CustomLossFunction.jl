@@ -59,7 +59,7 @@ This function calculates the sum of sigmoid functions, each centered at the valu
 
 ```math
 ϕ(yₖ, yₙ) = ∑_{i=1}^K σ(yₖ^i, yₙ)
-````
+```
 """
 function ϕ(yₖ::Matrix{T}, yₙ::T) where {T<:AbstractFloat}
     #return sum(_leaky_relu(yₖ, yₙ))
@@ -316,7 +316,7 @@ associated with the obtained result and the uniform distribution.
 
 To see the value of `K` used in the test, set the logger level to debug before executing.
 
-#Arguments
+# Arguments
 - `model::Flux.Chain`: is a Flux neuronal network model
 - `data::Flux.DataLoader`: is a loader Flux object
 - `hparams::AutoAdaptativeHyperParams`: is a AutoAdaptativeHyperParams object
@@ -452,18 +452,19 @@ This function iterates over batches of time series data, utilizing a sliding win
 ## Example
 ```julia
 # Define your recurrent and generative models
-rec = ...
-gen = ...
+rec = Chain(RNN(1 => 3, relu), RNN(3 => 3, relu))
+gen = Chain(Dense(4, 10, identity), Dense(10, 1, identity))
 
 # Prepare your time series data Xₜ and Xₜ₊₁
 Xₜ = ...
 Xₜ₊₁ = ...
 
 # Set up hyperparameters
-hparams = ...
+hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=2000, window_size=1000, K=10)
 
 # Compute the losses
 losses = ts_invariant_statistical_loss_one_step_prediction(rec, gen, Xₜ, Xₜ₊₁, hparams)
+```
 """
 function ts_invariant_statistical_loss_one_step_prediction(rec, gen, Xₜ, Xₜ₊₁, hparams)
     losses = []
@@ -495,7 +496,7 @@ end
 
 Train a model for time series data with statistical invariance loss method.
 
-#Arguments
+## Arguments
 - `rec`: The recurrent neural network (RNN) responsible for encoding the time series data.
 - `gen`: The generative model used for generating future time series data.
 - `Xₜ`: An array of input time series data at time `t`.
@@ -506,10 +507,10 @@ Train a model for time series data with statistical invariance loss method.
     - `K::Int`: Number of samples in the generative model.
     - `noise_model`: Noise model used for generating random noise.
 
-#Returns
+## Returns
 - `losses::Vector{Float64}`: A vector containing the training loss values for each iteration.
 
-#Description
+## Description
 This function train a model for time series data with statistical invariance loss method. It utilizes a recurrent neural network (`rec`) to encode the time series data at time `t` and a generative model (`gen`) to generate future time series data at time `t+1`. The training process involves optimizing both the `rec` and `gen` models.
 
 The function iterates through the provided time series data (`Xₜ` and `Xₜ₊₁`) in batches, with a sliding window of size `window_size`.
@@ -565,18 +566,19 @@ This function iterates over the provided time series data `Xₜ` and `Xₜ₊₁
 ## Example
 ```julia
 # Define your recurrent and generative models here
-rec = ...
-gen = ...
+rec = Chain(RNN(1 => 3, relu), RNN(3 => 3, relu))
+gen = Chain(Dense(4, 10, identity), Dense(10, 1, identity))
 
 # Load or define your time series data Xₜ and Xₜ₊₁
 Xₜ = ...
 Xₜ₊₁ = ...
 
 # Define hyperparameters
-hparams = ...
+hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=2000, window_size=1000, K=10)
 
 # Calculate the losses
 losses = ts_invariant_statistical_loss_multivariate(rec, gen, Xₜ, Xₜ₊₁, hparams)
+```
 """
 function ts_invariant_statistical_loss_multivariate(rec, gen, Xₜ, Xₜ₊₁, hparams)
     losses = []
