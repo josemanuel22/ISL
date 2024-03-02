@@ -427,7 +427,44 @@ Base.@kwdef mutable struct HyperParamsTS
 end
 
 # Train and output the model according to the chosen hyperparameters `hparams`
+"""
+    ts_invariant_statistical_loss_one_step_prediction(rec, gen, Xₜ, Xₜ₊₁, hparams) -> losses
 
+Compute the loss for one-step-ahead predictions in a time series using a recurrent model and a generative model.
+
+## Arguments
+- `rec`: The recurrent model that processes the input time series data `Xₜ` to generate a hidden state.
+- `gen`: The generative model that, based on the hidden state produced by `rec`, predicts the next time step in the series.
+- `Xₜ`: Input time series data at time `t`, used as input to the recurrent model.
+- `Xₜ₊₁`: Actual time series data at time `t+1`, used for calculating the prediction loss.
+- `hparams`: A struct of hyperparameters for the training process, which includes:
+  - `η`: Learning rate for the optimizers.
+  - `K`: The number of noise samples to generate for prediction.
+  - `window_size`: The segment length of the time series data to process in each training iteration.
+  - `noise_model`: The model to generate noise samples for the prediction process.
+
+## Returns
+- `losses`: A list of loss values computed for each iteration over the batches of data.
+
+## Description
+This function iterates over batches of time series data, utilizing a sliding window approach determined by `hparams.window_size` to process segments of the series. In each iteration, it computes a hidden state using the recurrent model `rec`, generates predictions for the next time step with the generative model `gen` based on noise samples and the hidden state, and calculates the loss based on these predictions and the actual data `Xₜ₊₁`. The function updates both models using the Adam optimizer with gradients derived from the loss.
+
+## Example
+```julia
+# Define your recurrent and generative models
+rec = ...
+gen = ...
+
+# Prepare your time series data Xₜ and Xₜ₊₁
+Xₜ = ...
+Xₜ₊₁ = ...
+
+# Set up hyperparameters
+hparams = ...
+
+# Compute the losses
+losses = ts_invariant_statistical_loss_one_step_prediction(rec, gen, Xₜ, Xₜ₊₁, hparams)
+"""
 function ts_invariant_statistical_loss_one_step_prediction(rec, gen, Xₜ, Xₜ₊₁, hparams)
     losses = []
     optim_rec = Flux.setup(Flux.Adam(hparams.η), rec)
@@ -503,6 +540,44 @@ function ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams)
     return losses
 end
 
+"""
+    ts_invariant_statistical_loss_multivariate(rec, gen, Xₜ, Xₜ₊₁, hparams) -> losses
+
+Calculate the time series invariant statistical loss for multivariate data using recurrent and generative models.
+
+## Arguments
+- `rec`: The recurrent model to process input time series data `Xₜ`.
+- `gen`: The generative model that works in conjunction with `rec` to generate the next time step predictions.
+- `Xₜ`: The input time series data at time `t`.
+- `Xₜ₊₁`: The actual time series data at time `t+1` for loss calculation.
+- `hparams`: A struct containing hyperparameters for the model. Expected fields include:
+  - `η`: Learning rate for the Adam optimizer.
+  - `K`: The number of samples to draw from the noise model.
+  - `window_size`: The size of the window to process the time series data in chunks.
+  - `noise_model`: The statistical model to generate noise samples for the generative model.
+
+## Returns
+- `losses`: An array containing the loss values computed for each batch in the dataset.
+
+## Description
+This function iterates over the provided time series data `Xₜ` and `Xₜ₊₁`, processing each batch through the recurrent model `rec` to generate a state `s`, which is then used along with samples from `noise_model` to generate predictions with `gen`. The loss is calculated based on the difference between the generated predictions and the actual data `Xₜ₊₁`, and the models are updated using the Adam optimizer.
+
+## Example
+```julia
+# Define your recurrent and generative models here
+rec = ...
+gen = ...
+
+# Load or define your time series data Xₜ and Xₜ₊₁
+Xₜ = ...
+Xₜ₊₁ = ...
+
+# Define hyperparameters
+hparams = ...
+
+# Calculate the losses
+losses = ts_invariant_statistical_loss_multivariate(rec, gen, Xₜ, Xₜ₊₁, hparams)
+"""
 function ts_invariant_statistical_loss_multivariate(rec, gen, Xₜ, Xₜ₊₁, hparams)
     losses = []
     optim_rec = Flux.setup(Flux.Adam(hparams.η), rec)
