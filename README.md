@@ -107,7 +107,7 @@ end
 ![Example Image](./docs/src/imgs/readme_images_1.png)
 
 
-# Time Series
+## Time Series
 
 This section showcases two examples: predicting a univariate time series with an AutoRegressive model and forecasting electricity consumption. These examples illustrate the application of ISL for time series analysis.
 
