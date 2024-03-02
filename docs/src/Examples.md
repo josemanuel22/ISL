@@ -53,6 +53,9 @@ end
 
 This section showcases two examples: predicting a univariate time series with an AutoRegressive model and forecasting electricity consumption. These examples illustrate the application of ISL for time series analysis.
 
+!!! warning
+    The databases used are not included in the repository. To access them, please consult the reference in the paper.
+
 - Example 1: AutoRegressive Model Prediction
 
 ```julia
