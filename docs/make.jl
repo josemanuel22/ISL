@@ -5,7 +5,11 @@ println("Generating Docs")
 
 makedocs(;
     sitename="ISL",
-    format=Documenter.HTML(; assets=["assets/isl.ico"]),
+    format=Documenter.HTML(;
+        assets=["assets/isl.ico"], head="""
+                                 <link rel="icon" type="image/png" href="assets/isl.ico"/>
+                                 """
+    ),
     modules=[ISL],
     pages=[
         "Home" => "index.md",
