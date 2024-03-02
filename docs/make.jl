@@ -5,7 +5,7 @@ println("Generating Docs")
 
 makedocs(;
     sitename="ISL",
-    format=Documenter.HTML(),
+    format=Documenter.HTML(; assets=["assets/isl.ico"]),
     modules=[ISL],
     pages=[
         "Home" => "index.md",
@@ -14,7 +14,6 @@ makedocs(;
         "DeepAR" => "DeepAR.md",
     ],
     checkdocs=:none,
-    assets=["assets/isl.ico"],
 )
 
 # Documenter can also automatically deploy documentation to gh-pages.
