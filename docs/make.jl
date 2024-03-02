@@ -9,11 +9,11 @@ makedocs(;
     modules=[ISL],
     pages=[
         "Home" => "index.md",
-        "GAN" => "Gan.md",
+        "GANs" => "Gans.md",
         "Example" => "Examples.md",
         "DeepAR" => "DeepAR.md",
     ],
-    strict=false,
+    checkdocs=:none,
 )
 
 # Documenter can also automatically deploy documentation to gh-pages.
