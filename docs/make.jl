@@ -14,6 +14,7 @@ makedocs(;
         "DeepAR" => "DeepAR.md",
     ],
     checkdocs=:none,
+    assets=["assets/isl.ico"],
 )
 
 # Documenter can also automatically deploy documentation to gh-pages.
