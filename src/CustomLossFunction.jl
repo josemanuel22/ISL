@@ -204,9 +204,9 @@ Custom loss function for the model. model is a Flux neuronal network model, data
 loader Flux object and hparams is a HyperParams object.
 
 # Arguments
-- nn_model::Flux.Chain: is a Flux neuronal network model
-- data::Flux.DataLoader: is a loader Flux object
-- hparams::HyperParams: is a HyperParams object
+- `nn_model::Flux.Chain`: is a Flux neuronal network model
+- `data::Flux.DataLoader`: is a loader Flux object
+- `hparams::HyperParams`: is a HyperParams object
 """
 function invariant_statistical_loss(nn_model, data, hparams)
     @assert length(data) == hparams.samples
@@ -285,7 +285,7 @@ function get_window_of_Aₖ(transform, model, data, K::Int64)
 end;
 
 """
-    `convergence_to_uniform(aₖ)``
+    `convergence_to_uniform(aₖ)`
 
 Test the convergence of the distributino of the window of the rv's `Aₖ` to a uniform
 distribution. It is implemented using a Chi-Square test.
@@ -415,6 +415,18 @@ end;
     HyperParamsTS
 
 Hyperparameters for the method `ts_adaptative_block_learning`
+
+```julia
+Base.@kwdef mutable struct HyperParamsTS
+    seed::Int = 42                              # Random seed
+    dev = cpu                                   # Device: cpu or gpu
+    η::Float64 = 1e-3                           # Learning rate
+    epochs::Int = 100                           # Number of epochs
+    noise_model = Normal(0.0f0, 1.0f0)          # Noise to add to the data
+    window_size = 100                           # Window size for the histogram
+    K = 10                                      # Number of simulted observations
+end
+```
 """
 Base.@kwdef mutable struct HyperParamsTS
     seed::Int = 42                              # Random seed
