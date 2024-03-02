@@ -9,9 +9,9 @@ makedocs(;
     modules=[ISL],
     pages=[
         "Home" => "index.md",
-        "GAN" => "gan.md",
-        "Example" => "example.md",
-        "Benchmark" => "benchmark.md",
+        "GAN" => "Gan.md",
+        "Example" => "Examples.md",
+        "DeepAR" => "DeepAR.md",
     ],
     strict=false,
 )
