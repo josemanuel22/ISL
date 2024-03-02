@@ -10,8 +10,8 @@ makedocs(;
     authors="José Manuel de Frutos",
     pages=[
         "Home" => "index.md",
-        "GANs" => "Gans.md",
         "Example" => "Examples.md",
+        "GANs" => "Gans.md",
         "DeepAR" => "DeepAR.md",
     ],
     checkdocs=:none,
