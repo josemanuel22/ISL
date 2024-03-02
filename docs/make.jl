@@ -5,7 +5,7 @@ println("Generating Docs")
 
 makedocs(;
     sitename="ISL",
-    format=Documenter.HTML(; assets=["assets/logo.png"], prettyurls=true),
+    format=Documenter.HTML(; prettyurls=true),
     modules=[ISL],
     authors="José Manuel de Frutos",
     pages=[
