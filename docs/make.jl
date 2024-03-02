@@ -7,6 +7,7 @@ makedocs(;
     sitename="ISL",
     format=Documenter.HTML(; assets=["./assets/isl.ico"]),
     modules=[ISL],
+    authors="José Manuel de Frutos",
     pages=[
         "Home" => "index.md",
         "GANs" => "Gans.md",
