@@ -1,41 +1,39 @@
-To make simple use, once the package is installed, just run the examples in `examples/` directory.
+# Quick Start Guide
 
-# Learning 1-D distributions
+After installing the package, you can immediately start experimenting with the examples provided in the `examples/` directory. These examples are designed to help you understand how to apply the package for different statistical learning tasks, including learning 1-D distributions and time series prediction.
+
+## Learning 1-D distributions
+
+The following example demonstrates how to learn a 1-D distribution from a benchmark dataset. It utilizes a simple neural network architecture for both the generator and the discriminator within the context of an Invariant Statistical Learning (ISL) framework.
 
 ```julia
-# This example is from examples/Learning1d_distribution/benchmark_unimodal.jl
-# We include the module
-using ISL
-include("../utils.jl")
+# Example file: examples/Learning1d_distribution/benchmark_unimodal.jl
+
+using ISL # Import the ISL module
+include("../utils.jl")  # Include necessary utilities
 
 @test_experiments "N(0,1) to N(23,1)" begin
-    # Generator: a neural network with ELU activation
+    # Define the generator and discriminator networks with ELU activation
     gen = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
 
-    # Discriminator: a neural network with ELU activation and σ activation function in the last layer
-    dscr = Chain(
-        Dense(1, 11), elu, Dense(11, 29), elu, Dense(29, 11), elu, Dense(11, 1, σ)
-    )
-
-    #Noise model
+    # Set up the noise and target models
     noise_model = Normal(0.0f0, 1.0f0)
-    n_samples = 10000   
-    # Target model composed of a mixture of models
     target_model = Normal(4.0f0, 2.0f0)
+    n_samples = 10000   
 
-    # Parameters for automatic invariant statistical loss
+    # Configure the hyperparameters for the ISL
     hparams = AutoISLParams(;
         max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
     )
 
-    # Preparing the training set and data loader
+    # Prepare the dataset and the loader for training
     train_set = Float32.(rand(target_model, hparams.samples))
     loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-    # Training using the automatic invariant statistical loss
+    # Train the model using the ISL
     auto_invariant_statistical_loss(gen, loader, hparams)
 
-    #We plot the results
+    # Visualize the learning results
     plot_global(
         x -> quantile.(-target_model, cdf(noise_model, x)),
         noise_model,
@@ -52,6 +50,10 @@ end
 
 
 # Time Series
+
+This section showcases two examples: predicting a univariate time series with an AutoRegressive model and forecasting electricity consumption. These examples illustrate the application of ISL for time series analysis.
+
+- Example 1: AutoRegressive Model Prediction
 
 ```julia
 @test_experiments "testing AutoRegressive Model 1" begin
@@ -105,8 +107,9 @@ end
 end
 ```
 
-    ![Example Image](./imgs/readme_images_2.png)
+![Example Image](./imgs/readme_images_2.png)
 
+- Example 2: Electricity Consumption Forecasting
 
 ```julia
 @test_experiments "testing electricity-c" begin
@@ -179,11 +182,12 @@ end
     plot!(xtest[1:τ])
 end
 ```
-`Prediction τ = 24 (1 day)`
+
+- `Prediction τ = 24 (1 day)`
 
 ![Example Image](./imgs/user008c-1.png)
 
-`Prediction τ = 168 (7 days)`
+- `Prediction τ = 168 (7 days)`
 
 ![Example Image](./imgs/user008long-1.png)
 
