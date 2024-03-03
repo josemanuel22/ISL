@@ -8,24 +8,19 @@ frameworks to ensure reliability.
 
 ### Source Code (`src/`)
 
-- **`CustomLossFunction.jl`**: This file contains implementations of the ISL custom loss
-function tailored for the models developed within the repository.
+- **`CustomLossFunction.jl`**: This file contains implementations of the ISL custom loss function tailored for the models developed within the repository.
 
-- **`ISL.jl`**: Serves as the main module file of the repository, this file aggregates and
-exports the functionalities developed in `CustomLossFunction.jl`.
+- **`ISL.jl`**: Serves as the main module file of the repository, this file aggregates and exports the functionalities developed in `CustomLossFunction.jl`.
 
 ### Examples (`examples/`)
 
-- **`time_series_predictions/`**: This subdirectory showcases how the ISL project's models
-can be applied to time series prediction tasks.
+- **`time_series_predictions/`**: This subdirectory showcases how the ISL project's models can be applied to time series prediction tasks.
 
-- **`Learning1d_distribution/`**: Focuses on the task of learning 1D distributions with
-the ISL.
+- **`Learning1d_distribution/`**: Focuses on the task of learning 1D distributions with the ISL.
 
 ### Testing Framework (`test/`)
 
-- **`runtests.jl`**: This script is responsible for running automated tests against the
-`ISL.jl` module.
+- **`runtests.jl`**: This script is responsible for running automated tests against the `ISL.jl` module.
 """
 module ISL
 
