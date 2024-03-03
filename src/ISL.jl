@@ -1,19 +1,31 @@
 __precompile__()
 
 """
-Training Implicit Generative Models via an Invariant Statistical Loss addresses the
-challenges of training implicit generative models, like Generative Adversarial
-Networks(GANs), which often suffer from unstable training and mode-dropping issues.
-We propose a novel, discriminator-free approach for training 1-dimensional (1D) generative
-implicit models, using a loss function based on the discrepancy between a transformed model
-sample distribution and a uniform distribution. This approach is designed to be invariant to
-the true data distribution, potentially providing a more stable and effective training
-method.We first apply our method to 1D random variables, demonstrating its capacity for
-reparameterizing complex distributions. We then extend the approach to temporal settings,
-both univariate and multivariate, aiming to model the conditional distribution of each
-sample given its historical data. Through numerical simulations, our method shows promising
-results in accurately learning true distributions across various scenarios and mitigating
-known issues with existing implicit methods.
+The `ISL` repository is organized into several directories that encapsulate different
+aspects of the project, ranging from the core source code and custom functionalities to
+examples demonstrating the application of the project's capabilities, as well as testing
+frameworks to ensure reliability.
+
+### Source Code (`src/`)
+
+- **`CustomLossFunction.jl`**: This file contains implementations of the ISL custom loss
+function tailored for the models developed within the repository.
+
+- **`ISL.jl`**: Serves as the main module file of the repository, this file aggregates and
+exports the functionalities developed in `CustomLossFunction.jl`.
+
+### Examples (`examples/`)
+
+- **`time_series_predictions/`**: This subdirectory showcases how the ISL project's models
+can be applied to time series prediction tasks.
+
+- **`Learning1d_distribution/`**: Focuses on the task of learning 1D distributions with
+the ISL.
+
+### Testing Framework (`test/`)
+
+- **`runtests.jl`**: This script is responsible for running automated tests against the
+`ISL.jl` module.
 """
 module ISL
 
