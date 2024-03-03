@@ -1,6 +1,6 @@
 __precompile__()
 
-```
+"""
 Training Implicit Generative Models via an Invariant Statistical Loss addresses the
 challenges of training implicit generative models, like Generative Adversarial
 Networks(GANs), which often suffer from unstable training and mode-dropping issues.
@@ -14,7 +14,7 @@ both univariate and multivariate, aiming to model the conditional distribution o
 sample given its historical data. Through numerical simulations, our method shows promising
 results in accurately learning true distributions across various scenarios and mitigating
 known issues with existing implicit methods.
-```
+"""
 module ISL
 
 using Flux
