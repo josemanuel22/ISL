@@ -1,7 +1,7 @@
 __precompile__()
 
 ```
-"Training Implicit Generative Models via an Invariant Statistical Loss" addresses the
+Training Implicit Generative Models via an Invariant Statistical Loss addresses the
 challenges of training implicit generative models, like Generative Adversarial
 Networks(GANs), which often suffer from unstable training and mode-dropping issues.
 We propose a novel, discriminator-free approach for training 1-dimensional (1D) generative
