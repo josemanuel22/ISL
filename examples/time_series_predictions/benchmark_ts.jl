@@ -1121,7 +1121,7 @@ end
     dataY = [matrix[i, :] for i in 2:size(matrix, 1)]
 
     # Model hyperparameters and architecture
-    hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=2000, window_size=2000, K=20)
+    hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=2000, window_size=2000, K=3)
     rec = Chain(RNN(7 => 3, relu), LayerNorm(3))
     gen = Chain(Dense(4, 10, relu), Dropout(0.05), Dense(10, 7, identity))
 

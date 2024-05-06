@@ -532,12 +532,15 @@ function ts_invariant_statistical_loss_multivariate(rec, gen, Xₜ, Xₜ₊₁, 
     return losses
 end
 
+using ThreadsX
+
 function ts_invariant_statistical_loss_slicing(rec, gen, Xₜ, Xₜ₊₁, hparams)
     losses = []
     optim_rec = Flux.setup(Flux.Adam(hparams.η), rec)
     optim_gen = Flux.setup(Flux.Adam(hparams.η), gen)
     Flux.reset!(rec)
     @showprogress for (batch_Xₜ, batch_Xₜ₊₁) in zip(Xₜ, Xₜ₊₁)
+        Ω = ThreadsX.map(_ -> sample_random_direction(size(batch_Xₜ)[1]), 1:10)
         loss, grads = Flux.withgradient(rec, gen) do rec, gen
             aₖ = zeros(hparams.K + 1)
             for j in (1:(hparams.window_size):length(batch_Xₜ))
