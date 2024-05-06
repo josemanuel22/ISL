@@ -8,12 +8,13 @@ using DataFrames     # For data manipulation and representation
 using CSV            # For reading and writing CSV files
 using Distributions  # For probability distributions
 using StatsBase      # For basic statistical support
-using RollingFunctions  # For applying functions with a rolling window
+#using RollingFunctions  # For applying functions with a rolling window
 
 using HTTP, ZipFile
 
 # Plotting and visualization
 using Plots          # For creating plots
+using MLUtils        # For general machine learning utilities
 
 # External utilities and custom functions
 include("../utils.jl")       # Include general utility functions
@@ -1108,6 +1109,7 @@ end
     # Load CSV file
     #csv_file = "/Users/jmfrutos/github/ETDataset/ETT-small/ETTh2.csv"
     #df = DataFrame(CSV.File(csv_file; delim=',', header=true, decimal='.'))
+    #df = select(df, Not(:date))
 
     # Select relevant columns and standardize data
     matrix = Float32.(Matrix(df))
@@ -1119,7 +1121,7 @@ end
     dataY = [matrix[i, :] for i in 2:size(matrix, 1)]
 
     # Model hyperparameters and architecture
-    hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=2000, window_size=2000, K=40)
+    hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=2000, window_size=2000, K=20)
     rec = Chain(RNN(7 => 3, relu), LayerNorm(3))
     gen = Chain(Dense(4, 10, relu), Dropout(0.05), Dense(10, 7, identity))
 
@@ -1140,7 +1142,7 @@ end
     mses = []
     losses = []
     @showprogress for i in 1:1000
-        loss = ts_invariant_statistical_loss_multivariate(
+        loss = ts_invariant_statistical_loss_slicing(
             rec, gen, loaderXtrain, loaderYtrain, hparams
         )
         append!(losses, loss)
