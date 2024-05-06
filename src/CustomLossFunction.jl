@@ -534,6 +534,15 @@ end
 
 using ThreadsX
 
+@inline function sample_random_direction(n::Int)::Vector{Float32}
+    # Generate a random vector where each component is from a standard normal distribution
+    random_vector = randn(Float32, n)
+
+    normalized_vector = random_vector / norm(random_vector)
+
+    return normalized_vector
+end
+
 function ts_invariant_statistical_loss_slicing(rec, gen, Xₜ, Xₜ₊₁, hparams)
     losses = []
     optim_rec = Flux.setup(Flux.Adam(hparams.η), rec)
