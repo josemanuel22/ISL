@@ -533,6 +533,7 @@ function ts_invariant_statistical_loss_multivariate(rec, gen, Xₜ, Xₜ₊₁, 
 end
 
 using ThreadsX
+using LinearAlgebra
 
 @inline function sample_random_direction(n::Int)::Vector{Float32}
     # Generate a random vector where each component is from a standard normal distribution
@@ -543,20 +544,41 @@ using ThreadsX
     return normalized_vector
 end
 
-function ts_invariant_statistical_loss_slicing(rec, gen, Xₜ, Xₜ₊₁, hparams)
+# Hyperparameters for the method `ts_adaptative_block_learning`
+"""
+    HyperParamsTS
+
+Hyperparameters for the method `ts_adaptative_block_learning`
+"""
+Base.@kwdef mutable struct HyperParamsTSSlicedISL
+    seed::Int = 72                              # Random seed
+    dev = cpu                                   # Device: cpu or gpu
+    η::Float64 = 1e-3                           # Learning rate
+    epochs::Int = 100                           # Number of epochs
+    noise_model = Normal(0.0f0, 1.0f0)          # Noise to add to the data
+    window_size = 100                           # Window size for the histogram
+    K = 10                                      # Number of simulted observations
+    m = 10                                      # Number of random directions
+end
+
+function ts_invariant_statistical_loss_slicing(
+    rec, gen, Xₜ, Xₜ₊₁, hparams::HyperParamsTSSlicedISL
+)
     losses = []
     optim_rec = Flux.setup(Flux.Adam(hparams.η), rec)
     optim_gen = Flux.setup(Flux.Adam(hparams.η), gen)
     Flux.reset!(rec)
     @showprogress for (batch_Xₜ, batch_Xₜ₊₁) in zip(Xₜ, Xₜ₊₁)
-        Ω = ThreadsX.map(_ -> sample_random_direction(size(batch_Xₜ)[1]), 1:10)
+        Ω = ThreadsX.map(_ -> sample_random_direction(size(batch_Xₜ[1])[1]), 1:(hparams.m))
         loss, grads = Flux.withgradient(rec, gen) do rec, gen
             aₖ = zeros(hparams.K + 1)
             for j in (1:(hparams.window_size):length(batch_Xₜ))
                 s = rec(batch_Xₜ[j])
                 xₖ = rand(hparams.noise_model, hparams.K)
                 yₖ = hcat([gen(vcat(x, s)) for x in xₖ]...)
-                aₖ += generate_aₖ(ω * yₖ, ω ⋅ batch_Xₜ₊₁[j])
+                for ω in Ω
+                    aₖ += generate_aₖ(Matrix(ω') * yₖ, ω' ⋅ batch_Xₜ₊₁[j])
+                end
             end
             scalar_diff(aₖ ./ sum(aₖ))
         end

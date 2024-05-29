@@ -1121,12 +1121,12 @@ end
     dataY = [matrix[i, :] for i in 2:size(matrix, 1)]
 
     # Model hyperparameters and architecture
-    hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=2000, window_size=2000, K=3)
+    hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=2000, window_size=2000, K=10)
     rec = Chain(RNN(7 => 3, relu), LayerNorm(3))
-    gen = Chain(Dense(4, 10, relu), Dropout(0.05), Dense(10, 7, identity))
+    gen = Chain(Dense(4, 5, relu), Dropout(0.05), Dense(5, 7, identity))
 
     # DataLoader setup
-    batch_size = 2000
+    batch_size = 1000
     loaderXtrain = DataLoader(dataX; batchsize=batch_size, shuffle=false, partial=false)
     loaderYtrain = DataLoader(dataY; batchsize=batch_size, shuffle=false, partial=false)
 
@@ -1138,19 +1138,129 @@ end
         append!(losses, loss)
     end
 
+    hparams = HyperParamsTSSlicedISL(;
+        seed=1234,
+        dev=cpu,
+        η=1e-3,
+        epochs=1000,
+        noise_model=Normal(0.0f0, 1.0f0),
+        window_size=2000,
+        K=40,
+        m=20,
+    )
+
     maes = []
     mses = []
     losses = []
     @showprogress for i in 1:1000
-        loss = ts_invariant_statistical_loss_slicing(
+        losse = ts_invariant_statistical_loss_slicing(
             rec, gen, loaderXtrain, loaderYtrain, hparams
         )
-        append!(losses, loss)
+        append!(losses, losse)
 
         mse = 0.0
         mae = 0.0
         count = 0
-        τ = 720
+        τ = 96
+        for ts in (1:length(collect(loaderXtrain)[1][1]))
+            #τ = 96
+            s = 0
+            Flux.reset!(rec)
+            xtrain = collect(loaderXtrain)[1]
+            prediction = []
+            for i in 1:96
+                s = rec(xtrain[i])
+                #xₖ = rand(Normal(0.0f0, 1.0f0), 1000)
+                #ŷ = mean([gen(vcat(x, s)) for x in xₖ])
+                #push!(prediction, ŷ)
+            end
+            for i in (96:(96 + τ))
+                xₖ = rand(Normal(0.0f0, 1.0f0), 100)
+                y = mean([gen(vcat(x, s)) for x in xₖ])
+                #y = mean([gen(vcat(x, s)) for x in xₖ])
+                #println(ŷ)
+                s = rec(y)
+                push!(prediction, y)
+            end
+            primeraColumnaY = [fila[ts] for fila in prediction]
+            primeraColumna = [fila[ts] for fila in collect(loaderXtrain)[1]]
+            count += 1
+            #l = moving_average(primeraColumnaY, 10)
+            #println(MSE(primeraColumna[96:96+τ], primeraColumnaY))
+            #println(MAE(primeraColumna[96:96+τ], primeraColumnaY))
+            mse += MSE(primeraColumna[96:(96 + τ)], primeraColumnaY)
+            mae += MAE(primeraColumna[96:(96 + τ)], primeraColumnaY)
+        end
+        append!(mses, mse / count)
+        append!(maes, mae / count)
+    end
+end
+
+@test_experiments "ETDataset multivariated" begin
+    url = "https://github.com/zhouhaoyi/ETDataset/blob/main/ETT-small/ETTh1.csv?raw=true"
+
+    # Download the CSV file
+    csv1 = HTTP.download(url)
+
+    df = DataFrame(CSV.File(csv1; delim=',', header=true, decimal='.'))
+    df = select(df, Not(:date))
+
+    # Load CSV file
+    #csv_file = "/Users/jmfrutos/Desktop/mpi_roof_2020a.csv"
+    #df = DataFrame(CSV.File(csv_file; delim=',', header=true, decimal='.'))
+    #df = select(df, Not(1))
+
+    # Select relevant columns and standardize data
+    matrix = Float32.(Matrix(df))
+    mean_vals, std_vals = mean(matrix; dims=1), std(matrix; dims=1)
+    matrix = (matrix .- mean_vals) ./ std_vals
+
+    # Preparing data for training
+    dataX = [matrix[i, :] for i in 1:size(matrix, 1)]
+    dataY = [matrix[i, :] for i in 2:size(matrix, 1)]
+
+    # Model hyperparameters and architecture
+    hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=2000, window_size=2000, K=10)
+    rec = Chain(RNN(21 => 10, relu), LayerNorm(10))
+    gen = Chain(Dense(11, 32, relu), Dropout(0.05), Dense(32, 21, identity))
+
+    # DataLoader setup
+    batch_size = 1000
+    loaderXtrain = DataLoader(dataX; batchsize=batch_size, shuffle=false, partial=false)
+    loaderYtrain = DataLoader(dataY; batchsize=batch_size, shuffle=false, partial=false)
+
+    losses = []
+    @showprogress for i in 1:100
+        loss = ts_invariant_statistical_loss_multivariate(
+            rec, gen, loaderXtrain, loaderYtrain, hparams
+        )
+        append!(losses, loss)
+    end
+
+    hparams = HyperParamsTSSlicedISL(;
+        seed=1234,
+        dev=cpu,
+        η=1e-3,
+        epochs=1000,
+        noise_model=Normal(0.0f0, 1.0f0),
+        window_size=4000,
+        K=40,
+        m=40,
+    )
+
+    maes = []
+    mses = []
+    losses = []
+    @showprogress for i in 1:1000
+        losse = ts_invariant_statistical_loss_slicing(
+            rec, gen, loaderXtrain, loaderYtrain, hparams
+        )
+        append!(losses, losse)
+
+        mse = 0.0
+        mae = 0.0
+        count = 0
+        τ = 96
         for ts in (1:length(collect(loaderXtrain)[1][1]))
             #τ = 96
             s = 0
