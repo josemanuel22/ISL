@@ -13,9 +13,23 @@ A matrix of the same size as `ŷ` containing the sigmoid-transformed values.
 This function calculates the sigmoid function for each element in the matrix `ŷ` centered at the value `y`. It applies a fast sigmoid transformation with a scaling factor of 10.0.
 
 """
-function _sigmoid(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
+function _sigmoid(ŷ::AbstractArray{T}, y::T) where {T<:AbstractFloat}
     return sigmoid_fast.((y .- ŷ) .* 10.0f0)
-end;
+end
+
+function _sigmoid(ŷ::AbstractArray{T}, y::T) where {T<:AbstractFloat}
+    return sigmoid_fast.((y .- ŷ) .* 10.0f0)
+end
+
+#function _sigmoid(ŷ::CuArray{T}, y::T) where {T<:AbstractFloat}
+#    return sigmoid_fast.((y .- ŷ) .* 10.0f0)
+#end
+
+#function _sigmoid(
+#    ŷ::Transpose{T,CUDA.CuArray{T,1,CUDA.Mem.DeviceBuffer}}, y::T
+#) where {T<:AbstractFloat}
+#    return sigmoid_fast.((y .- ŷ) .* 10.0f0)
+#end
 
 function _leaky_relu(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
     return min.(0.001 .* (y .- ŷ) .+ 1.0, leakyrelu.((y .- ŷ) .* 10, 0.001))
@@ -37,8 +51,14 @@ This function calculates the bump function, which is centered at the integer val
 
 """
 function ψₘ(y::T, m::Int64) where {T<:AbstractFloat}
-    stddev = 0.1f0
-    return exp((-0.5f0 * ((y - m) / stddev)^2))
+    stddev = T(0.1)
+    return exp((T(-0.5) * ((y - m) / stddev)^2))
+end
+
+function ψₘ_batch(y::AbstractArray{T}, m::AbstractArray{T}) where {T<:AbstractFloat}
+    stddev = T(0.1)  # Assuming the standard deviation is constant for all operations
+    # Compute the operation in a batch. Note the use of broadcasting with the dot (.) operator
+    return exp.((T(-0.5) .* ((y .- m) ./ stddev) .^ 2))
 end
 
 """
@@ -63,6 +83,10 @@ function ϕ(yₖ::Matrix{T}, yₙ::T) where {T<:AbstractFloat}
     #return sum(_leaky_relu(yₖ, yₙ))
     return sum(_sigmoid(yₖ, yₙ))
 end;
+
+function ϕ(yₖ::AbstractArray{T}, yₙ::T) where {T<:AbstractFloat}
+    return CUDA.sum(_sigmoid(yₖ, yₙ))
+end
 
 """
 `γ(yₖ::Matrix{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}``
@@ -89,6 +113,13 @@ function γ(yₖ::Matrix{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}
     eₘ(m) = [j == m ? T(1.0) : T(0.0) for j in 0:length(yₖ)]
     return eₘ(m) * ψₘ(ϕ(yₖ, yₙ), m)
 end;
+
+function γ(yₖ::AbstractArray{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}
+    function eₘ_cuda(m, length)
+        return CuArray([j == m ? T(1.0) : T(0.0) for j in 0:length])
+    end
+    return eₘ_cuda(m, size(yₖ, 2)) .* ψₘ(ϕ(yₖ, yₙ), m)
+end
 
 """
 `γ_fast(yₖ::Matrix{T}, yₙ::T, m::Int64) where {T<:AbstractFloat}``
@@ -144,6 +175,14 @@ aₖ = ∑_{k=0}^K γ(ŷ, y, k) = ∑_{k=0}^K ∑_{i=1}^N ψₖ(ŷ, yᵢ)
     return sum([γ(ŷ, y, k) for k in 0:length(ŷ)])
 end
 
+#@inline function generate_aₖ(ŷ::AbstractArray{T}, y::T) where {T<:AbstractFloat}
+#    return CUDA.sum([γ(ŷ, y, k) for k in 0:length(ŷ)])
+#end
+
+@inline function generate_aₖ_optimized(ŷ::AbstractArray{T}, y::T) where {T<:AbstractFloat}
+    return γ_batched_computation(ŷ, y)
+end
+#0:(length(ŷ) - 1)
 """
     `scalar_diff(q)`
 
@@ -154,6 +193,9 @@ loss = ||q-1/k+1||_{2} = ∑_{k=0}^K (qₖ - 1/K+1)^2
 ```
 """
 @inline scalar_diff(q::Vector{T}) where {T<:AbstractFloat} =
+    sum((q .- (T(1.0f0) ./ T(length(q)))) .^ 2)
+
+@inline scalar_diff(q::AbstractArray{T}) where {T<:AbstractFloat} =
     sum((q .- (T(1.0f0) ./ T(length(q)))) .^ 2)
 
 """
@@ -225,8 +267,8 @@ function invariant_statistical_loss(nn_model, data, hparams)
 end;
 
 function invariant_statistical_loss_1(nn_model, loader, hparams)
-    @assert loader.batchsize == hparams.samples
-    @assert length(loader) == hparams.epochs
+    #@assert loader.batchsize == hparams.samples
+    #@assert length(loader) == hparams.epochs
     losses = []
     optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
     @showprogress for data in loader
@@ -273,17 +315,19 @@ end;
 
 Generate a window of the rv's `Aₖ` for a given model and target function.
 """
-function get_window_of_Aₖ(transform, model, data, K::Int64)
+@inline function get_window_of_Aₖ(transform, model, data, K::Int64)
     window = count.([model(rand(transform, K)') .< d for d in data])
     return [count(x -> x == i, window) for i in 0:K]
 end;
 
+#=
 @inline function get_window_of_Aₖ(transform, model, ω, data, K::Int64)
     ŷₖ = model(Float32.(rand(transform, K)))
     ŷₖ_proj = [dot(ω, ŷₖ[:, i]) for i in 1:size(ŷₖ, 2)]
     window = count.([ŷₖ_proj .< d for d in data])
     return [count(x -> x == i, window) for i in 0:K]
 end;
+=#
 
 """
     `convergence_to_uniform(aₖ)``
@@ -323,7 +367,7 @@ To see the value of `K` used in the test, set the logger level to debug before e
 - `hparams::AutoAdaptativeHyperParams`: is a AutoAdaptativeHyperParams object
 """
 function auto_invariant_statistical_loss(nn_model, data, hparams)
-    @assert length(data) == hparams.samples
+    #@assert length(data) == hparams.samples
 
     K = 2
     @debug "K value set to $K."
@@ -629,19 +673,305 @@ function sliced_invariant_statistical_loss_optimized_2(nn_model, loader, hparams
     @assert length(loader) == hparams.epochs
     losses = Vector{Float32}()
     optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
-
     @showprogress for data in loader
-        Ω = ThreadsX.map(_ -> sample_random_direction(size(data)[1]), 1:(hparams.m))
+        Ω = ThreadsX.map(_ -> sample_random_direction(2), 1:(hparams.m))
+        total = 0.0f0
+        # Generate all random numbers in one go
+        x_batch = rand(hparams.noise_model, hparams.samples * hparams.K)
+
+        # Pre-compute column indices for slicing
+        start_cols = hparams.K * (1:(hparams.samples - 1))
+        end_cols = hparams.K * (2:(hparams.samples)) .- 1
+
         loss, grads = Flux.withgradient(nn_model) do nn
-            total = 0.0f0
+            # Process batch through nn_model
+            yₖ_batch = nn(Float32.(x_batch))
             for ω in Ω
                 aₖ = zeros(Float32, hparams.K + 1)  # Reset aₖ for each new ω
 
-                # Generate all random numbers in one go
-                x_batch = rand(hparams.noise_model, hparams.samples * hparams.K)
+                s = Matrix(ω' * yₖ_batch)
 
-                # Process batch through nn_model
-                yₖ_batch = nn(Float32.(x_batch))
+                # Create slices of 's' for all 'aₖ_slice'
+                aₖ_slices = [
+                    s[:, start_col:(end_col - 1)] for
+                    (start_col, end_col) in zip(start_cols, end_cols)
+                ]
+
+                # Compute the dot products for all iterations at once
+                ω_data_dot_products = [dot(ω, data[:, i]) for i in 2:(hparams.samples)]
+
+                # Apply 'generate_aₖ' for each pair and sum the results
+                aₖ = sum([
+                    generate_aₖ(aₖ_slice, ω_data_dot_product) for
+                    (aₖ_slice, ω_data_dot_product) in zip(aₖ_slices, ω_data_dot_products)
+                ])
+                total += scalar_diff(aₖ ./ sum(aₖ))
+            end
+            total / hparams.m
+        end
+        Flux.update!(optim, nn_model, grads[1])
+        push!(losses, loss)
+    end
+    return losses
+end
+
+@inline function eₘ_batchs(m_length, m_batch)
+    return CUDA.CuArray([
+        i == k + 1 ? Float32(1.0) : Float32(0.0) for i in 0:m_length, k in m_batch
+    ])
+end
+
+Zygote.@adjoint CUDA.zeros(x...) = CUDA.zeros(x...), _ -> map(_ -> nothing, x)
+function γ_batched_computation(yₖ::AbstractArray{T}, yₙ::T) where {T<:AbstractFloat}
+    # Assuming eₘ_cuda and ψₘ can be adapted for batch operation
+    # First, generate a batch of one-hot encoded vectors
+    m_length = size(yₖ, 2)
+    m_batch = (0:(m_length - 1))
+
+    #eₘ_batch = CUDA.CuArray([
+    #    i == k + 1 ? T(1.0) : T(0.0) for i in 0:m_length, k in m_batch
+    #])
+
+    eₘ_batch = eₘ_batchs(m_length, m_batch)
+
+    # Compute ϕ for yₖ and yₙ in a batch (assuming ϕ can be adapted for batch operation)
+    ϕ_batch = ϕ(yₖ, yₙ)
+
+    #ψₘ_batch(ϕ_batch, m_batch)
+    ψₘ_batch = CuArray([ψₘ(ϕ_batch, m) for m in m_batch]) # Placeholder for batched ψₘ computation
+    #m_batchs = CuArray((0:(m_length - 1)))
+    #ψₘ_batch = CUDA.CuArray(ψₘ.(ϕ_batch, m_batchs))
+
+    # Compute the batched γ values
+    return eₘ_batch * ψₘ_batch  # Element-wise multiplication and sum for each k
+end
+
+@inline function generate_aₖ_optimized(ŷ::AbstractArray{T}, y::T) where {T<:AbstractFloat}
+    γ_batched = γ_batched_computation(ŷ, y)
+    return γ_batched
+end
+
+function process_ω_batch(ω, yₖ_batch, data, start_cols, end_cols, hparams)
+    s = transpose(ω) * yₖ_batch
+    aₖ = CUDA.zeros(Float32, hparams.K + 1)
+
+    @inbounds for i in 1:length(start_cols)
+        slice = s[:, start_cols[i]:end_cols[i]]
+        dot_product = dot(ω, data[:, i + 1])
+        aₖ = aₖ .+ generate_aₖ_optimized(slice, dot_product)
+    end
+
+    return scalar_diff(aₖ ./ sum(aₖ))
+end
+
+function sliced_invariant_statistical_loss_optimized_gpu_2(nn_model, loader, hparams)
+    @assert loader.batchsize == hparams.samples
+    @assert length(loader) == hparams.epochs
+    losses = Vector{Float32}()
+    optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
+
+    @showprogress for data in loader
+        data = gpu(data) # Move data to GPU once per epoch
+        Ω = gpu([sample_random_direction(size(data)[1]) for _ in 1:(hparams.m)])
+        total = 0.0f0 # Use a scalar for accumulation
+
+        # Generate all random noise in one batch and move to GPU
+        x_batch = CUDA.randn(
+            Float32, length(hparams.noise_model.μ), hparams.samples * hparams.K
+        )
+        #x_batch = gpu(rand(hparams.noise_model, hparams.samples * hparams.K))
+
+        # Pre-compute column indices for slicing
+        start_cols = hparams.K * (1:(hparams.samples - 1))
+        end_cols = hparams.K * (2:(hparams.samples)) .- 1
+
+        loss, grads = Flux.withgradient(nn_model) do nn
+            # Process batch through nn_model
+            yₖ_batch = nn(x_batch)
+
+            #total = mapreduce(
+            #    ω -> process_ω_batch(ω, yₖ_batch, data, start_cols, end_cols, hparams),
+            #    +,
+            #    Ω,
+            #)
+
+            @inbounds for ω in Ω
+                s = transpose(ω) * yₖ_batch
+
+                aₖ = CUDA.zeros(Float32, hparams.K + 1)
+
+                # Perform the operation in a loop, similar to an element-wise operation
+                @inbounds for i in 1:length(start_cols)
+                    slice = s[:, start_cols[i]:end_cols[i]]
+                    dot_product = dot(ω, data[:, i + 1])
+                    aₖ = aₖ .+ generate_aₖ_optimized(slice, dot_product)
+                end
+                #aₖ = mapreduce(+, 1:length(start_cols)) do i
+                #    slice = s[:, start_cols[i]:end_cols[i]]
+                #    dot_product = dot(ω, data[:, i + 1])
+                #    generate_aₖ_optimized(slice, dot_product)
+                #end
+                total += scalar_diff(aₖ ./ sum(aₖ))
+            end
+            total / hparams.m
+        end
+        Flux.update!(optim, nn_model, grads[1])
+        push!(losses, loss)
+    end
+    return losses
+end
+
+function sliced_invariant_statistical_loss_optimized_gpu_3(nn_model, loader, hparams)
+    @assert loader.batchsize == hparams.samples
+    @assert length(loader) == hparams.epochs
+    losses = Vector{Float32}()
+    optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
+
+    MAX_BATCH_SIZE = 500 # Adjust based on your GPU's capacity
+
+    @showprogress for data in loader
+        data = gpu(data) # Move data to GPU once per epoch
+        Ω = gpu([sample_random_direction(size(data)[1]) for _ in 1:(hparams.m)])
+
+        # Total samples * K might not perfectly divide by MAX_BATCH_SIZE, adjust for this
+        total_batches = ceil(Int, hparams.samples * hparams.K / MAX_BATCH_SIZE)
+
+        total = 0.0f0
+
+        x_batch_len = MAX_BATCH_SIZE
+        x_batch = CUDA.randn(Float32, length(hparams.noise_model.μ), x_batch_len)
+        loss, grads = Flux.withgradient(nn_model) do nn
+            for ω in Ω
+                aₖ = CUDA.zeros(Float32, hparams.K + 1)
+                yₖ_batch = nn(x_batch)
+                for batch_idx in 1:total_batches
+                    s = transpose(ω) * yₖ_batch
+                    for i in ((hparams.K):(hparams.K):(x_batch_len - hparams.K))
+                        slice = s[:, i:(i + hparams.K - 1)]
+                        dot_product = dot(ω, data[:, i + 1])
+                        aₖ = aₖ .+ generate_aₖ_optimized(slice, dot_product)
+                    end
+                end
+                total += scalar_diff(aₖ ./ sum(aₖ))
+            end
+            total / hparams.m
+        end
+        Flux.update!(optim, nn_model, grads[1])
+        push!(losses, loss)
+    end
+    return losses
+end
+
+function sliced_invariant_statistical_loss_clasification(
+    nn_model, x_train, y_train, hparams
+)
+    @assert x_train.batchsize == hparams.samples
+    @assert length(x_train) == hparams.epochs
+    @assert length(x_train) == length(y_train)
+    losses = Vector{Float32}()
+    res = Vector{Float32}()
+    optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
+
+    @showprogress for (number, class) in zip(x_train, y_train)
+        Ω = [sample_random_direction(size(class)[1]) for _ in 1:(hparams.m)]
+        total = 0.0f0 # Use a scalar for accumulation
+
+        rand_noise = rand(hparams.noise_model, hparams.K, hparams.samples)
+        loss, grads = Flux.withgradient(nn_model) do nn
+            class_prediction = [nn(vcat(number, rand_noise[i, :]')) for i in 1:(hparams.K)]
+
+            aₖ = zeros(Float32, hparams.K + 1)
+            for ω in Ω
+                class_projs = Matrix(ω' * class)
+                class_pred_projs = vcat(
+                    [ω' * class_prediction[i] for i in 1:(hparams.K)]...
+                ) #ω * class_prediction
+                for i in 1:(hparams.samples)
+                    aₖ =
+                        aₖ .+ generate_aₖ(Matrix(class_pred_projs[:, i, :]), class_projs[i])
+                end
+                total += scalar_diff(aₖ ./ sum(aₖ))
+            end
+            total / hparams.m
+        end
+        Flux.update!(optim, nn_model, grads[1])
+        push!(losses, loss)
+        acc = 0
+        for i in 1:100
+            if argmax(nn_model(vcat(number[:, i], randn()))) == argmax(class[:, i])
+                acc += 1
+            end
+        end
+        push!(res, acc / 100)
+    end
+    return losses, res
+end
+
+function sliced_invariant_statistical_loss_optimized_gpu(nn_model, loader, hparams)
+    @assert loader.batchsize == hparams.samples
+    @assert length(loader) == hparams.epochs
+    losses = Vector{Float32}()
+    optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
+
+    @showprogress for data in loader
+        Ω = gpu(ThreadsX.map(_ -> sample_random_direction(size(data)[1]), 1:(hparams.m)))
+        total = 0.0f0
+        # Generate all random numbers in one go
+        x_batch = gpu(rand(hparams.noise_model, hparams.samples * hparams.K))
+        loss, grads = Flux.withgradient(nn_model) do nn
+            # Process batch through nn_model
+            yₖ_batch = nn(cu(Float32.(x_batch)))
+            for ω in Ω
+                s = transpose(ω) * yₖ_batch
+
+                # Pre-compute column indices for slicing
+                start_cols = hparams.K * (1:(hparams.samples - 1))
+                end_cols = hparams.K * (2:(hparams.samples)) .- 1
+
+                # Create slices of 's' for all 'aₖ_slice'
+                aₖ_slices = [
+                    s[:, start_col:(end_col - 1)] for
+                    (start_col, end_col) in zip(start_cols, end_cols)
+                ]
+
+                # Compute the dot products for all iterations at once
+                ω_data_dot_products = [
+                    CUDA.dot(cu(ω), cu(data[:, i])) for i in 2:(hparams.samples)
+                ]
+
+                aₖ = sum([
+                    generate_aₖ(aₖ_slice, ω_data_dot_product) for
+                    (aₖ_slice, ω_data_dot_product) in zip(aₖ_slices, ω_data_dot_products)
+                ])
+                total += scalar_diff(aₖ ./ sum(aₖ))
+            end
+            total / hparams.m
+        end
+        Flux.update!(optim, nn_model, grads[1])
+        push!(losses, loss)
+    end
+    return losses
+end
+
+canonical_vectors(n) = [Matrix{Float32}(I, n, n)[:, i] for i in 1:n]
+
+function marginal_invariant_statistical_loss_optimized(nn_model, loader, hparams)
+    @assert loader.batchsize == hparams.samples
+    @assert length(loader) == hparams.epochs
+    losses = Vector{Float32}()
+    optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
+
+    @showprogress for data in loader
+        Ω = canonical_vectors(size(data)[1])
+        loss, grads = Flux.withgradient(nn_model) do nn
+            total = 0.0f0
+            # Generate all random numbers in one go
+            x_batch = rand(hparams.noise_model, hparams.samples * hparams.K)
+
+            # Process batch through nn_model
+            yₖ_batch = nn(Float32.(x_batch))
+            for ω in Ω
+                aₖ = zeros(Float32, hparams.K + 1)  # Reset aₖ for each new ω
 
                 s = Matrix(ω' * yₖ_batch)
 
@@ -755,10 +1085,10 @@ function sliced_auto_invariant_statistical_loss_optimized(
                 end_cols = hparams.K * (2:(hparams.samples)) .- 1
 
                 # Create slices of 's' for all 'aₖ_slice'
-                aₖ_slices = [
+                aₖ_slices = CuArray([
                     s[:, start_col:(end_col - 1)] for
                     (start_col, end_col) in zip(start_cols, end_cols)
-                ]
+                ])
 
                 # Compute the dot products for all iterations at once
                 ω_data_dot_products = [dot(ω, data[:, i]) for i in 2:(hparams.samples)]

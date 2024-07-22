@@ -58,7 +58,7 @@ generator_loss(fake_output) = mean(binarycrossentropy.(fake_output, 1.0f0))
 
 function train_discr(discr, original_data, fake_data, opt_discr)
     loss, grads = Flux.withgradient(discr) do discr
-        discr_loss(discr(original_data), discr(fake_data'))
+        discr_loss(discr(original_data), discr(fake_data))
     end
     update!(opt_discr, discr, grads[1])
     return loss
@@ -69,30 +69,30 @@ Zygote.@nograd train_discr
 function train_gan(
     gen, discr, original_data, opt_gen, opt_discr, hparams::HyperParamsVanillaGan
 )
-    noise = gpu(
+    noise = cpu(
         rand!(
             hparams.noise_model,
-            similar(original_data, (hparams.batch_size, hparams.latent_dim)),
+            similar(original_data, (hparams.latent_dim, hparams.batch_size)),
         ),
     )
     loss = Dict()
     for _ in 1:(hparams.gen_steps)
         loss["gen"], grads = Flux.withgradient(gen) do gen
-            fake_ = gen(noise')
-            generator_loss(discr(fake_'))
+            fake_ = gen(noise)
+            generator_loss(discr(fake_))
         end
         update!(opt_gen, gen, grads[1])
     end
 
     for _ in 1:(hparams.dscr_steps)
-        fake_ = gen(noise')
+        fake_ = gen(noise)
         loss["discr"] = train_discr(discr, original_data, fake_, opt_discr)
     end
 
     loss["gen"], grads = Flux.withgradient(gen) do gen
-        fake_ = gen(noise')
+        fake_ = gen(noise)
         loss["discr"] = train_discr(discr, original_data, fake_, opt_discr)
-        generator_loss(discr(fake_'))
+        generator_loss(discr(fake_))
     end
     update!(opt_gen, gen, grads[1])
     return loss
@@ -122,15 +122,17 @@ hyperparameters = HyperParamsVanillaGan(...)
 losses = train_vanilla_gan(discriminator_model, generator_model, hyperparameters)
 ```
 """
-function train_vanilla_gan(dscr, gen, hparams::HyperParamsVanillaGan)
+function train_vanilla_gan(dscr, gen, hparams::HyperParamsVanillaGan, loader)
     #hparams = HyperParamsVanillaGan()
 
+    #=
     train_set = Float32.(rand(hparams.target_model, hparams.data_size))
     loader = gpu(
         Flux.DataLoader(
             train_set; batchsize=hparams.batch_size, shuffle=true, partial=false
         ),
     )
+    =#
 
     #dscr = discriminator(hparams)
     #gen = gpu(generator(hparams))

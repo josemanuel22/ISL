@@ -3,44 +3,81 @@ using GAN
 
 include("../utils.jl")
 
+ENV["JULIA_DEBUG"] = "all"
+
 @test_experiments "vanilla_gan" begin
     @test_experiments "Origin N(0,1)" begin
         noise_model = Normal(0.0f0, 1.0f0)
         n_samples = 10000
 
         @test_experiments "N(0,1) to N(23,1)" begin
-            gen = Chain(Dense(2, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 2))
+            gen = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
             dscr = Chain(
                 Dense(1, 11), elu, Dense(11, 29), elu, Dense(29, 11), elu, Dense(11, 1, σ)
             )
+            target_model = Pareto(1.0f0, 1.0f0)
+            target_model = MixtureModel([Normal(5.0f0, 2.0f0), Pareto(5.0f0, 1.0f0)])
+            target_model = MixtureModel([Normal(5.0f0, 2.0f0), Normal(-1.0f0, 1.0f0)])
             target_model = MixtureModel([
-                Normal(5.0f0, 2.0f0), Pareto(5.0f0,1.0f0),
+                Normal(5.0f0, 2.0f0), Normal(-1.0f0, 1.0f0), Normal(-10.0f0, 3.0f0)
             ])
             hparams = HyperParamsVanillaGan(;
-                data_size=100,
-                batch_size=1,
+                data_size=1000,
+                batch_size=1000,
                 epochs=1e4,
-                lr_dscr=1e-4,
-                lr_gen=1e-4,
-                dscr_steps=4,
+                lr_dscr=1e-3,
+                lr_gen=1e-3,
+                dscr_steps=1,
                 gen_steps=0,
                 noise_model=noise_model,
                 target_model=target_model,
             )
 
-            train_vanilla_gan(dscr, gen, hparams)
+            train_vanilla_gan(dscr, gen, hparams, loader)
 
             hparams = AutoISLParams(;
-                max_k=10, samples=1000, epochs=100, η=1e-2, transform=noise_model
+                max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
             )
 
+            hparams = ISLParams(;
+                K=10, samples=1000, epochs=1000, η=1e-3, transform=noise_model
+            )
+
+            #train_set = Float32.(rand(target_model, hparams.data_size))
             train_set = Float32.(rand(target_model, hparams.samples * hparams.epochs))
-            loader = Flux.DataLoader(train_set; batchsize=hparams.samples, shuffle=true, partial=false)
-            auto_invariant_statistical_loss(gen, loader, hparams)
+            loader = Flux.DataLoader(
+                train_set'; batchsize=1000, shuffle=true, partial=false
+            )
+
+            ksds = []
+            range_result = (-10.0:0.1:10)
+            n_samples = 10000
+            @showprogress for i in 1:100
+                gen = Chain(
+                    Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1)
+                )
+                auto_invariant_statistical_loss_1(gen, loader, hparams)
+                ksd = KSD(noise_model, target_model, gen, n_samples, range_result)
+                append!(ksds, ksd)
+                mae = MAE(noise_model, real_transform, gen, n_samples)
+                mse = MSE(noise_model, real_transform, gen, n_samples)
+            end
+
+            ksds = []
+            @showprogress for i in 1:100
+                gen = Chain(
+                    Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1)
+                )
+                auto_invariant_statistical_loss_1(gen, loader, hparams)
+                ksd = KSD(noise_model, target_model, gen, n_samples, range_result)
+                append!(ksds, ksd)
+                #mae = MAE(noise_model, real_transform, gen, n_samples)
+                #mse = MSE(noise_model, real_transform, gen, n_samples)
+            end
         end
 
         @test_experiments "N(0,1) to Uniform(22,24)" begin
-            gen = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 2))
+            gen = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
             dscr = Chain(
                 Dense(1, 11), elu, Dense(11, 29), elu, Dense(29, 11), elu, Dense(11, 1, σ)
             )
@@ -60,7 +97,7 @@ include("../utils.jl")
             train_vanilla_gan(dscr, gen, hparams)
 
             hparams = AutoISLParams(;
-                max_k=10, samples=1000, epochs=100, η=1e-2, transform=noise_model
+                max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
             )
             train_set = Float32.(rand(target_model, hparams.samples))
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
@@ -73,8 +110,8 @@ include("../utils.jl")
                 target_model,
                 gen,
                 n_samples,
-                (-3:0.1:3),
-                (0:0.1:30),
+                (-2:0.1:10),
+                (-30:0.1:30),
             )
         end
 
@@ -101,9 +138,9 @@ include("../utils.jl")
             train_vanilla_gan(dscr, gen, hparams)
 
             hparams = AutoISLParams(;
-                max_k=10, samples=1000, epochs=100, η=1e-2, transform=noise_model
+                max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
             )
-            train_set = Float32.(rand(target_model, hparams.sample * hparams.epochs))
+            train_set = Float32.(rand(target_model, hparams.samples * hparams.epochs))
             loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
             auto_invariant_statistical_loss(gen, loader, hparams)
@@ -294,16 +331,16 @@ end
             hparams = HyperParamsWGAN(;
                 noise_model=noise_model,
                 target_model=target_model,
-                data_size=100,
-                batch_size=1,
-                epochs=1e3,
+                data_size=1000,
+                batch_size=1000,
+                epochs=1e4,
                 n_critic=2,
-                lr_dscr=1e-2,
+                lr_dscr=1e-3,
                 #lr_gen = 1.4e-2,
-                lr_gen=1e-2,
+                lr_gen=1e-3,
             )
 
-            loss = train_wgan(dscr, gen, hparams)
+            loss = train_wgan(dscr, gen, hparams, loader)
 
             hparams = AutoISLParams(;
                 max_k=10, samples=1000, epochs=1000, η=1e-2, transform=noise_model
@@ -542,17 +579,19 @@ end
             hparams = HyperParamsMMD1D(;
                 noise_model=noise_model,
                 target_model=target_model,
-                data_size=100,
+                data_size=1000,
                 batch_size=1,
-                num_gen=1,
-                num_enc_dec=5,
-                epochs=1000000,
+                num_gen=2,
+                num_enc_dec=1,
+                epochs=1000,
                 lr_dec=1.0e-3,
                 lr_enc=1.0e-3,
                 lr_gen=1.0e-3,
             )
 
             train_mmd_gan_1d(enc, dec, gen, hparams)
+
+            ksd = KSD(noise_model, target_model, gen, n_samples, range_result)
 
             plot_global(
                 x -> quantile.(target_model, cdf(noise_model, x)),
