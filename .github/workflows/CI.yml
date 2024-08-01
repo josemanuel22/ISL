@@ -10,5 +10,5 @@ jobs:
       env:
         #token: ${{ secrets.CODECOV_TOKEN }}
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        #file: lcov.info
-        #verbose: true # optional (default = false)
+        file: lcov.info
+        verbose: true # optional (default = false)
