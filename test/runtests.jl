@@ -284,7 +284,7 @@ end;
         mock_data = [100.0, 100.0, 100.0]
 
         hparams = AutoISLParams(;
-            max_k=100, samples=1000, epochs=1000, η=1e-2, transform=noise_model
+            max_k=100, samples=1000, epochs=1000, η=1e-2, transform=Normal(0.0f0, 1.0f0)
         )
         expected_K = 2  # Expected K value for these inputs
 
