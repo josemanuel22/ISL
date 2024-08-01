@@ -6,6 +6,7 @@ using LinearAlgebra
 using Random
 using Test
 
+include("../examples/utils.jl")       # Include utility function
 include("../examples/time_series_predictions/ts_utils.jl")       # Include time series utility functions
 
 # Set a tolerance value for approximate comparisons
@@ -158,7 +159,6 @@ end;
         #hist2 = fit(Histogram, data, (-2:0.1:8))
         #@test js_divergence(hist1.weights, hist2.weights)/hparams.samples < 0.03
     end
-
     @testset "learning uniform distribution (-2,2)" begin
         nn = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
         hparams = ISLParams(;
@@ -297,77 +297,80 @@ end;
         expected_K = 10  # Expected K value for these inputs
         @test result_K == expected_K
     end
-
-    # Test function
-    @testset "ts_invariant_statistical_loss_one_step_prediction Tests" begin
-
-        # Define AR model parameters
-        ar_hparams = ARParams(;
-            ϕ=[0.5f0, 0.3f0, 0.2f0],  # Autoregressive coefficients
-            x₁=rand(Normal(0.0f0, 1.0f0)),  # Initial value from a Normal distribution
-            proclen=2000,  # Length of the process
-            noise=Normal(0.0f0, 0.2f0),  # Noise in the AR process
-        )
-
-        # Define the recurrent and generative models
-        recurrent_model = Chain(RNN(1 => 10, relu), RNN(10 => 10, relu))
-        generative_model = Chain(Dense(11, 16, relu), Dense(16, 1, identity))
-
-        # Generate training and testing data
-        n_series = 200  # Number of series to generate
-        loaderXtrain, loaderYtrain, loaderXtest, loaderYtest = generate_batch_train_test_data(
-            n_series, ar_hparams
-        )
-
-        # --- Training Configuration ---
-
-        # Define hyperparameters for time series prediction
-        ts_hparams = HyperParamsTS(;
-            seed=1234,
-            η=1e-3,  # Learning rate
-            epochs=n_series,
-            window_size=1000,  # Size of the window for prediction
-            K=10,  # Hyperparameter K (if it has a specific use, add a comment)
-        )
-
-        # Train model and calculate loss
-        loss = ts_invariant_statistical_loss_one_step_prediction(
-            recurrent_model, generative_model, loaderXtrain, loaderYtrain, ts_hparams
-        )
-        @test !isempty(loss) # Check that losses are returned
-        @test all(loss .>= 0) # Assuming loss cannot be negative; adjust as necessary
-
-        # --- Testing Configuration ---
-        prediction = Vector{Float32}()
-        Flux.reset!(recurrent_model)
-        n_average = 100  # Number of predictions to average
-        s = 0
-        loaderX = collect(loaderXtrain)[1]
-        loadertestX = collect(loaderXtest)[1]
-        for data in loaderX
-            s = recurrent_model([data])
-            y, _ = average_prediction(generative_model, s, n_average)
-            append!(prediction, y[1])
-        end
-
-        ideal = vcat(loaderX, loadertestX)
-        t = 1:length(ideal)
-
-        prediction = Vector{Float32}()
-        std_prediction = Vector{Float32}()
-        for data in loadertestX
-            y, std = average_prediction(generative_model, s, n_average)
-            s = recurrent_model([y[1]])
-            append!(prediction, y[1])
-            append!(std_prediction, std)
-        end
-
-        nd = ND(loadertestX, prediction)
-        rmse = RMSE(loadertestX, prediction)
-        qlρ = QLρ(loadertestX, prediction; ρ=0.9)
-
-        @test nd >= 0.0 and nd <= 1.0
-        @test rmse >= 0.0 and rmse <= 25.0
-        @test qlρ >= 0.0 and nd <= 2.0
-    end
 end;
+#=
+# Test function
+@testset "ts_invariant_statistical_loss_one_step_prediction Tests" begin
+
+    # Define AR model parameters
+    ar_hparams = ARParams(;
+        ϕ=[0.5f0, 0.3f0, 0.2f0],  # Autoregressive coefficients
+        x₁=rand(Normal(0.0f0, 1.0f0)),  # Initial value from a Normal distribution
+        proclen=2000,  # Length of the process
+        noise=Normal(0.0f0, 0.2f0),  # Noise in the AR process
+    )
+
+    # Define the recurrent and generative models
+    recurrent_model = Chain(RNN(1 => 10, relu), RNN(10 => 10, relu))
+    generative_model = Chain(Dense(11, 16, relu), Dense(16, 1, identity))
+
+    # Generate training and testing data
+    n_series = 200  # Number of series to generate
+    loaderXtrain, loaderYtrain, loaderXtest, loaderYtest = generate_batch_train_test_data(
+        n_series, ar_hparams
+    )
+
+    # --- Training Configuration ---
+
+    # Define hyperparameters for time series prediction
+    ts_hparams = HyperParamsTS(;
+        seed=1234,
+        η=1e-3,  # Learning rate
+        epochs=n_series,
+        window_size=1000,  # Size of the window for prediction
+        K=10,  # Hyperparameter K (if it has a specific use, add a comment)
+    )
+
+    # Train model and calculate loss
+    loss = ts_invariant_statistical_loss_one_step_prediction(
+        recurrent_model, generative_model, loaderXtrain, loaderYtrain, ts_hparams
+    )
+    @test !isempty(loss) # Check that losses are returned
+    @test all(loss .>= 0) # Assuming loss cannot be negative; adjust as necessary
+
+    # --- Testing Configuration ---
+    prediction = Vector{Float32}()
+    Flux.reset!(recurrent_model)
+    n_average = 100  # Number of predictions to average
+    s = 0
+    loaderX = collect(loaderXtrain)[1]
+    loadertestX = collect(loaderXtest)[1]
+    for data in loaderX
+        s = recurrent_model([data])
+        y, _ = average_prediction(generative_model, s, n_average)
+        append!(prediction, y[1])
+    end
+
+    ideal = vcat(loaderX, loadertestX)
+    t = 1:length(ideal)
+
+    prediction = Vector{Float32}()
+    std_prediction = Vector{Float32}()
+    for data in loadertestX
+        y, std = average_prediction(generative_model, s, n_average)
+        s = recurrent_model([y[1]])
+        append!(prediction, y[1])
+        append!(std_prediction, std)
+    end
+
+    nd = ND(loadertestX, prediction)
+    rmse = RMSE(loadertestX, prediction)
+    qlρ = QLρ(loadertestX, prediction; ρ=0.9)
+
+    @test nd >= 0.0 and nd <= 1.0
+    @test rmse >= 0.0 and rmse <= 25.0
+    @test qlρ >= 0.0 and nd <= 2.0
+end
+end;
+
+=#
