@@ -1,4 +1,4 @@
-# README
+# ISL: Training Implicit Generative Models via an Invariant Statistical Loss
 [![arXiv](https://img.shields.io/badge/arXiv-2402.16435-b31b1b.svg)](https://arxiv.org/abs/2402.16435)
 [![Conference](https://img.shields.io/badge/AISTATS-2024-blue)](arxiv.org/abs/2402.16435)
 [![Build Status](https://github.com/josemanuel22/ISL/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/josemanuel22/ISL/actions/workflows/CI.yml?query=branch%3Amain)
