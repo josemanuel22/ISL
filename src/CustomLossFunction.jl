@@ -17,12 +17,6 @@ function _sigmoid(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
     return sigmoid_fast.((y .- ŷ) .* 10.0f0)
 end;
 
-#=
-function _leaky_relu(ŷ::Matrix{T}, y::T) where {T<:AbstractFloat}
-    return min.(0.001 .* (y .- ŷ) .+ 1.0, leakyrelu.((y .- ŷ) .* 10, 0.001))
-end;
-=#
-
 """
     ψₘ(y::T, m::Int64) where {T<:AbstractFloat}
 
