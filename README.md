@@ -10,13 +10,13 @@ This repository contains the Julia Flux implementation of the Invariant Statisti
 Please, if you use this code, cite the [article](https://arxiv.org/abs/2402.16435):
 
 ```
-@misc{defrutos2024training,
-      title={Training Implicit Generative Models via an Invariant Statistical Loss}, 
-      author={José Manuel de Frutos and Pablo M. Olmos and Manuel A. Vázquez and Joaquín Míguez},
-      year={2024},
-      eprint={2402.16435},
-      archivePrefix={arXiv},
-      primaryClass={cs.LG}
+@inproceedings{de2024training,
+  title={Training Implicit Generative Models via an Invariant Statistical Loss},
+  author={de Frutos, Jos{\'e} Manuel and Olmos, Pablo and Lopez, Manuel Alberto Vazquez and M{\'\i}guez, Joaqu{\'\i}n},
+  booktitle={International Conference on Artificial Intelligence and Statistics},
+  pages={2026--2034},
+  year={2024},
+  organization={PMLR}
 }
 ``````
 
