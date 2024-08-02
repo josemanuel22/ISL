@@ -7,7 +7,7 @@
 
 This repository contains the Julia Flux implementation of the Invariant Statistical Loss (ISL) proposed in the paper [Training Implicit Generative Models via an Invariant Statistical Loss](https://arxiv.org/abs/2402.16435), published in the AISTATS 2024 conference.
 
-Please, if you use this code, cite the [article](https://arxiv.org/abs/2402.16435):
+Please, if you use this code, cite the [article](https://proceedings.mlr.press/v238/frutos24a/frutos24a.pdf):
 
 ```
 @inproceedings{de2024training,
