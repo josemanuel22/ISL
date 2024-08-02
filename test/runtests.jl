@@ -4,6 +4,7 @@ using Flux
 using Distributions
 using LinearAlgebra
 using Random
+using CSV
 using Test
 
 include("../examples/utils.jl")       # Include utility function
@@ -408,6 +409,46 @@ end;
     loss = ts_invariant_statistical_loss(
         recurrent_model, generative_model, loaderXtrain, loaderYtrain, ts_hparams
     )
+    @test !isempty(loss) # Check that losses are returned
+    @test all(loss .>= 0) # Assuming loss cannot be negative; adjust as necessary
+end;
+
+@testset "ts_invariant_statistical_loss_multivariate Tests" begin
+    # Load CSV file
+    csv1 = "./test/ETTh1.csv"
+    df = DataFrame(CSV.File(csv1; delim=',', header=true, decimal='.'))
+    df = select(df, Not(:date))
+
+    # Select relevant columns and standardize data
+    matrix = Float32.(Matrix(df))
+    mean_vals, std_vals = mean(matrix; dims=1), std(matrix; dims=1)
+    matrix = (matrix .- mean_vals) ./ std_vals
+
+    # Preparing data for training
+    dataX = [matrix[i, :] for i in 1:size(matrix, 1)]
+    dataY = [matrix[i, :] for i in 2:size(matrix, 1)]
+
+    # Model hyperparameters and architecture
+    hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=2000, window_size=2000, K=10)
+    rec = Chain(RNN(7 => 3, relu), LayerNorm(3))
+    gen = Chain(Dense(4, 5, relu), Dropout(0.05), Dense(5, 7, identity))
+
+    # DataLoader setup
+    batch_size = 1000
+    loaderXtrain = Flux.DataLoader(
+        dataX; batchsize=batch_size, shuffle=false, partial=false
+    )
+    loaderYtrain = Flux.DataLoader(
+        dataY; batchsize=batch_size, shuffle=false, partial=false
+    )
+
+    losses = []
+    @showprogress for i in 1:100
+        loss = ts_invariant_statistical_loss_multivariate(
+            rec, gen, loaderXtrain, loaderYtrain, hparams
+        )
+        append!(losses, loss)
+    end
     @test !isempty(loss) # Check that losses are returned
     @test all(loss .>= 0) # Assuming loss cannot be negative; adjust as necessary
 end;
