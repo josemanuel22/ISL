@@ -220,7 +220,7 @@ end;
             0.01
     end
 
-    @testset "learning modal auto_adaptative_block_learning Normal(4.0f0, 2.0f0)" begin
+    @testset "learning modal auto_invariant_statistical_loss Normal(4.0f0, 2.0f0)" begin
         nn = Chain(Dense(1, 7), elu, Dense(7, 13), elu, Dense(13, 7), elu, Dense(7, 1))
         hparams = AutoISLParams(;
             max_k=10, samples=1000, epochs=1000, η=1e-2, transform=Normal(0.0f0, 1.0f0)
