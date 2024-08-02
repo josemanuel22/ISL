@@ -222,29 +222,6 @@ function invariant_statistical_loss(nn_model, data, hparams)
     return losses
 end;
 
-#=
-function invariant_statistical_loss_1(nn_model, loader, hparams)
-    @assert loader.batchsize == hparams.samples
-    @assert length(loader) == hparams.epochs
-    losses = []
-    optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
-    @showprogress for data in loader
-        loss, grads = Flux.withgradient(nn_model) do nn
-            aₖ = zeros(hparams.K + 1)
-            for i in 1:(hparams.samples)
-                x = rand(hparams.transform, hparams.K)
-                yₖ = nn(x')
-                aₖ += generate_aₖ(yₖ, data[i])
-            end
-            scalar_diff(aₖ ./ sum(aₖ))
-        end
-        Flux.update!(optim, nn_model, grads[1])
-        push!(losses, loss)
-    end
-    return losses
-end;
-=#
-
 """
     AutoISLParams
 
@@ -342,67 +319,6 @@ function auto_invariant_statistical_loss(nn_model, data, hparams)
     end
     return losses
 end;
-
-#=
-function auto_invariant_statistical_loss_2(nn_model, data, hparams)
-    @assert length(data) == hparams.samples
-
-    K = 2
-    @debug "K value set to $K."
-    losses = []
-    optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
-    @showprogress for _ in 1:(hparams.epochs)
-        K̂ = get_better_K(nn_model, data, K, hparams)
-        if K < K̂
-            K = K̂
-            @debug "K value set to $K."
-        end
-        loss, grads = Flux.withgradient(nn_model) do nn
-            aₖ = zeros(K + 1)
-            for i in 1:(hparams.samples)
-                x = rand(hparams.transform, K)
-                yₖ = nn(x')
-                aₖ += generate_aₖ(yₖ, data.data[i])
-            end
-            scalar_diff(aₖ ./ sum(aₖ))
-        end
-        Flux.update!(optim, nn_model, grads[1])
-        push!(losses, loss)
-    end
-    return losses
-end;
-=#
-
-#=
-function auto_invariant_statistical_loss_1(nn_model, loader, hparams)
-    @assert loader.batchsize == hparams.samples
-    @assert length(loader) == hparams.epochs
-
-    K = 2
-    @debug "K value set to $K."
-    losses = []
-    optim = Flux.setup(Flux.Adam(hparams.η), nn_model)
-    @showprogress for data in loader
-        K̂ = get_better_K(nn_model, data, K, hparams)
-        if K < K̂
-            K = K̂
-            @debug "K value set to $K."
-        end
-        loss, grads = Flux.withgradient(nn_model) do nn
-            aₖ = zeros(K + 1)
-            for i in 1:(hparams.samples)
-                x = rand(hparams.transform, K)
-                yₖ = nn(x')
-                aₖ += generate_aₖ(yₖ, data[i])
-            end
-            scalar_diff(aₖ ./ sum(aₖ))
-        end
-        Flux.update!(optim, nn_model, grads[1])
-        push!(losses, loss)
-    end
-    return losses
-end;
-=#
 
 # Hyperparameters for the method `ts_adaptative_block_learning`
 """
