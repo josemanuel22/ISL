@@ -411,6 +411,7 @@ end;
     )
     @test !isempty(loss) # Check that losses are returned
     @test all(loss .>= 0) # Assuming loss cannot be negative; adjust as necessary
+    @test loss[end] <= loss[1]
 end;
 
 @testset "ts_invariant_statistical_loss_multivariate Tests" begin
@@ -429,7 +430,7 @@ end;
     dataY = [matrix[i, :] for i in 2:size(matrix, 1)]
 
     # Model hyperparameters and architecture
-    hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=2000, window_size=2000, K=10)
+    hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=1000, window_size=2000, K=10)
     rec = Chain(RNN(7 => 3, relu), LayerNorm(3))
     gen = Chain(Dense(4, 5, relu), Dropout(0.05), Dense(5, 7, identity))
 
@@ -451,4 +452,5 @@ end;
     end
     @test !isempty(loss) # Check that losses are returned
     @test all(loss .>= 0) # Assuming loss cannot be negative; adjust as necessary
+    @test losses[end] <= losses[1]
 end;
