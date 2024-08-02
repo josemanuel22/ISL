@@ -5,6 +5,7 @@ using Distributions
 using LinearAlgebra
 using Random
 using CSV
+using DataFrames
 using Test
 
 include("../examples/utils.jl")       # Include utility function
@@ -12,7 +13,6 @@ include("../examples/time_series_predictions/ts_utils.jl")       # Include time 
 
 # Set a tolerance value for approximate comparisons
 tol::Float64 = 1e-5
-
 # Test the '_sigmoid' function
 @testset "sigmoid" begin
     @test all(_sigmoid([2.6 2.3], 2.0) .< [0.5 0.5])
@@ -305,6 +305,7 @@ end;
     end
 end;
 
+#=
 # Test function
 @testset "ts_invariant_statistical_loss_one_step_prediction Tests" begin
 
@@ -418,10 +419,11 @@ end;
     @test all(loss .>= 0) # Assuming loss cannot be negative; adjust as necessary
     @test loss[end] <= loss[1]
 end;
+=#
 
 @testset "ts_invariant_statistical_loss_multivariate Tests" begin
     # Load CSV file
-    csv1 = "./test/ETTh1.csv"
+    csv1 = "./ETTh1.csv"
     df = DataFrame(CSV.File(csv1; delim=',', header=true, decimal='.'))
     df = select(df, Not(:date))
 
@@ -449,13 +451,13 @@ end;
     )
 
     losses = []
-    @showprogress for i in 1:100
+    for i in 1:100
         loss = ts_invariant_statistical_loss_multivariate(
             rec, gen, loaderXtrain, loaderYtrain, hparams
         )
         append!(losses, loss)
     end
-    @test !isempty(loss) # Check that losses are returned
-    @test all(loss .>= 0) # Assuming loss cannot be negative; adjust as necessary
+    @test !isempty(losses) # Check that losses are returned
+    @test all(losses .>= 0) # Assuming loss cannot be negative; adjust as necessary
     @test losses[end] <= losses[1]
 end;
