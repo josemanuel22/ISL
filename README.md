@@ -5,7 +5,7 @@
 [![Documenter: stable](https://img.shields.io/badge/docs-dev-blue.svg)](https://josemanuel22.github.io/ISL/dev/) [![codecov](https://codecov.io/gh/josemanuel22/ISL/graph/badge.svg?token=ZRtCurBd3z)](https://app.codecov.io/gh/josemanuel22/ISL)
 [![Code Style: Blue](https://img.shields.io/badge/code%20style-blue-4495d1.svg)](https://github.com/invenia/BlueStyle)
 
-This repository contains the Julia Flux implementation of the Invariant Statistical Loss (ISL) proposed in the paper [Training Implicit Generative Models via an Invariant Statistical Loss](https://arxiv.org/abs/2402.16435), published in the AISTATS 2024 conference.
+This repository contains the Julia Flux implementation of the Invariant Statistical Loss (ISL) proposed in the paper [Training Implicit Generative Models via an Invariant Statistical Loss](https://proceedings.mlr.press/v238/frutos24a/frutos24a.pdf), published in the AISTATS 2024 conference.
 
 Please, if you use this code, cite the [article](https://proceedings.mlr.press/v238/frutos24a/frutos24a.pdf):
 
