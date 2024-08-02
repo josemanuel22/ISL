@@ -373,3 +373,41 @@ end;
     @test qlρ >= 0.0 and nd <= 2.0
     =#
 end;
+
+@testset "ts_invariant_statistical_loss Tests" begin
+    # Define AR model parameters
+    ar_hparams = ARParams(;
+        ϕ=[0.5f0, 0.3f0, 0.2f0],  # Autoregressive coefficients
+        x₁=rand(Normal(0.0f0, 1.0f0)),  # Initial value from a Normal distribution
+        proclen=2000,  # Length of the process
+        noise=Normal(0.0f0, 0.2f0),  # Noise in the AR process
+    )
+
+    # Define the recurrent and generative models
+    recurrent_model = Chain(RNN(1 => 10, relu), RNN(10 => 10, relu))
+    generative_model = Chain(Dense(11, 16, relu), Dense(16, 1, identity))
+
+    # Generate training and testing data
+    n_series = 200  # Number of series to generate
+    loaderXtrain, loaderYtrain, loaderXtest, loaderYtest = generate_batch_train_test_data(
+        n_series, ar_hparams
+    )
+
+    # --- Training Configuration ---
+
+    # Define hyperparameters for time series prediction
+    ts_hparams = HyperParamsTS(;
+        seed=1234,
+        η=1e-3,  # Learning rate
+        epochs=n_series,
+        window_size=1000,  # Size of the window for prediction
+        K=10,  # Hyperparameter K (if it has a specific use, add a comment)
+    )
+
+    # Train model and calculate loss
+    loss = ts_invariant_statistical_loss(
+        recurrent_model, generative_model, loaderXtrain, loaderYtrain, ts_hparams
+    )
+    @test !isempty(loss) # Check that losses are returned
+    @test all(loss .>= 0) # Assuming loss cannot be negative; adjust as necessary
+end;
