@@ -192,11 +192,14 @@ end;
         train_set = Float32.(rand(target_model, hparams.samples))
         loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-        invariant_statistical_loss(nn, loader, hparams)
+        loss = invariant_statistical_loss(nn, loader, hparams)
 
         validation_set = Float32.(rand(target_model, hparams.samples))
         data = vec(nn(rand(hparams.transform, hparams.samples)'))
 
+        @test length(loss) == hparams.epochs
+        @test all(loss .>= 0)
+        @test loss[end] <= loss[1]
         @test pvalue(HypothesisTests.ApproximateTwoSampleKSTest(validation_set, data)) >
             0.01
     end
@@ -212,11 +215,14 @@ end;
         train_set = Float32.(rand(target_model, hparams.samples))
         loader = Flux.DataLoader(train_set; batchsize=-1, shuffle=true, partial=false)
 
-        invariant_statistical_loss(nn, loader, hparams)
+        loss = invariant_statistical_loss(nn, loader, hparams)
 
         validation_set = Float32.(rand(target_model, hparams.samples))
         data = vec(nn(rand(hparams.transform, hparams.samples)'))
 
+        @test length(loss) == hparams.epochs
+        @test all(loss .>= 0)
+        @test loss[end] <= loss[1]
         @test pvalue(HypothesisTests.ApproximateTwoSampleKSTest(validation_set, data)) >
             0.01
     end
@@ -240,7 +246,6 @@ end;
         @test length(loss) == hparams.epochs
         @test all(loss .>= 0)
         @test loss[end] <= loss[1]
-
         @test pvalue(HypothesisTests.ApproximateTwoSampleKSTest(validation_set, data)) >
             0.01
     end
