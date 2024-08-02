@@ -298,7 +298,7 @@ end;
         @test result_K == expected_K
     end
 end;
-#=
+
 # Test function
 @testset "ts_invariant_statistical_loss_one_step_prediction Tests" begin
 
@@ -338,6 +338,7 @@ end;
     @test !isempty(loss) # Check that losses are returned
     @test all(loss .>= 0) # Assuming loss cannot be negative; adjust as necessary
 
+    #=
     # --- Testing Configuration ---
     prediction = Vector{Float32}()
     Flux.reset!(recurrent_model)
@@ -370,7 +371,5 @@ end;
     @test nd >= 0.0 and nd <= 1.0
     @test rmse >= 0.0 and rmse <= 25.0
     @test qlρ >= 0.0 and nd <= 2.0
-end
+    =#
 end;
-
-=#
