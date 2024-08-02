@@ -320,6 +320,7 @@ function auto_invariant_statistical_loss(nn_model, data, hparams)
     return losses
 end;
 
+# COV_EXCL_START
 # Hyperparameters for the method `ts_adaptative_block_learning`
 """
     HyperParamsTS
@@ -388,6 +389,7 @@ hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=2000, window_size=1000, K=1
 losses = ts_invariant_statistical_loss_one_step_prediction(rec, gen, Xₜ, Xₜ₊₁, hparams)
 ```
 """
+# COV_EXCL_STOP
 function ts_invariant_statistical_loss_one_step_prediction(rec, gen, Xₜ, Xₜ₊₁, hparams)
     losses = []
     optim_rec = Flux.setup(Flux.Adam(hparams.η), rec)
@@ -413,6 +415,7 @@ function ts_invariant_statistical_loss_one_step_prediction(rec, gen, Xₜ, Xₜ�
     return losses
 end
 
+# COV_EXCL_START
 """
     ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams)
 
@@ -438,6 +441,7 @@ This function train a model for time series data with statistical invariance los
 The function iterates through the provided time series data (`Xₜ` and `Xₜ₊₁`) in batches, with a sliding window of size `window_size`.
 
 """
+# COV_EXCL_STOP
 function ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams)
     losses = []
     optim_rec = Flux.setup(Flux.Adam(hparams.η), rec)
@@ -463,6 +467,7 @@ function ts_invariant_statistical_loss(rec, gen, Xₜ, Xₜ₊₁, hparams)
     return losses
 end
 
+# COV_EXCL_START
 """
     ts_invariant_statistical_loss_multivariate(rec, gen, Xₜ, Xₜ₊₁, hparams) -> losses
 
@@ -502,6 +507,7 @@ hparams = HyperParamsTS(; seed=1234, η=1e-2, epochs=2000, window_size=1000, K=1
 losses = ts_invariant_statistical_loss_multivariate(rec, gen, Xₜ, Xₜ₊₁, hparams)
 ```
 """
+# COV_EXCL_STOP
 function ts_invariant_statistical_loss_multivariate(rec, gen, Xₜ, Xₜ₊₁, hparams)
     losses = []
     optim_rec = Flux.setup(Flux.Adam(hparams.η), rec)
