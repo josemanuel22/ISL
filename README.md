@@ -1,5 +1,5 @@
 # ISL: Training Implicit Generative Models via an Invariant Statistical Loss
-[![arXiv](https://img.shields.io/badge/arXiv-2402.16435-b31b1b.svg)](https://arxiv.org/abs/2402.16435)
+<!--[![arXiv](https://img.shields.io/badge/arXiv-2402.16435-b31b1b.svg)](https://arxiv.org/abs/2402.16435) -->
 [![Conference](https://img.shields.io/badge/AISTATS-2024-blue)](https://proceedings.mlr.press/v238/frutos24a/frutos24a.pdf)
 [![Build Status](https://github.com/josemanuel22/ISL/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/josemanuel22/ISL/actions/workflows/CI.yml?query=branch%3Amain)
 [![Documenter: stable](https://img.shields.io/badge/docs-dev-blue.svg)](https://josemanuel22.github.io/ISL/dev/) [![codecov](https://codecov.io/gh/josemanuel22/ISL/graph/badge.svg?token=ZRtCurBd3z)](https://app.codecov.io/gh/josemanuel22/ISL)
