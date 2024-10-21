@@ -353,8 +353,8 @@ hparams = HyperParamsVanillaGan(;
     data_size=1000,
     batch_size=1000,
     epochs=2e2,
-    lr_dscr=1e-4,
-    lr_gen=1e-4,
+    lr_dscr=1e-5,
+    lr_gen=1e-5,
     latent_dim=2,
     dscr_steps=0,
     gen_steps=1,
@@ -475,7 +475,7 @@ kl_divs = []
 end
 
 model_cpu = cpu(model)
-res = model_cpu(Float32.(rand(cpu(hparams.noise_model), 10000)))
+res = model_cpu(Float32.(rand(cpu(hparams.noise_model), 5000)))
 #res = Float32.(rand(hparams.noise_model, 1000)) ## Esta linea tienes que comentarla
 
 x = res[1, :]
@@ -668,29 +668,31 @@ end
 Flux.@functor RingMixture
 
 function log_prob(model::RingMixture, z)
-    d = zeros(Float32, size(z, 1))
+    d = zeros(Float32, size(z, 1), model.n_rings)
     for i in 1:(model.n_rings)
+        # Calculate the distance to each ring
         d_ = ((norm.(eachrow(z)) .- 2 / model.n_rings * (i + 1)) .^ 2) / (2 * model.scale^2)
-        d = hcat(d, d_)
+        d[:, i] = d_
     end
     return logsumexp(-d; dims=2)
 end
 
 function rejection_sampling(model::RingMixture, num_steps::Int=1)
-    eps = rand(Float32, num_steps, model.n_dims)
-    z_ = model.prop_scale .* eps' .+ model.prop_shift
+    eps = rand(Float32, num_steps, model.n_dims) # Generate num_steps x n_dims random values
+    println(eps)
+    z_ = model.prop_scale .* eps .+ model.prop_shift # Scale and shift the samples
     prob = rand(Float32, num_steps)
     prob_ = exp.(log_prob(model, z_) .- model.max_log_prob)
-    accept = prob_ .> prob'
+    accept = prob_ .> prob
     z = z_[accept, :]
     return z
 end
 
 function sample(model::RingMixture, num_samples::Int=1)
-    z = Float32[]
-    while length(z) < num_samples
-        z_ = rejection_sampling(model, num_samples)
-        ind = min(size(z_, 1), num_samples - length(z))
+    z = Array{Float32,2}(undef, 0, model.n_dims)  # Initialize an empty 2D array
+    while size(z, 1) < num_samples
+        z_ = rejection_sampling(model)
+        ind = min(size(z_, 1), num_samples - size(z, 1))
         z = vcat(z, z_[1:ind, :])
     end
     return z
@@ -750,3 +752,72 @@ function count_within_3std(means_matrix, sigma, yₖ)
 
     return count, sum(modes_covered)
 end
+
+using Flux
+using LinearAlgebra
+using Statistics
+
+struct Target
+    prop_scale::Float32
+    prop_shift::Float32
+    n_dims::Int
+end
+
+function Target(; prop_scale=6.0f0, prop_shift=-3.0f0)
+    return Target(prop_scale, prop_shift, 2)
+end
+
+function log_prob(model::Target, z)
+    throw(ArgumentError("The log probability is not implemented yet."))
+end
+
+function rejection_sampling(model::RingMixture, num_steps::Int=1)
+    eps = rand(Float32, num_steps, model.target.n_dims)  # Generate num_steps x n_dims random values
+    z_ = model.target.prop_scale .* eps .+ model.target.prop_shift  # Apply scale and shift
+    prob = rand(Float32, num_steps)  # Generate acceptance probabilities
+    prob_ = exp.(log_prob(model, z_) .- model.max_log_prob)  # Compute acceptance based on log_prob
+    accept = prob_ .> prob  # Create a mask to filter accepted samples
+    indices = LinearIndices(accept)[findall(accept)]
+    z = z_[indices, :]  # Filter rows of z_ based on accept mask
+    return z
+end
+
+function sample(model::RingMixture, num_samples::Int=1)
+    z = zeros(0,2)  # Initialize z with zero rows but n_dims columns
+    while size(z, 1) < num_samples
+        z_ = rejection_sampling(model, num_samples)  # Sample new points
+        ind = min(size(z_, 1), num_samples - size(z, 1))  # Determine how many samples are needed
+        println(ind)
+        if ind > 0
+            z = vcat(z, z_[1:ind, :])  # Concatenate accepted samples
+        end
+    end
+    return z
+end
+
+struct RingMixture
+    target::Target
+    max_log_prob::Float32
+    n_rings::Int
+    scale::Float32
+end
+
+function RingMixture(n_rings::Int=2)
+    target = Target()
+    max_log_prob = 0.0f0
+    scale = 1 / (4 * n_rings)
+    return RingMixture(target, max_log_prob, n_rings, scale)
+end
+
+function log_prob(model::RingMixture, z)
+    d = zeros(Float32, size(z, 1), 0)
+    for i in 1:(model.n_rings)
+        row_norms = [norm(z[j, :]) for j in 1:size(z, 1)]
+        d_ = ((row_norms .- 2 / model.n_rings * (i + 1)) .^ 2) / (2 * model.scale^2)
+        d = hcat(d, d_)
+    end
+    return logsumexp(-d; dims=2)
+end
+
+model = RingMixture(2)
+moons = sample(model, 10000)

@@ -326,7 +326,7 @@ noise_model = device(
 )
 
 hparams = HyperParamsSlicedISL(;
-    K=10, samples=1000, epochs=8, η=1e-3, noise_model=noise_model, m=10
+    K=10, samples=1000, epochs=25, η=1e-3, noise_model=noise_model, m=5
 )
 
 # Preparing the training set and data loader

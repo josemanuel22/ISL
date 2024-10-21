@@ -287,7 +287,7 @@ end
         gpd2 = GPD(0.5f0)
         noise_model = MultivariateGPD([gpd1, gpd2])
 
-        target_model = MultivariateHeavyTailed(0.5, 1.0f0, 1.0f0, 1.0f0)
+        target_model = MultivariateHeavyTailed(0.5, 1.0f0, 0.5f0, 1.0f0)
 
         gen = Chain(
             Dense(2, 256), relu, Dense(256, 256), relu, Dense(256, 256), relu, Dense(256, 2)
@@ -295,7 +295,7 @@ end
 
         #target_model = Cauchy(0.5f0, 1.0f0)
         hparams = HyperParamsSlicedISL(;
-            K=5, samples=1000, epochs=1, η=1e-2, noise_model=noise_model, m=5
+            K=10, samples=1000, epochs=1, η=1e-2, noise_model=noise_model, m=5
         )
 
         # Preparing the training set and data loader
@@ -369,9 +369,9 @@ end
             minorgrid=false,  # Turn off minor grid lines
             minor_xticks=false,  # Turn off minor ticks on x-axis
             minor_yticks=false,   # Turn off minor ticks on y-axis
-            guidefontsize=14,
-            tickfontsize=14,
-            #legendfont=14,
+            guidefontsize=18,
+            tickfontsize=18,
+            legendfont=18,
             fontfamily="Times New Roman",
         )
 
@@ -384,11 +384,12 @@ end
         plot!(
             sort(z[1, :]),
             1 .- ecdf₁(sort(z[1, :]));
-            label="Pareto ISL",
-            lw=2,
+            #label="Pareto ISL",
+            label="ISL (Gaussian noise)",
+            lw=3,
             #linecolor=:blue,
-            linestyle=:dash,
-            linecolor=get(ColorSchemes.rainbow, 0.2),
+            linestyle=:dashdot,
+            linecolor=get(ColorSchemes.rainbow, 0.4),
         )
         z = rand(noise_model, n_samples)
         ŷ = gen(z)
@@ -418,9 +419,9 @@ end
             minorgrid=false,  # Turn off minor grid lines
             minor_xticks=false,  # Turn off minor ticks on x-axis
             minor_yticks=false,   # Turn off minor ticks on y-axis
-            guidefontsize=14,
-            tickfontsize=14,
-            #legendfont=14,
+            guidefontsize=18,
+            tickfontsize=18,
+            legendfont=18,
             fontfamily="Times New Roman",
         )
         #z = rand(noise_model, n_samples)
@@ -431,9 +432,10 @@ end
             sort(z[2, :]),
             1 .- ecdf₂(sort(z[2, :]));
             label="Pareto ISL",
-            lw=2,
+            #label="ISL (Gaussian noise)",
+            lw=3,
             #linecolor=:blue,
-            linestyle=:dash,
+            linestyle=:dashdot,
             linecolor=get(ColorSchemes.rainbow, 0.2),
         )
 
