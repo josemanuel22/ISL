@@ -1,11 +1,20 @@
 ```@meta
 CurrentModule = ISL
 ```
-# ISL
+# ISL.jl Documentation Guide
 
-Documentation for ISL.jl
+Welcome to the documentation for `ISL.jl`, a Julia package designed for Invariant Statistical Learning. This guide provides a systematic overview of the modules, constants, types, and functions available in `ISL.jl`. Our documentation aims to help you quickly find the information you need to effectively utilize the package.
 
 ```@autodocs
 Modules = [ISL]
-Order   = [:module, :constant, :type, :function]
+Order   = [:module, :constant, :type]
 ```
+
+# Selected Function Documentation
+
+```@docs
+FunctionName1
+FunctionName2
+FunctionName3
+```
+

@@ -3,7 +3,6 @@ using KernelDensity
 using Random
 using LinearAlgebra
 using Distances
-using Distributions
 using MultivariateStats
 
 include("../utils.jl")
@@ -28,47 +27,14 @@ function generated_syntetic_data(; d=2, D=100)
     return A * z + ε
 end
 
-dcgan_init(shape...) = randn(Float32, shape...) * 0.02f0
-
-function Discriminator()
-    return Chain(
-        Conv((4, 4), 1 => 64; stride=2, pad=1, init=dcgan_init),
-        x -> leakyrelu.(x, 0.2f0),
-        Dropout(0.25),
-        Conv((4, 4), 64 => 128; stride=2, pad=1, init=dcgan_init),
-        x -> leakyrelu.(x, 0.2f0),
-        Dropout(0.25),
-        x -> reshape(x, 7 * 7 * 128, :),
-        Dense(7 * 7 * 128, 1),
-    )
-end
-
-laten = 10
-function Generator(latent_dim::Int)
-    return Chain(
-        Dense(latent_dim, 7 * 7 * 256),
-        BatchNorm(7 * 7 * 256, relu),
-        x -> reshape(x, 7, 7, 256, :),
-        ConvTranspose((5, 5), 256 => 128; stride=1, pad=2, init=dcgan_init),
-        BatchNorm(128, relu),
-        ConvTranspose((4, 4), 128 => 64; stride=2, pad=1, init=dcgan_init),
-        BatchNorm(64, relu),
-        ConvTranspose((4, 4), 64 => 1; stride=2, pad=1, init=dcgan_init),
-        x -> tanh.(x),
-    )
-end
-
-dscr = Discriminator()
-dc_gan = Generator(10)
-
 gen_1 = Chain(Dense(10, 1000, relu), Dense(1000, 100, identity))
 gen_2 = Chain(Dense(10, 1000, relu), Dense(1000, 100, identity))
 
 noise_model = MvNormal(zeros(Float32, 10), 1.0f0 * I(10))
 hparams = HyperParamsSlicedISL(;
-    K=10, samples=1000, epochs=10, η=1e-3, noise_model=noise_model, m=10
+    K=10, samples=1000, epochs=10, η=1e-4, noise_model=noise_model, m=10
 )
-train_set = hcat([generated_syntetic_data(; d=2, D=100) for _ in 1:10000]...)
+train_set = hcat([generated_syntetic_data(; d=2, D=500) for _ in 1:10000]...)
 batchsize = 1000
 loader = Flux.DataLoader(train_set; batchsize=batchsize, shuffle=true, partial=false)
 
@@ -76,21 +42,24 @@ total_loss_1 = []
 total_loss_2 = []
 js_values_1 = []
 js_values_2 = []
-@showprogress for _ in 1:10
-    loss = marginal_invariant_statistical_loss(gen_1, loader, hparams)
+@showprogress for _ in 1:1000
+    loss = marginal_invariant_statistical_loss_optimized(gen_1, loader, hparams)
     append!(total_loss_1, loss)
-    #append!(js_values_1, get_js(gen_1, train_set))
-    #train_vanilla_gan(dscr, dc_gan, hparams, loader)
-    #loss = sliced_invariant_statistical_loss_optimized_2(gen_2, loader, hparams)
-    #append!(total_loss_2, loss)
-    append!(js_values_2, get_js(gen_1, train_set))
+    js = get_js(gen_1, train_set)
+    println(js)
+    append!(js_values_1, get_js(gen_1, train_set))
+    loss = sliced_invariant_statistical_loss_optimized_2(gen_2, loader, hparams)
+    append!(total_loss_2, loss)
+    js = get_js(gen_2, train_set)
+    println(js)
+    append!(js_values_2, js)
 end
 
 function get_js(gen, train_set)
     total = 0.0
     for _ in 1:100
         M = fit(PCA, train_set; maxoutdim=100)
-        train_set_reduce = transform(M, train_set)
+        train_set_reduce = predict(M, train_set)
         x = train_set_reduce[1, :]
         y = train_set_reduce[2, :]
         kde_result = kde((x, y))
@@ -106,7 +75,7 @@ function get_js(gen, train_set)
         p = probabilities / sum(probabilities)
 
         output_data = gen(Float32.(rand(noise_model, 10000)))
-        output_data = transform(M, output_data)
+        output_data = predict(M, output_data)
         x = output_data[1, :]
         y = output_data[2, :]
         kde_result = kde((x, y))
@@ -126,3 +95,14 @@ function get_js(gen, train_set)
 
     return total / 100.0
 end
+
+plot(
+    js_values_1;
+    label="Marginal",
+    xlabel="Epoch",
+    ylabel="JS-Divergence",
+    legend=:topright,
+    linecolor=:redsblues,
+    fontfamily="Times New Roman",
+)
+plot!(js_values_2; label="Slicing", linecolor=get(ColorSchemes.rainbow, 0.2))

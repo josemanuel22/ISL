@@ -17,6 +17,55 @@ using LinearAlgebra
 using NMoons, Plots
 using StatsPlots  # For density plots
 
+# `nmoons` is adapted from https://github.com/wildart/nmoons
+function nmoons(
+    ::Type{T},
+    n::Int=100,
+    c::Int=2;
+    shuffle::Bool=false,
+    ε::Real=0.1,
+    d::Int=2,
+    translation::Vector{T}=zeros(T, d),
+    rotations::Dict{Pair{Int,Int},T}=Dict{Pair{Int,Int},T}(),
+    seed::Union{Int,Nothing}=nothing,
+) where {T<:Real}
+    rng = seed === nothing ? Random.GLOBAL_RNG : MersenneTwister(Int(seed))
+    ssize = floor(Int, n / c)
+    ssizes = fill(ssize, c)
+    ssizes[end] += n - ssize * c
+    @assert sum(ssizes) == n "Incorrect partitioning"
+    pi = convert(T, π)
+    R(θ) = [cos(θ) -sin(θ); sin(θ) cos(θ)]
+    X = zeros(d, 0)
+    for (i, s) in enumerate(ssizes)
+        circ_x = cos.(range(zero(T), pi; length=s)) .- 1.0
+        circ_y = sin.(range(zero(T), pi; length=s))
+        C = R(-(i - 1) * (2 * pi / c)) * hcat(circ_x, circ_y)'
+        C = vcat(C, zeros(d - 2, s))
+        dir = zeros(d) - C[:, end] # translation direction
+        X = hcat(X, C .+ dir .* translation)
+    end
+    y = vcat([fill(i, s) for (i, s) in enumerate(ssizes)]...)
+    if shuffle
+        idx = randperm(rng, n)
+        X, y = X[:, idx], y[idx]
+    end
+    # Add noise to the dataset
+    if ε > 0.0
+        X += randn(rng, size(X)) .* convert(T, ε / d)
+    end
+    # Rotate dataset
+    for ((i, j), θ) in rotations
+        X[[i, j], :] .= R(θ) * view(X, [i, j], :)
+    end
+    return X, y
+end
+
+function sample_moons(n)
+    X, _ = nmoons(Float64, n, 2; ε=0.05, d=2, translation=[0.25, -0.25])
+    return Array(X')
+end
+
 struct CoustomDistribution <: ContinuousMultivariateDistribution end
 
 Distributions.dim(::CoustomDistribution) = 2
@@ -216,6 +265,7 @@ moons = genereated_moons()
 
 moon = TwoMoons()
 moon = RingMixture(2)
+moons = Float32.(sample_moons(10000))
 
 moons = Float32.(rand(moon, 10000))
 #moons = moons'
@@ -239,11 +289,13 @@ heatmap(
     kdes.x,
     kdes.y,
     kdes.density;
-    title="Density Heatmap",
-    xlabel="X-axis",
-    ylabel="Y-axis",
+    #title="Density Heatmap",
+    #xlabel="X-axis",
+    #ylabel="Y-axis",
+    legend=false,
     color=:viridis,
     grid=false,
+    axis=false,
     clims=(0.0, maximum(kdes.density)),
 )
 
@@ -262,63 +314,117 @@ model = Chain(
 )
 =#
 
-z_dim = 10
+function rbf(x, c, beta)
+    return exp(-beta * norm(x - c)^2)
+end
+
+# x is the input vector
+# c is the center vector
+# beta is the parameter controlling the width
+
+x = [1.0, 2.0]
+c = [0.0, 0.0]
+beta = 1.0
+
+output = rbf(x, c, beta)
+
+z_dim = 2
 hidden_dim = 32
 model = Chain(
-    Dense(z_dim, hidden_dim, relu),
-    Dense(hidden_dim, hidden_dim, relu),
-    Dense(hidden_dim, hidden_dim, relu),
-    Dense(hidden_dim, 100),
+    Dense(z_dim, hidden_dim, tanh),
+    Dense(hidden_dim, hidden_dim, tanh),
+    #Dense(hidden_dim, hidden_dim, x -> rbf(x, 0.0f0, 1.0f0)),
+    Dense(hidden_dim, hidden_dim, tanh),
+    Dense(hidden_dim, 2),
 )
 
-dscr = Chain(Dense(10, 128), relu, Dense(128, 128), relu, Dense(128, 1, σ))
+model = Chain(
+    Dense(2, 4, tanh),    # Input layer with 10 neurons
+    Dropout(0.5),                            # Dropout for regularization
+    Dense(4, 2, tanh),    # Hidden layer with 5 neurons
+    Dropout(0.5),                            # Dropout for regularization
+    Dense(2, 2),         # Output layer with sigmoid activation
+)
 
+dscr = Chain(Dense(2, 128), relu, Dense(128, 128), relu, Dense(128, 1, σ))
+
+target_model = Normal(0.0f0, 1.0f0)
 hparams = HyperParamsVanillaGan(;
-    data_size=128,
-    batch_size=128,
-    epochs=1e3,
-    lr_dscr=1e-3,
-    lr_gen=1e-3,
+    data_size=1000,
+    batch_size=1000,
+    epochs=2e2,
+    lr_dscr=1e-5,
+    lr_gen=1e-5,
     latent_dim=2,
-    dscr_steps=1,
-    gen_steps=0,
+    dscr_steps=0,
+    gen_steps=1,
     noise_model=noise_model,
     target_model=target_model,
 )
 
 kl_divs = []
 for i in 1:100
-    train_vanilla_gan(dscr, model, hparams, loader)
+    train_vanilla_gan(dscr, model, hparams, train_loader)
     model_cpu = cpu(model)
     res = model_cpu(Float32.(rand(cpu(hparams.noise_model), 10000)))
 
     x = res[1, :]
     y = res[2, :]
-    append!(kl_divs, kl_divergence_2d(res, moons))
+    kl_div = kl_divergence_2d(res, moons)
+    println(kl_div)
+    append!(kl_divs, kl_div)
 end
 
 hparams = HyperParamsWGAN(;
     noise_model=noise_model,
     target_model=target_model,
-    data_size=128,
-    batch_size=128,
+    data_size=1000,
+    batch_size=1000,
     epochs=2e3,
     n_critic=1,
-    lr_dscr=1e-2,
+    lr_dscr=1e-4,
     latent_dim=2,
     #lr_gen = 1.4e-2,
-    lr_gen=1e-2,
+    lr_gen=1e-4,
 )
 
 kl_divs = []
-for i in 1:100
-    train_wgan(dscr, model, hparams, train_loader)
-    model_cpu = cpu(model)
-    res = model_cpu(Float32.(rand(cpu(hparams.noise_model), 10000)))
+countss = []
+for j in 1:10
+    z_dim = 2
+    hidden_dim = 32
+    model = Chain(
+        Dense(z_dim, hidden_dim, tanh),
+        Dense(hidden_dim, hidden_dim, tanh),
+        #Dense(hidden_dim, hidden_dim, x -> rbf(x, 0.0f0, 1.0f0)),
+        Dense(hidden_dim, hidden_dim, tanh),
+        Dense(hidden_dim, 2),
+    )
+    #@load "8_modes_pretrained.bson" model
+    dscr = Chain(Dense(2, 128), relu, Dense(128, 128), relu, Dense(128, 1, σ))
+    for i in 1:1
+        train_wgan(dscr, model, hparams, train_loader)
+        model_cpu = cpu(model)
+        res = model_cpu(Float32.(rand(cpu(hparams.noise_model), 10000)))
 
-    x = res[1, :]
-    y = res[2, :]
-    append!(kl_divs, kl_divergence_2d(res, moons))
+        x = res[1, :]
+        y = res[2, :]
+        kl_div = kl_divergence_2d(res, moons)
+        println(kl_div)
+        append!(kl_divs, kl_div)
+
+        means_matrix = [
+            0.0007 1.4144 1.9986 1.4116 0.0000 -1.4146 -2.0003 -1.4137
+            2.0041 1.4099 -0.0021 -1.4130 -1.9958 -1.4195 -0.0001 1.4151
+        ]
+
+        sigma = 0.0646
+
+        z = rand(noise_model, 10000)
+        yₖ = model(z)
+
+        append!(countss, count_within_3std(means_matrix, sigma, yₖ))
+    end
 end
 
 device = cpu
@@ -335,43 +441,47 @@ cov_matrix = device(Diagonal(ones(z_dim)))
 #noise_model = device(MvNormal(mean_vector, cov_matrix))
 noise_model = device(CoustomDistribution())
 
-n_samples = 10000
+n_samples = 1000
 
 # Create a data loader for training
 batch_size = 1000
 hparams = device(
     HyperParamsSlicedISL(;
-        K=10, samples=batch_size, epochs=10, η=1e-3, noise_model=noise_model, m=2
+        K=10, samples=batch_size, epochs=10, η=1e-3, noise_model=noise_model, m=10
     ),
 )
 
-#train_loader = DataLoader(moons; batchsize=batch_size, shuffle=true, partial=false)
-train_loader = gpu(DataLoader(moons; batchsize=batch_size, shuffle=true, partial=false))
+#train_loader = DataLoader(Float32.(moons); batchsize=batch_size, shuffle=true, partial=false)
+train_loader = gpu(
+    DataLoader(Float32.(moons); batchsize=batch_size, shuffle=true, partial=false)
+)
 
 total_loss = []
 kl_divs = []
-@showprogress for _ in 1:2000
+@showprogress for _ in 1:100
     append!(
         total_loss,
         #sliced_invariant_statistical_loss_optimized_gpu_2(model, train_loader, hparams),
         sliced_invariant_statistical_loss_optimized_2(model, train_loader, hparams),
     )
     model_cpu = cpu(model)
-    res = model_cpu(Float32.(rand(cpu(hparams.noise_model), 1000)))
+    res = model_cpu(Float32.(rand(cpu(hparams.noise_model), 10000)))
 
-    x = res[1, :]
-    y = res[2, :]
-    append!(kl_divs, kl_divergence_2d(res, moons))
+    #x = res[1, :]
+    #y = res[2, :]
+    kl_div = kl_divergence_2d(res, moons)
+    println(kl_div)
+    append!(kl_divs, kl_div)
 end
 
 model_cpu = cpu(model)
-res = model_cpu(Float32.(rand(cpu(hparams.noise_model), 10000)))
+res = model_cpu(Float32.(rand(cpu(hparams.noise_model), 5000)))
 #res = Float32.(rand(hparams.noise_model, 1000)) ## Esta linea tienes que comentarla
 
 x = res[1, :]
 y = res[2, :]
 data_matrix = hcat(y, x)  # Use hcat to form a matrix
-#kdes = kde(data_matrix; bandwidth=(0.2, 0.2))
+#kdes = kde(data_matrix; bandwidth=(0.1, 0.1))
 kdes = kde(data_matrix)
 contourf(
     kdes.x,
@@ -385,19 +495,25 @@ contourf(
     legend=false,
     #fill=true,
     linewidth=1,
-    levels=8,
+    levels=10,
 )
 
 heatmap(
     kdes.x,
     kdes.y,
     kdes.density;
-    title="Density Heatmap",
-    xlabel="X-axis",
-    ylabel="Y-axis",
+    #title="Density Heatmap",
+    #xlabel="X-axis",
+    #ylabel="Y-axis",
     color=:viridis,
     grid=false,
-    clims=(0.01, maximum(kdes.density)),
+    clims=(0.0, maximum(kdes.density)),
+    legend=false,
+    axis=false,
+    #left_margin=0mm,  # Explicitly set all margins to zero
+    #right_margin=0mm,
+    #top_margin=0mm,
+    #bottom_margin=0mm,
     #aspect_ratio=:equal,
     #alpha=0.75,
     #xlims=(-3, 3),  # Set x-axis limits
@@ -405,7 +521,7 @@ heatmap(
 )
 
 scatter(moons[1, :], moons[2, :]; markersize=2.0, legend=:none, color=:blue)
-scatter!(res[1, :], res[2, :]; markersize=2.0, legend=:none, color=:red)
+scatter!(x, y; markersize=2.0, legend=:none, color=:red)
 
 function kl_divergence_2d(p_samples, q_samples)
 
@@ -418,7 +534,9 @@ function kl_divergence_2d(p_samples, q_samples)
     x = p_samples[1, :]
     y = p_samples[2, :]
 
-    kde_result = kde((x, y); boundary=((min_x, max_x), (min_y, max_y)))
+    kde_result = kde(
+        (x, y); boundary=((min_x, max_x), (min_y, max_y)), bandwidth=(0.1, 0.1)
+    )
 
     densities = kde_result.density  # Estimated density values
     x_values = kde_result.x  # Points at which density is estimated
@@ -496,6 +614,7 @@ function sample(model::TwoMoons, num_samples::Int)
 end
 
 d = TwoMoons()
+moons = Float32.(sample(d, 10000))
 
 struct CircularGaussianMixture <: Target
     n_modes::Int
@@ -530,3 +649,175 @@ end
 
 d = CircularGaussianMixture(8, 0.1)
 moons = Float32.(sample(d, 10000))
+
+struct RingMixture <: Target
+    n_rings::Int
+    n_dims::Int
+    max_log_prob::Float32
+    scale::Float32
+    prop_scale::Array{Float32}
+    prop_shift::Array{Float32}
+
+    function RingMixture(n_rings::Int)
+        prop_scale = ones(Float32, 2) * 6.0
+        prop_shift = ones(Float32, 2) * -3.0
+        return new(n_rings, 2, 0.0, 1 / 4 / n_rings, prop_scale, prop_shift)
+    end
+end
+
+Flux.@functor RingMixture
+
+function log_prob(model::RingMixture, z)
+    d = zeros(Float32, size(z, 1), model.n_rings)
+    for i in 1:(model.n_rings)
+        # Calculate the distance to each ring
+        d_ = ((norm.(eachrow(z)) .- 2 / model.n_rings * (i + 1)) .^ 2) / (2 * model.scale^2)
+        d[:, i] = d_
+    end
+    return logsumexp(-d; dims=2)
+end
+
+function rejection_sampling(model::RingMixture, num_steps::Int=1)
+    eps = rand(Float32, num_steps, model.n_dims) # Generate num_steps x n_dims random values
+    println(eps)
+    z_ = model.prop_scale .* eps .+ model.prop_shift # Scale and shift the samples
+    prob = rand(Float32, num_steps)
+    prob_ = exp.(log_prob(model, z_) .- model.max_log_prob)
+    accept = prob_ .> prob
+    z = z_[accept, :]
+    return z
+end
+
+function sample(model::RingMixture, num_samples::Int=1)
+    z = Array{Float32,2}(undef, 0, model.n_dims)  # Initialize an empty 2D array
+    while size(z, 1) < num_samples
+        z_ = rejection_sampling(model)
+        ind = min(size(z_, 1), num_samples - size(z, 1))
+        z = vcat(z, z_[1:ind, :])
+    end
+    return z
+end
+
+d = RingMixture(2)
+moons = Float32.(sample(d, 10000))
+
+data_string = read("/export/usuarios01/jmfrutos/prob_data.txt", String)
+
+# Split the string into an array of substrings
+data_split = split(data_string)
+
+# Convert the substrings to float numbers
+data = parse.(Float64, data_split)
+data = [x > 0.01 ? x + 0.03 : x for x in data]
+
+# Reshape the array into a 200x200 matrix
+matrix = reshape(data, 256, 256)
+
+means_matrix = [
+    0.0007 1.4144 1.9986 1.4116 0.0000 -1.4146 -2.0003 -1.4137
+    2.0041 1.4099 -0.0021 -1.4130 -1.9958 -1.4195 -0.0001 1.4151
+]
+
+sigma = 0.0646
+
+z = rand(noise_model, 10000)
+yₖ = model(z)
+
+count_within_3std(means_matrix, sigma, yₖ)
+
+function count_within_3std(means_matrix, sigma, yₖ)
+    count = 0
+    threshold_squared = (3 * sqrt(sigma))^2
+    modes_covered = falses(size(means_matrix)[2])
+
+    # Iterate over all data points
+    for i in 1:size(yₖ, 2)
+        point = yₖ[:, i]
+        within_3std = false
+
+        # Check if the point is within 3 std devs of any mode center
+        for j in 1:size(means_matrix)[2]
+            center = means_matrix[:, j]
+            if ((point[1] - center[1])^2 + (point[2] - center[2])^2) <= threshold_squared
+                within_3std = true
+                modes_covered[j] = true
+                break
+            end
+        end
+
+        if within_3std
+            count += 1
+        end
+    end
+
+    return count, sum(modes_covered)
+end
+
+using Flux
+using LinearAlgebra
+using Statistics
+
+struct Target
+    prop_scale::Float32
+    prop_shift::Float32
+    n_dims::Int
+end
+
+function Target(; prop_scale=6.0f0, prop_shift=-3.0f0)
+    return Target(prop_scale, prop_shift, 2)
+end
+
+function log_prob(model::Target, z)
+    throw(ArgumentError("The log probability is not implemented yet."))
+end
+
+function rejection_sampling(model::RingMixture, num_steps::Int=1)
+    eps = rand(Float32, num_steps, model.target.n_dims)  # Generate num_steps x n_dims random values
+    z_ = model.target.prop_scale .* eps .+ model.target.prop_shift  # Apply scale and shift
+    prob = rand(Float32, num_steps)  # Generate acceptance probabilities
+    prob_ = exp.(log_prob(model, z_) .- model.max_log_prob)  # Compute acceptance based on log_prob
+    accept = prob_ .> prob  # Create a mask to filter accepted samples
+    indices = LinearIndices(accept)[findall(accept)]
+    z = z_[indices, :]  # Filter rows of z_ based on accept mask
+    return z
+end
+
+function sample(model::RingMixture, num_samples::Int=1)
+    z = zeros(0,2)  # Initialize z with zero rows but n_dims columns
+    while size(z, 1) < num_samples
+        z_ = rejection_sampling(model, num_samples)  # Sample new points
+        ind = min(size(z_, 1), num_samples - size(z, 1))  # Determine how many samples are needed
+        println(ind)
+        if ind > 0
+            z = vcat(z, z_[1:ind, :])  # Concatenate accepted samples
+        end
+    end
+    return z
+end
+
+struct RingMixture
+    target::Target
+    max_log_prob::Float32
+    n_rings::Int
+    scale::Float32
+end
+
+function RingMixture(n_rings::Int=2)
+    target = Target()
+    max_log_prob = 0.0f0
+    scale = 1 / (4 * n_rings)
+    return RingMixture(target, max_log_prob, n_rings, scale)
+end
+
+function log_prob(model::RingMixture, z)
+    d = zeros(Float32, size(z, 1), 0)
+    for i in 1:(model.n_rings)
+        row_norms = [norm(z[j, :]) for j in 1:size(z, 1)]
+        d_ = ((row_norms .- 2 / model.n_rings * (i + 1)) .^ 2) / (2 * model.scale^2)
+        d = hcat(d, d_)
+    end
+    return logsumexp(-d; dims=2)
+end
+
+model = RingMixture(2)
+moons = sample(model, 10000)

@@ -41,7 +41,6 @@ function HillEstimator(data::Vector{Float64})
     kappa = 1.0 ./ Hill_est
     return kappa
 end
-
 ###HAZ UNA BERNOULLI Si no
 struct GPD <: ContinuousUnivariateDistribution
     ξ::Float32
@@ -122,6 +121,30 @@ function Distributions.rand!(rng::AbstractRNG, d::GPD2, x::AbstractVector{Float3
     return x  # Return the modified array, now filled with generated values
 end
 
+# Define the multivariate distribution
+struct MultivariateGPD <: ContinuousMultivariateDistribution
+    dists::Vector{GPD}
+end
+
+Distributions.dim(d::MultivariateGPD) = length(d.dists)
+
+Base.length(d::MultivariateGPD) = length(d.dists)
+
+function Distributions.rand(rng::AbstractRNG, d::MultivariateGPD)
+    return [rand(rng, dist) for dist in d.dists]
+end
+
+function Distributions.rand!(
+    rng::AbstractRNG, d::MultivariateGPD, x::AbstractMatrix{Float64}
+)
+    for j in 1:size(x, 2)
+        for i in 1:length(d.dists)
+            x[i, j] = rand(rng, d.dists[i])
+        end
+    end
+    return x
+end
+
 @test_experiments "Origin N(0,1)" begin
     # Initialize the noise model as a normal distribution N(0,1)
     noise_model = Uniform(0.0f0, 1.0f0)
@@ -146,7 +169,7 @@ end
         # Parameters for automatic invariant statistical loss
         #hparams = ISLParams(; samples=1000, K=20, epochs=600, η=1e-3, transform=noise_model)
         hparams = ISLParams(;
-            samples=1000, K=20, epochs=1000, η=1e-3, transform=noise_model
+            samples=1000, K=10, epochs=1000, η=1e-3, transform=noise_model
         )
         #Estos parametros dan buenos resutlados
         #hparams = ISLParams(;
@@ -164,26 +187,36 @@ end
         loss = invariant_statistical_loss(gen, loader, hparams)
         #loss = auto_invariant_statistical_loss(gen, loader, hparams)
 
-        plot_range = -200:1.0:200  # Adjust step for smoother or coarser plots
+        plot_range = -10:0.1:10  # Adjust step for smoother or coarser plots
         #plot_range = -10:0.1:10  # Adjust step for smoother or coarser plots
 
         plotlyjs()
+        gr()
 
         n_samples = 1000000
         x = rand(noise_model, n_samples)
         ŷ = gen(x')
 
+        # Set specific y-tick labels
+        yticks_values = [10^-6, 10^-5, 10^-4, 10^-3, 10^-2, 10^-1, 10^0]
+        yticks_labels = ["10⁻⁶", "10⁻⁵", "10⁻⁴", "10⁻³", "10⁻²", "10⁻¹", "10⁻⁰"]
+
         histogram(
             ŷ';
             bins=plot_range,
             normalize=:pdf,
-            yscale=:log,
+            #yscale=:log,
             z=2,
             ylims=(10^-6, 1),
             color=get(ColorSchemes.rainbow, 0.2),
             legend=false,
             #label="Generated distribution",
             alpha=0.7,
+            guidefontsize=16,
+            tickfontsize=16,
+            legendfont=16,
+            fontfamily="Times New Roman",
+            #yticks=(yticks_values, yticks_labels)
         )
         plot!(
             x -> pdf(target_model, x),  # Function to plot
@@ -194,8 +227,8 @@ end
             linecolor=:redsblues,  # Line color
             #xlims=(-10, 10),  # Limits for the x-axis
             #ylims=(10^-6, 1),  # Limits for the y-axis, set to the specified log scale range
-            xlabel="x",  # Label for the x-axis
-            ylabel="pdf",  # Label for the y-axis
+            #xlabel="x",  # Label for the x-axis
+            #ylabel="pdf",  # Label for the y-axis
             legend=false,
             #label="Target distribution",  # Label for the plot
         )
@@ -248,17 +281,21 @@ end
             return x
         end
 
-        noise_model = GPD(0.7f0)
+        noise_model = GPD(1.0f0)
+        noise_model = Normal(0.0f0, 1.0f0)
+        gpd1 = GPD(1.0f0)
+        gpd2 = GPD(0.5f0)
+        noise_model = MultivariateGPD([gpd1, gpd2])
 
-        target_model = MultivariateHeavyTailed(0.5, 1.0f0, 1.0f0, 1.0f0)
+        target_model = MultivariateHeavyTailed(0.5, 1.0f0, 0.5f0, 1.0f0)
 
         gen = Chain(
-            Dense(1, 256), relu, Dense(256, 256), relu, Dense(256, 256), relu, Dense(256, 2)
+            Dense(2, 256), relu, Dense(256, 256), relu, Dense(256, 256), relu, Dense(256, 2)
         )
 
         #target_model = Cauchy(0.5f0, 1.0f0)
         hparams = HyperParamsSlicedISL(;
-            K=10, samples=1000, epochs=20, η=1e-3, noise_model=noise_model, m=10
+            K=10, samples=1000, epochs=1, η=1e-2, noise_model=noise_model, m=5
         )
 
         # Preparing the training set and data loader
@@ -270,15 +307,44 @@ end
         # Training using the automatic invariant statistical loss
         #invariant_statistical_loss(gen, loader, hparams)
         total_loss = []
-        for _ in 1:4
+        @showprogress for _ in 1:100
             #loss = marginal_invariant_statistical_loss(gen, loader, hparams)
+            #append!(total_loss, loss)
             append!(total_loss, sliced_invariant_statistical_loss(gen, loader, hparams))
+            #=
+            x = rand(target_model, 100000)
+            ecdf₁ = ecdf(x[1, :])
+            ranges = (0:1.0:100000)
+            plt = plot(
+                ranges,
+                1 .- ecdf₁(ranges);
+                xscale=:log10,
+                yscale=:log10,
+                xlabel="x₀",
+                ylabel="P(X₀ > x₀)",
+                #label="Target distribution",
+                linecolor=:red,
+                lw=2,
+            )
+            z = rand(noise_model, n_samples)
+            ŷ = gen(z')
+            ecdf₁ = ecdf(ŷ[1, :])
+            ranges = (0:10.0:100000)
+            plot!(sort(z), 1 .- ecdf₁(sort(z)))
+
+            display(plt)
+            =#
         end
 
         plotlyjs()
         x = rand(target_model, 100000)
         ecdf₁ = ecdf(x[1, :])
-        ranges = (0:1.0:100000)
+        ranges = (0:0.1:100000)
+        x_ticks = [1, 10, 100, 1000, 10000, 100000]
+        y_ticks = [1, 0.1, 0.01, 0.001, 0.0001, 0.00001]
+        n_samples = 1000000
+
+        # Create the plot with x-axis limits
         plot(
             ranges,
             1 .- ecdf₁(ranges);
@@ -286,19 +352,56 @@ end
             yscale=:log10,
             xlabel="x₀",
             ylabel="P(X₀ > x₀)",
-            #label="Target distribution",
-            linecolor=:red,
+            label="Real",
+            linecolor=:redsblues,
             lw=2,
+            #title = "ECDF Plot",
+            grid=true,
+            legend=:topright,
+            #background_color=:lightgrey,
+            #framestyle=:box,
+            #tickfont=font(14, "t"),
+            #guidefont=font(14, "Arial"),
+            #legendfont=font(14, "Arial"),
+            xticks=(x_ticks, string.(x_ticks)),
+            yticks=(y_ticks, string.(y_ticks)),
+            xlims=(1, 100000),  # Set x-axis limits
+            minorgrid=false,  # Turn off minor grid lines
+            minor_xticks=false,  # Turn off minor ticks on x-axis
+            minor_yticks=false,   # Turn off minor ticks on y-axis
+            guidefontsize=18,
+            tickfontsize=18,
+            legendfont=18,
+            fontfamily="Times New Roman",
+        )
+
+        # Generate new data and update ECDF
+        z = rand(noise_model, n_samples)
+        ŷ = gen(z)
+        ecdf₁ = ecdf(ŷ[1, :])
+
+        # Update the plot with new data
+        plot!(
+            sort(z[1, :]),
+            1 .- ecdf₁(sort(z[1, :]));
+            #label="Pareto ISL",
+            label="ISL (Gaussian noise)",
+            lw=3,
+            #linecolor=:blue,
+            linestyle=:dashdot,
+            linecolor=get(ColorSchemes.rainbow, 0.4),
         )
         z = rand(noise_model, n_samples)
-        ŷ = gen(z')
+        ŷ = gen(z)
         ecdf₁ = ecdf(ŷ[1, :])
         ranges = (0:10.0:100000)
-        plot!(sort(z), 1 .- ecdf₁(sort(z)))
+        #plot!(sort(z), 1 .- ecdf₁(sort(z)))
 
-        x = rand(target_model, 100000)
+        x = rand(target_model, 1000000)
         ecdf₂ = ecdf(x[2, :])
-        ranges = (0:1.0:100000)
+        ranges = (0:0.1:10000)
+        x_ticks = [1, 10, 100, 1000]
+        y_ticks = [1, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001]
         plot(
             ranges,
             1 .- ecdf₂(ranges);
@@ -306,26 +409,71 @@ end
             yscale=:log10,
             xlabel="x₁",
             ylabel="P(X₁ > x₁)",
+            label="Real",
             #label="Target distribution",
-            linecolor=:red,
+            linecolor=:redsblues,
             lw=2,
+            xticks=(x_ticks, string.(x_ticks)),
+            yticks=(y_ticks, string.(y_ticks)),
+            xlims=(1, 1000),  # Set x-axis limits
+            minorgrid=false,  # Turn off minor grid lines
+            minor_xticks=false,  # Turn off minor ticks on x-axis
+            minor_yticks=false,   # Turn off minor ticks on y-axis
+            guidefontsize=18,
+            tickfontsize=18,
+            legendfont=18,
+            fontfamily="Times New Roman",
         )
-        z = rand(noise_model, n_samples)
-        ŷ = gen(z')
+        #z = rand(noise_model, n_samples)
+        #ŷ = gen(z)
         ecdf₂ = ecdf(ŷ[2, :])
         ranges = (0:10.0:100000)
-        plot!(sort(z), 1 .- ecdf₂(sort(z)))
+        plot!(
+            sort(z[2, :]),
+            1 .- ecdf₂(sort(z[2, :]));
+            label="Pareto ISL",
+            #label="ISL (Gaussian noise)",
+            lw=3,
+            #linecolor=:blue,
+            linestyle=:dashdot,
+            linecolor=get(ColorSchemes.rainbow, 0.2),
+        )
 
         x = rand(target_model, 10000)
         z = rand(noise_model, 10000)
-        ŷ = gen(z')
-        scatter(x[1, :], x[2, :])
-        scatter!(ŷ[1, :], ŷ[2, :])
+        ŷ = gen(z)
+        scatter(x[1, :], x[2, :]; color=:redsblues, label="Real")
+        scatter!(
+            ŷ[1, :],
+            ŷ[2, :];
+            xlims=(-200, 200),
+            ylims=(-100, 100),
+            guidefontsize=14,
+            tickfontsize=14,
+            #legendfont=14,
+            fontfamily="Times New Roman",
+            color=get(ColorSchemes.rainbow, 0.2),
+            label="Pareto ISL",
+        )
+
+        heatmap_data_x = [target_model[1, :]; ŷ[1, :]]
+        heatmap_data_y = [target_model[2, :]; ŷ[2, :]]
+
+        # Plotting 2D histogram (heatmap)
+        histogram2d(
+            heatmap_data_x,
+            heatmap_data_y;
+            bins=30,
+            c=:blues,
+            xlabel="X-axis",
+            ylabel="Y-axis",
+            title="Density Heatmap",
+        )
     end
 end
 
 function calculate_area(y, ŷ, n)
-    fr_ecdf⁻¹ = ecdf(y)
+    fr_ecdf⁻¹ = ecdf(y[1, :])
     gr_ecdf⁻¹ = ecdf(ŷ[1, :])
 
     area = 0.0
@@ -382,17 +530,14 @@ end
     test_set = vec(shuffled_df.AVG_IKI_normalized)[(num_train + num_val + 1):end]
 
     #noise_model = GPD(0.68f0) #Normal(0.0f0, 1.0f0)#GPD(0.68f0)
-    noise_model = GeneralizedPareto(1.0f0, 1.0f0, 1.0f0)
-    noise_model = Normal(0.0f0, 1.0f0)
-    noise_model = Uniform(0.0f0, 1.0f0)
-    noise_model = LogNormal(1.0f0, 1.0f0)
+    noise_model = GeneralizedPareto(0.68f0, 1.0f0, 1.0f0)
 
     gen = Chain(Dense(1, 32), relu, Dense(32, 32), relu, Dense(32, 32), relu, Dense(32, 1))
 
-    hparams = ISLParams(; K=20, samples=1000, epochs=16, η=1e-2, transform=noise_model)
+    hparams = ISLParams(; K=20, samples=1000, epochs=168, η=1e-2, transform=noise_model)
 
     hparams = AutoISLParams(;
-        max_k=40, samples=16000, epochs=1, η=1e-2, transform=noise_model
+        max_k=20, samples=4000, epochs=4, η=1e-2, transform=noise_model
     )
 
     # Preparing the training set and data loader
@@ -405,30 +550,25 @@ end
     #invariant_statistical_loss(gen, loader, hparams)
     total_loss = []
     ksds = []
-    areas = []
-    ranges = (-5:0.01:5)
-    @showprogress for _ in 1:100
-        #loss, ksd = auto_invariant_statistical_loss_1(gen, loader, hparams, test_set)
-        #append!(total_loss, loss)
-        #append!(ksds, ksd)
+    ranges = (-5:0.1:5)
+    for _ in 1:100
+        loss, ksd = auto_invariant_statistical_loss_1(gen, loader, hparams, test_set)
+        append!(total_loss, loss)
+        append!(ksds, ksd)
         #append!(total_loss, auto_invariant_statistical_loss_1(gen, loader, hparams))
-        append!(total_loss, invariant_statistical_loss_1(gen, loader, hparams))
+        #append!(total_loss, invariant_statistical_loss_1(gen, loader, hparams))
         #x = rand(noise_model, 10000)
         #ŷ = gen(x')
-        x = rand(noise_model, 10000)
-        ŷ = gen(x')
-        append!(areas, calculate_area(test_set, ŷ, 10000000))
-        append!(ksds, KSD_1(noise_model, test_set, gen, 100000, ranges))
         #ksd = HypothesisTests.ApproximateTwoSampleKSTest(train_set[1:10000], vec(ŷ))
         #append!(ksds, ksd.δp)
         #loss = invariant_statistical_loss_1(gen, loader, hparams)
     end
 
-    calculate_area(test_set, ŷ, 10000)
+    calculate_area(normalized_data, ŷ, 10000)
 
     plotlyjs()
 
-    ranges = (-2:0.01:5)
+    ranges = (-2:0.02:5)
     histogram(
         normalized_data;
         range=ranges,
@@ -461,105 +601,4 @@ end
 
     ranges = (-5:0.01:5)
     KSD(noise_model, target_model, gen, 1000000, ranges)
-    KSD_1(noise_model, test_set, gen, 100000, ranges)
-end
-
-@test_experiments "N(0,1) to N(23,1)" begin
-
-    # Assuming the data is saved in 'typing_data.txt'
-
-    noise_model = GeneralizedPareto(0.66f0, 1.0f0, 1.0f0)
-
-    file_path = "/Users/jmfrutos/Desktop/train_1.csv"
-
-    df = CSV.read(file_path, DataFrame; delim=',')
-    df_filled = coalesce.(df, 0)
-    df_filled[!, :Sum] = sum.(eachrow(df_filled[:, Not(:Page)]))
-
-    sum_col = df_filled.Sum
-
-    # Calculate mean and standard deviation
-    mean_val = mean(sum_col)
-    std_dev = std(sum_col)
-
-    # Normalize the data
-    normalized_data = Float32.((sum_col .- mean_val) ./ std_dev)
-
-    # Shuffle the DataFrame rows
-    shuffled_df = shuffle(normalized_data)
-
-    # Calculate the number of rows for each set
-    num_rows = length(shuffled_df)
-    num_train = Int(floor(0.1 * num_rows)) # 10% for training
-    num_val = Int(floor(0.1 * num_rows)) # 10% for validation
-    num_test = num_rows - num_train - num_val # The rest for testing
-
-    # Split the data
-    train_set = vec(shuffled_df)[1:num_train]
-    val_set = vec(shuffled_df)[(num_train + 1):(num_train + num_val)]
-    test_set = vec(shuffled_df)[(num_train + num_val + 1):end]
-
-    gen = Chain(Dense(1, 32), relu, Dense(32, 32), relu, Dense(32, 32), relu, Dense(32, 1))
-
-    hparams = ISLParams(; K=40, samples=1000, epochs=14, η=1e-1, transform=noise_model)
-
-    # Preparing the training set and data loader
-    train_set = Float32.(train_set)
-    loader = Flux.DataLoader(
-        train_set; batchsize=hparams.samples, shuffle=true, partial=false
-    )
-
-    total_loss = []
-    ksds = []
-    areas = []
-    ranges = (-5:0.1:5)
-    @showprogress for _ in 1:100
-        #loss, ksd = auto_invariant_statistical_loss_1(gen, loader, hparams, test_set)
-        #append!(total_loss, loss)
-        #append!(ksds, ksd)
-        #append!(total_loss, auto_invariant_statistical_loss_1(gen, loader, hparams))
-        append!(total_loss, invariant_statistical_loss_1(gen, loader, hparams))
-        #x = rand(noise_model, 10000)
-        #ŷ = gen(x')
-        x = rand(noise_model, 10000)
-        ŷ = gen(x')
-        append!(areas, calculate_area(test_set, ŷ, 10000000))
-        append!(ksds, KSD_1(noise_model, test_set, gen, 100000, ranges))
-        #ksd = HypothesisTests.ApproximateTwoSampleKSTest(train_set[1:10000], vec(ŷ))
-        #append!(ksds, ksd.δp)
-        #loss = invariant_statistical_loss_1(gen, loader, hparams)
-    end
-
-    plotlyjs()
-
-    ranges = (-2:0.01:5)
-    histogram(
-        normalized_data;
-        range=ranges,
-        #bins=10000,
-        normalize=:pdf,
-        label="AVG_IKI",
-        alpha=0.7,
-        #yscale=:log,
-        xlabel="AVG_IKI",
-        ylabel="Frequency",
-        title="Histogram of AVG_IKI",
-        xlims=(-10, 10),
-    )
-
-    x = rand(noise_model, 10000)
-    ŷ = gen(x')
-
-    #ranges = (-5:0.005:5)
-    histogram!(
-        ŷ';
-        range=ranges,
-        #bins=10000,
-        label="Target distribution",
-        normalize=:pdf,
-        #yscale=:log,
-        xlims=(-10, 10),
-        norm=true,
-        #alpha=0.9,
-    )
 end

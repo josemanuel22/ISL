@@ -24,8 +24,8 @@ function load_and_resize_mnist(
     normalize::Bool=false,
 )
     # Load MNIST dataset
-    train_x, train_y = MLDatasets.MNIST.traindata()
-    test_x, test_y = MLDatasets.MNIST.testdata()
+    train_x, train_y = MLDatasets.CIFAR100.traindata()
+    test_x, test_y = MLDatasets.CIFAR100.testdata()
 
     # Filter by digit if specified
     if filter_digit !== nothing
@@ -91,10 +91,10 @@ end
 
 function load_mnist()
     # Load MNIST data
-    train_x, train_y = MLDatasets.MNIST.traindata()
+    train_x, train_y = MLDatasets.CIFAR100.traindata()
     test_x, test_y = MLDatasets.MNIST.testdata()
 
-    return (reshape(Float32.(train_x), 28 * 28, :)[:, 1:60000], train_y[1:60000])#, (test_x, test_y)
+    return (reshape(Float32.(train_x), 32 * 32, :), train_y)#, (test_x, test_y)
 end
 
 function load_mnist(digit::Int)
@@ -299,10 +299,10 @@ end
     latent_dim::Int = 100
     epochs::Int = 10000
     verbose_freq::Int = 1000
-    output_x::Int = 1000       # No. of sample images to concatenate along x-axis
+    output_x::Int = 1       # No. of sample images to concatenate along x-axis
     output_y::Int = 1       # No. of sample images to concatenate along y-axis
-    lr_dscr::Float32 = 0.00001
-    lr_gen::Float32 = 0.00001
+    lr_dscr::Float32 = 0.0001
+    lr_gen::Float32 = 0.0001
 end
 
 function generator(args)
@@ -314,7 +314,9 @@ function generator(args)
             x -> leakyrelu.(x, 0.2f0),
             Dense(512, 1024),
             x -> leakyrelu.(x, 0.2f0),
-            Dense(1024, 784, tanh),
+            Dense(1024, 32 * 32 * 3),  # Adjust the output size for 3 channels
+            x -> reshape(x, 32, 32, 3, :),  # Reshape to 32x32 with 3 channels
+            x -> tanh.(x),  # Apply the tanh activation function
         ),
     )
 end
@@ -322,7 +324,7 @@ end
 function discriminator(args)
     return gpu(
         Chain(
-            Dense(784, 1024),
+            Dense(32 * 32 * 3, 1024),  # Adjust the input size for 3 channels
             x -> leakyrelu.(x, 0.2f0),
             Dropout(0.3),
             Dense(1024, 512),
@@ -336,16 +338,16 @@ function discriminator(args)
     )
 end
 
-function load_data(hparams)
+function load_data()
     # Load MNIST dataset
-    train_x, train_y = MLDatasets.EMNIST.traindata(Float32)
+    train_x, train_y = MLDatasets.CIFAR100.traindata(Float32)
     # Normalize to [-1, 1] and convert it to WHCN
-    train_x = reshape(@.(2.0f0 * train_x - 1.0f0), 28, 28, :)
+    #train_x = reshape(@.(2.0f0 * train_x - 1.0f0), 32, 32, :)
     #image_tensor = reshape(image_tensor, :, size(image_tensor, 4))
     # Partition into batches
     #data = [gpu(image_tensor[:, r]) for r in partition(1:60000, hparams.batch_size)]
     #return image_tensor
-    return (reshape(Float32.(train_x), 28 * 28, :)[:, 1:60000], train_y[1:60000])#, (test_x, test_y)
+    return (reshape(Float32.(train_x), 32 * 32 * 3, :), train_y)#, (test_x, test_y)
 end
 
 # Loss functions
@@ -386,22 +388,28 @@ end
 function create_output_image(gen, fixed_noise, hparams)
     @eval Flux.istraining() = false
     fake_images = @. cpu(gen(fixed_noise))
-    fake_images = @. reshape(fake_images, 28, 28, 1, size(fake_images, 2))
+    #fake_images = @. reshape(fake_images, 32, 32, 1, size(fake_images, 2))
     @eval Flux.istraining() = true
-    image_array = dropdims(
-        reduce(vcat, reduce.(hcat, partition(fake_images, hparams.output_y))); dims=(3, 4)
-    )
-    image_array = @. Gray(image_array + 1.0f0) / 2.0f0
-    p = imresize(image_array, (224, 224))
-    MLDatasets.MNIST.convert2image(image_array)
-    return image_array
+
+    # Scale the images to be within the range [0, 1]
+    #
+    #image_array = dropdims(
+    #    reduce(vcat, reduce.(hcat, partition(fake_images, hparams.output_y))); dims=(3, 4)
+    #)
+    #image_array = reduce(vcat, reduce.(hcat, partition(fake_images, hparams.output_y)))
+    #image_array = @. clamp(image_array, 0.0f0, 1.0f0)
+    fake_images[1] = @. clamp(fake_images[1], 0.0f0, 1.0f0)
+    #image_array = @. image_array + 1.0f0 / 2.0f0
+    #p = imresize(image_array, (224, 224))
+    #MLDatasets.CIFAR100.convert2image(image_array)
+    return fake_images
 end
 
-function train(gen)
+function train()
     hparams = HyperParams()
 
-    data = gpu(load_data(hparams))
-    data = gpu(DataLoader(data; batchsize=batch_size, shuffle=true, partial=false))
+    data = gpu(load_data()[1])
+    data = DataLoader(data; batchsize=batch_size, shuffle=true, partial=false)
 
     fixed_noise = [
         gpu(randn(hparams.latent_dim, 1)) for _ in 1:(hparams.output_x * hparams.output_y)
@@ -411,7 +419,7 @@ function train(gen)
     dscr = gpu(discriminator(hparams))
 
     # Generator
-    #gen = gpu(generator(hparams))
+    gen = gpu(generator(hparams))
     #gen = model
 
     # Optimizers
@@ -426,7 +434,7 @@ function train(gen)
         @info "Epoch $ep"
         for x in data
             # Update discriminator and generator
-            loss = train_gan(gen, dscr, x[1], opt_gen, opt_dscr, hparams)
+            loss = train_gan(gen, dscr, x, opt_gen, opt_dscr, hparams)
 
             if train_steps % hparams.verbose_freq == 0
                 @info(
@@ -434,8 +442,8 @@ function train(gen)
                 )
                 # Save generated fake image
 
-                #fake_images = @. cpu(gen(fixed_noise))
-                #fake_images = @. reshape(fake_images, 28, 28, 1, size(fake_images, 2))
+                fake_images = @. cpu(gen(fixed_noise))
+                fake_images = @. reshape(fake_images, 32, 32, 1, size(fake_images, 2))
                 #println(countmap(onecold.(model.(reshape.(fake_images, 784)))))
                 output_image = create_output_image(gen, fixed_noise, hparams)
                 save(@sprintf("output_1/gan_steps_%06d.png", train_steps), output_image)

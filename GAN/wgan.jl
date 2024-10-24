@@ -59,7 +59,7 @@ function train_discr(discr, original_data, fake_data, opt_discr, hparams::HyperP
     loss = 0.0
     for i in 1:(hparams.n_critic)
         loss, grads = Flux.withgradient(discr) do discr
-            wasserstein_loss_discr(discr(original_data), discr(fake_data'))
+            wasserstein_loss_discr(discr(original_data), discr(fake_data))
         end
         update!(opt_discr, discr, grads[1])
         for i in Flux.params(discr)
@@ -72,17 +72,17 @@ end
 Zygote.@nograd train_discr
 
 function train_gan(gen, discr, original_data, opt_gen, opt_discr, hparams::HyperParamsWGAN)
-    noise = gpu(
+    noise = cpu(
         rand!(
             hparams.noise_model,
-            similar(original_data, (hparams.batch_size, hparams.latent_dim)),
+            similar(original_data, (hparams.latent_dim, hparams.batch_size)),
         ),
     )
     loss = Dict()
     loss["gen"], grads = Flux.withgradient(gen) do gen
         fake_ = gen(noise)
         loss["discr"] = train_discr(discr, original_data, fake_, opt_discr, hparams)
-        wasserstein_loss_gen(discr(fake_'))
+        wasserstein_loss_gen(discr(fake_))
     end
     update!(opt_gen, gen, grads[1])
     return loss
@@ -112,15 +112,17 @@ hyperparameters = HyperParamsWGAN(...)
 losses = train_wgan(discriminator_model, generator_model, hyperparameters)
 ```
 """
-function train_wgan(dscr, gen, hparams::HyperParamsWGAN)
+function train_wgan(dscr, gen, hparams::HyperParamsWGAN, loader)
     #hparams = HyperParams()
 
+    #=
     train_set = Float32.(rand(hparams.target_model, hparams.data_size))
     loader = gpu(
         Flux.DataLoader(
             train_set; batchsize=hparams.batch_size, shuffle=true, partial=false
         ),
     )
+    =#
 
     #dscr = discriminator(hparams)
     #gen = gpu(generator(hparams))

@@ -10,6 +10,8 @@ using LinearAlgebra
 using Parameters: @with_kw
 using ProgressMeter
 using Random
+using CUDA
+using Zygote
 
 using StaticArrays
 
@@ -45,5 +47,10 @@ export _sigmoid,
     sliced_invariant_statistical_loss_optimized_2,
     sliced_invariant_statistical_loss_optimized_3,
     sliced_auto_invariant_statistical_loss_optimized,
-    sliced_invariant_statistical_loss_optimized_4
+    sliced_invariant_statistical_loss_optimized_4,
+    marginal_invariant_statistical_loss_optimized,
+    sliced_invariant_statistical_loss_optimized_gpu,
+    sliced_invariant_statistical_loss_optimized_gpu_2,
+    sliced_invariant_statistical_loss_optimized_gpu_3,
+    sliced_invariant_statistical_loss_clasification
 end
