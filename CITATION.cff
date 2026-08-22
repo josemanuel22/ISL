@@ -1,0 +1,60 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the associated AISTATS 2024 paper."
+title: "ISL"
+type: software
+repository-code: "https://github.com/josemanuel22/ISL"
+url: "https://github.com/josemanuel22/ISL"
+
+authors:
+  - family-names: "de Frutos"
+    given-names: "José Manuel"
+    orcid: "https://orcid.org/0009-0002-5251-0515"
+  - family-names: "Olmos"
+    given-names: "Pablo M."
+  - family-names: "Vázquez"
+    given-names: "Manuel A."
+  - family-names: "Míguez"
+    given-names: "Joaquín"
+
+abstract: >
+  Julia implementation of the Invariant Statistical Loss (ISL) for training
+  implicit generative models without an adversarial discriminator. ISL is a
+  sample-based, discriminator-free alternative to adversarial GAN training,
+  with examples for one-dimensional distributions and time-series modeling.
+
+keywords:
+  - invariant statistical loss
+  - implicit generative models
+  - generative adversarial networks
+  - GANs
+  - GAN training
+  - adversarial training
+  - GAN alternatives
+  - discriminator-free generative modeling
+  - mode collapse
+  - f-GAN
+  - Wasserstein GAN
+  - WGAN
+  - MMD-GAN
+  - generative modeling
+  - time series
+  - statistical machine learning
+
+preferred-citation:
+  type: conference-paper
+  title: "Training Implicit Generative Models via an Invariant Statistical Loss"
+  authors:
+    - family-names: "de Frutos"
+      given-names: "José Manuel"
+    - family-names: "Olmos"
+      given-names: "Pablo M."
+    - family-names: "Vázquez"
+      given-names: "Manuel A."
+    - family-names: "Míguez"
+      given-names: "Joaquín"
+  year: 2024
+  conference:
+    name: "27th International Conference on Artificial Intelligence and Statistics (AISTATS)"
+  start: 2026
+  end: 2034
+  url: "https://proceedings.mlr.press/v238/frutos24a.html"
