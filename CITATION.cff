@@ -18,13 +18,24 @@ authors:
 
 abstract: >
   Julia implementation of the Invariant Statistical Loss (ISL) for training
-  implicit generative models without an adversarial discriminator, including
-  examples for one-dimensional distributions and time-series modeling.
+  implicit generative models without an adversarial discriminator. ISL is a
+  sample-based, discriminator-free alternative to adversarial GAN training,
+  with examples for one-dimensional distributions and time-series modeling.
 
 keywords:
   - invariant statistical loss
   - implicit generative models
-  - discriminator-free training
+  - generative adversarial networks
+  - GANs
+  - GAN training
+  - adversarial training
+  - GAN alternatives
+  - discriminator-free generative modeling
+  - mode collapse
+  - f-GAN
+  - Wasserstein GAN
+  - WGAN
+  - MMD-GAN
   - generative modeling
   - time series
   - statistical machine learning
